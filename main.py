@@ -2,6 +2,7 @@ from tez_reporter import TezReporter
 from logger import SimulationLogger
 from environment import UAV_IoT_Env
 from visualization import Visualization
+from visualizer import SimulationVisualizer
 import matplotlib.pyplot as plt
 import time
 
@@ -42,7 +43,14 @@ def main():
         # 5. Kapanış
         logger.close()
         plt.close()
-        print("Simülasyon tamamlandı.")
+        print("Simülasyon tamamlandı. Analiz başlatılıyor...")
+        
+        # 6. Otomatik Analiz ve Görselleştirme
+        try:
+            analysis_viz = SimulationVisualizer(exp_dir=logger.log_dir)
+            analysis_viz.generate_report()
+        except Exception as e:
+            print(f"Otomatik analiz hatası: {e}")
 
 if __name__ == "__main__":
     main()

@@ -39,7 +39,7 @@ class UAV_IoT_Env(gym.Env):
         
         # Action Space: Attacker Jamming Power (Sürekli)
         # Örnek: 0 ile 2 Watt arası jamming
-        self.action_space = spaces.Box(low=0.0, high=2.0, shape=(1,), dtype=np.float32)
+        self.action_space = spaces.Box(low=0.0, high=0.5, shape=(1,), dtype=np.float32)
         
         # Observation Space:
         # UAV (x, y), Attacker (x, y), Nodes (x, y) * N, Node SINR * N, Node AoI * N
@@ -49,10 +49,10 @@ class UAV_IoT_Env(gym.Env):
         
         self.current_step = 0
         self.max_steps = 100 # Bölüm başına adım sayısı
-        self.dt = 1.0 # Zaman adımı (saniye)
+        self.dt = 5.0 # Zaman adımı (saniye)
         
         # Dairesel hareket için açı
-        self.uav_angle = 0.0
+        self.uav_angle = 15.0
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -168,9 +168,12 @@ class UAV_IoT_Env(gym.Env):
             node.consume_energy(rate)
             
             # Log Individual Node Metrics
+            step_log[f"node_{i}_x"] = node.x
+            step_log[f"node_{i}_y"] = node.y
             step_log[f"node_{i}_sinr"] = sinr
             step_log[f"node_{i}_aoi"] = node.aoi
             step_log[f"node_{i}_energy"] = node.total_energy_consumed
+            step_log[f"node_{i}_connected"] = 1 if is_connected else 0
 
         # 4. Ödül: Saldırganın amacı iletişimi kesmek (+1 jammed node başına)
         reward = jammed_count
