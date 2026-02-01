@@ -79,16 +79,15 @@ Bu grafik, simülasyonun mekansal (spatial) analizini ve ağ topolojisini göste
 
 *   **İçerik:**
     *   **İHA Yörüngesi (Mavi Çizgi):** İHA'nın görev süresince izlediği fiziksel rotayı gösterir.
-    *   **IoT Düğümleri (Yeşil Kareler):** Sahadaki sabit sensör düğümlerinin konumlarını ve kimliklerini (N0, N1...) gösterir.
-    *   **Başarılı İletişim (Yeşil Noktalar):** İHA'nın sağlıklı veri akışı sağladığı (SINR > Threshold) konumları işaret eder.
-    *   **Karıştırma Kesintileri (Kırmızı Çarpı):** İletişimin sadece **Jamming kaynaklı** kesildiği anları gösterir.
-    *   **Mesafe Kesintileri (Gri Nokta):** İletişimin mesafe veya gölgeleme nedeniyle koptuğu (Out of Range) anları gösterir.
+    *   **IoT Düğümleri (Renkli Kareler):** Sahadaki sabit sensör düğümlerinin konumlarını; her biri kendine özgü renkle (Node 0 Mavi, Node 1 Turuncu vb.) gösterir.
+    *   **Başarılı İletişim (Renkli Noktalar):** İHA'nın iletişim kurduğu anları, ilgili düğümün renginde işaretler. Aynı anda çoklu bağlantı varsa noktalar kaydırılarak (offset) çizilir.
+    *   **Karıştırma Kesintileri (Kırmızı Çarpı):** İletişimin sadece **Jamming kaynaklı** kesildiği (ve başka hiçbir aktif bağlantının olmadığı) anları gösterir.
+    *   **Mesafe Kesintileri (Gri Nokta):** İletişimin sadece mesafe nedeniyle koptuğu anları gösterir.
     *   **Saldırgan Konumu (Kırmızı 'X'):** Jamming kaynağının konumunu işaret eder.
 
 *   **Yorumlama:**
-    *   Yeşil ve Kırmızı noktaların dağılımı, **Güvenli İletişim Bölgesi** (Safe Zone) ve **Saldırı Etki Alanı** (Effective Jamming Range) sınırlarını görselleştirir.
-    *   İHA'nın saldırgana yaklaştıkça yeşil noktaların yerini kırmızı çarpılara bırakması, mesafeye bağlı sinyal bozunumunu doğrular.
-    *   Hangi düğümlerin (Nodes) daha riskli bölgede olduğu topolojik olarak analiz edilebilir.
+    *   Renkli noktaların yoğunluğu, İHA'nın hangi düğümle iletişimde olduğunu netleştirir.
+    *   Kırmızı çarpıların sadece "tam kesinti" anlarında çıkması, görsel analizi sadeleştirir.
 
 ### 4.2. Metrik Analizi (`metrics_analysis.png`)
 Bu grafik, sistemin zamansal (temporal) performansını üç alt panelde inceler.
@@ -128,7 +127,16 @@ Tez çalışmasının simülasyon gereksinimlerini karşılayan, doğrulanmış 
 2.  **Görselleştirme İyileştirmesi:** İHA rotası üzerinde başarılı/başarısız iletişim ve IoT düğüm konumları eklendi.
 3.  **Veri Zenginleştirme:** `environment.py` loglarına düğüm konumları ve bağlantı durumu eklendi.
 
-### [02.02.2026 01:42] - Parametre Güncellemesi (v1.1.1)
+### [02.02.2026 01:42] - Parametre Revizyonu (v1.1.1)
 **Yapılan Değişiklikler:**
-1.  **Saldırgan Gücü Revizyonu:** `environment.py` içerisinde tanımlı olan maksimum Jamming gücü **2.0 Watt**'tan **1.0 Watt**'a düşürüldü.
-    *   *Sebep:* Mevcut senaryoda 2 Watt güç, tüm ağın sürekli (%100) kesintiye uğramasına neden olduğu için, daha dengeli bir analiz (kısmi kesinti) elde etmek amacıyla üst limit sınırlandırıldı.
+1.  **Saldırgan Gücü Revizyonu:** `MAX_JAMMING_POWER` 2.0W -> 1.0W düşürüldü.
+2.  **Konfigürasyon Ayrımı:** Ortam parametreleri `core/env_config.py` dosyasına taşınarak fiziksel parametrelerden (`core/config.py`) izole edildi.
+
+### [02.02.2026 02:40] - Navigasyon ve Görselleştirme Paketi (v1.2.0)
+**Yapılan Değişiklikler:**
+1.  **Waypoint Navigasyonu:** İHA'nın dairesel uçuşu yerine, düğümleri sırasıyla (0->N) ziyaret ettiği "Target Tracking" modeline geçildi.
+2.  **Gerçekçi Jamming Alanı:** Anlık görselleştirmede (`visualization.py`), basit daire yerine SINR < 0dB olan bölgeleri tarayan **Dinamik Kontur Grafiği** eklendi.
+3.  **Gelişmiş Trajectory Analizi:**
+    *   **Düğüm Renkleri:** Her düğüm benzersiz bir renge (tab10) atandı.
+    *   **Offset Logic:** Çoklu bağlantı durumunda noktaların üst üste binmesi, koordinat kaydırma (offset) yöntemiyle engellendi.
+    *   **Akıllı Filtreleme:** Eğer İHA en az bir düğüme bağlıysa, görsel kirliliği önlemek için diğer düğümlerin Jammed/Out-of-Range sembolleri gizlendi.
