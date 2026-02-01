@@ -6,7 +6,9 @@ This document explains the working logic of the `UAV_IoT_Sim` project step by st
 ```
 uav-iot-dc-env/
 ├── core/               # Core modules
-│   ├── config.py       # Configuration
+├── core/               # Core modules
+│   ├── config.py       # System Configuration (Physics, Delay)
+│   ├── env_config.py   # Environment & Scenario Config (Nodes, Power, Speed)
 │   ├── physics.py      # Physics engine
 │   └── logger.py       # Logging system
 ├── simulation/         # Simulation environment
@@ -26,7 +28,7 @@ When the simulation is started with `python main.py`, the following happens sequ
 
 1.  **Logger Setup (`SimulationLogger`)**:
     *   A new folder with the current date/time is created under `logs/` (e.g., `EXP_20260201_200542`).
-    *   Simulation parameters are read from `core/config.py` and saved as `config.json` in this folder.
+    *   Simulation parameters are read from `core/config.py` and `core/env_config.py`, then saved as `config.json` in this folder.
     
 2.  **Environment Setup (`UAV_IoT_Env`)**:
     *   `UAVAgent`: Created at the specified altitude (100m) and start position.
@@ -97,7 +99,9 @@ The following graphs simplify example outputs of a scenario under attack.
 
 *   **Blue Line**: The circular route followed by the UAV.
 *   **Red "X"**: Position of the fixed attacker (Jammer).
-*   **Red Dots**: Moments when communication was cut (Jammed) while the UAV was at these points.
+*   **Green Dot**: Successful connection established.
+*   **Red Dot (X)**: Jamming detected (Communication lost due to attack).
+*   **Gray Dot**: Out of Range (Communication lost due to distance).
     *   *Comment:* The concentration of red dots as the UAV approaches the attacker (top right corner) confirms that the Jammer effect increases with proximity.
 
 #### B. Metrics Analysis (`metrics_analysis.png`)

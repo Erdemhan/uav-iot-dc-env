@@ -156,20 +156,34 @@ class UAV_IoT_Env(gym.Env):
             p_rx_signal = physics.calculate_received_power(node.tx_power, dist_uav, beta_uav)
             p_rx_jam = physics.calculate_received_power(self.attacker.jamming_power, dist_jam, beta_jam)
             
-            # SINR
+            # SINR (With Jamming)
             sinr = physics.calculate_sinr(p_rx_signal, UAVConfig.N0_Linear, p_rx_jam)
             total_sinr += sinr
+            
+            # SINR (No Jamming) - To check if it is Out of Range
+            sinr_no_jam = physics.calculate_sinr(p_rx_signal, UAVConfig.N0_Linear, 0.0)
             
             # Rate
             rate = physics.calculate_data_rate(UAVConfig.B, sinr)
             
-            # Connection Status (Threshold SINR dB e.g. 0 dB -> Linear 1.0)
-            is_connected = sinr > 1.0 
-            if not is_connected:
-                jammed_count += 1
-                
+            # Connection Status Logic
+            # Threshold SINR > 1.0 (0 dB)
+            connected_now = sinr > 1.0
+            connected_theoretical = sinr_no_jam > 1.0
+            
+            status = 0 # Connected
+            if connected_now:
+                status = 0
+            else:
+                if not connected_theoretical:
+                    status = 1 # Out of Range (Even without jammer, it would fail)
+                else:
+                    status = 2 # Jammed (Ideally connected, but jammer broke it)
+                    jammed_count += 1
+            
             # Update Node Status
-            node.update_aoi(self.dt, success=is_connected)
+            node.connection_status = status
+            node.update_aoi(self.dt, success=(status == 0))
             node.consume_energy(rate)
             
             # Log Individual Node Metrics
@@ -178,7 +192,7 @@ class UAV_IoT_Env(gym.Env):
             step_log[f"node_{i}_sinr"] = sinr
             step_log[f"node_{i}_aoi"] = node.aoi
             step_log[f"node_{i}_energy"] = node.total_energy_consumed
-            step_log[f"node_{i}_connected"] = 1 if is_connected else 0
+            step_log[f"node_{i}_status"] = status
 
         # 4. Reward: Attacker's goal is to cut communication (+1 per jammed node)
         reward = jammed_count

@@ -42,6 +42,9 @@ def main():
             # Render
             viz.render(env)
             
+            # Wait a bit (Optional, for visual monitoring)
+            time.sleep(UAVConfig.SIMULATION_DELAY) 
+            
             if terminated or truncated:
                 break
                 

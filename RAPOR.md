@@ -27,7 +27,7 @@ Simülasyon altyapısı, Nesne Yönelimli Programlama (OOP) prensipleri çerçev
 ### 2.2. Simülasyon ve Ortam
 
 *   **`simulation/environment.py` (OpenAI Gym Ortamı):** `UAV_IoT_Env` sınıfı, simülasyonun durum uzayı (state space), aksiyon uzayı (action space) ve ödül mekanizmasını (reward function) tanımlar. Zaman adımlı (time-stepped) bir akış içerisinde fizik motorunu ve varlıkları koordine eder.
-*   **`main.py` (Yürütücü):** Simülasyonun başlatılması, döngünün yönetimi ve kaynakların (logger, visualizer) serbest bırakılmasından sorumludur.
+*   **`main.py` (Yürütücü):** Simülasyonun başlatılması, döngünün yönetimi ve kaynakların (logger, visualizer) serbest bırakılmasından sorumludur. `config.py` içerisindeki `SIMULATION_DELAY` parametresi ile simülasyon akış hızı kontrol edilebilir.
 
 ### 2.3. Veri Yönetimi ve Analiz
 
@@ -81,7 +81,8 @@ Bu grafik, simülasyonun mekansal (spatial) analizini ve ağ topolojisini göste
     *   **İHA Yörüngesi (Mavi Çizgi):** İHA'nın görev süresince izlediği fiziksel rotayı gösterir.
     *   **IoT Düğümleri (Yeşil Kareler):** Sahadaki sabit sensör düğümlerinin konumlarını ve kimliklerini (N0, N1...) gösterir.
     *   **Başarılı İletişim (Yeşil Noktalar):** İHA'nın sağlıklı veri akışı sağladığı (SINR > Threshold) konumları işaret eder.
-    *   **Kesinti Noktaları (Kırmızı Çarpı):** İHA'nın bu noktalardayken maruz kaldığı iletişim kesintilerini (Jamming Events) gösterir.
+    *   **Karıştırma Kesintileri (Kırmızı Çarpı):** İletişimin sadece **Jamming kaynaklı** kesildiği anları gösterir.
+    *   **Mesafe Kesintileri (Gri Nokta):** İletişimin mesafe veya gölgeleme nedeniyle koptuğu (Out of Range) anları gösterir.
     *   **Saldırgan Konumu (Kırmızı 'X'):** Jamming kaynağının konumunu işaret eder.
 
 *   **Yorumlama:**

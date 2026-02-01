@@ -65,11 +65,18 @@ class SimulationVisualizer:
         else:
             self.df["aoi_avg"] = 0.0
 
-        # 3. Jammed Status flag
-        if "jammed_count" in self.df.columns:
-            self.df["is_jammed"] = (self.df["jammed_count"] > 0).astype(int)
+        # 3. Status Flags
+        # Check node status columns
+        status_cols = [c for c in self.df.columns if "node_" in c and "_status" in c]
+        
+        if status_cols:
+            # Axis 1 max: if any node is 2, result is 2. If max is 1, result 1.
+            self.df["step_status"] = self.df[status_cols].max(axis=1)
         else:
-            self.df["is_jammed"] = 0
+            # Fallback if logs old
+            self.df["step_status"] = 0
+            if "jammed_count" in self.df.columns:
+                 self.df.loc[self.df["jammed_count"] > 0, "step_status"] = 2
 
     def plot_trajectory(self):
         """Draws UAV and Attacker trajectory."""
@@ -95,14 +102,20 @@ class SimulationVisualizer:
         plt.plot(self.df["uav_x"], self.df["uav_y"], color="gray", alpha=0.5, linewidth=2, label="UAV Path")
         
         # 3. UAV States (Scatter on Path)
-        # Success (Not Jammed) -> Green Dot
-        success_points = self.df[self.df["is_jammed"] == 0]
-        if not success_points.empty:
-            plt.scatter(success_points["uav_x"], success_points["uav_y"], 
-                        color="lime", s=30, alpha=0.6, label="Successful Comms")
+        # Status 0: Connected / Safe -> Green
+        safe_points = self.df[self.df["step_status"] == 0]
+        if not safe_points.empty:
+            plt.scatter(safe_points["uav_x"], safe_points["uav_y"], 
+                        color="lime", s=30, alpha=0.6, label="Safe / Connected")
             
-        # Jammed -> Red Dot
-        jammed_points = self.df[self.df["is_jammed"] == 1]
+        # Status 1: Out of Range -> Gray
+        range_points = self.df[self.df["step_status"] == 1]
+        if not range_points.empty:
+            plt.scatter(range_points["uav_x"], range_points["uav_y"], 
+                        color="gray", s=40, marker="o", alpha=0.5, label="Out of Range")
+
+        # Status 2: Jammed -> Red
+        jammed_points = self.df[self.df["step_status"] == 2]
         if not jammed_points.empty:
             plt.scatter(jammed_points["uav_x"], jammed_points["uav_y"], 
                         color="red", s=50, marker="x", label="Jamming Detected")
