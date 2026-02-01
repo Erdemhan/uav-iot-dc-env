@@ -73,7 +73,7 @@ Bu komut, en son deney klasörünü bulur ve aşağıdaki grafikleri üretir.
 Aşağıdaki grafikler, saldırı altındaki bir senaryonun örnek çıktılarıdır.
 
 #### A. Yörünge ve Saldırı Analizi (`trajectory.png`)
-![Trajectory Plot](logs/EXP_20260201_200542/trajectory.png)
+![Trajectory Plot](logs/EXP_20260202_014936/trajectory.png)
 
 *   **Mavi Çizgi**: İHA'nın izlediği dairesel rota.
 *   **Kırmızı "X"**: Sabit saldırganın (Jammer) konumu.
@@ -81,7 +81,7 @@ Aşağıdaki grafikler, saldırı altındaki bir senaryonun örnek çıktıları
     *   *Yorum:* İHA, saldırgana yaklaştıkça (sağ üst köşe) kırmızı noktaların yoğunlaşması, Jammer etkisinin mesafeyle arttığını doğrular.
 
 #### B. Metrik Analizi (`metrics_analysis.png`)
-![Metrics Analysis](logs/EXP_20260201_200542/metrics_analysis.png)
+![Metrics Analysis](logs/EXP_20260202_014936/metrics_analysis.png)
 
 Bu grafik üç panelden oluşur:
 
