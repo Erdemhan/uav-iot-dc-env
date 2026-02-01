@@ -424,5 +424,53 @@
         "module": "logger.py",
         "action": "Logger Başlatıldı",
         "details": {}
+    },
+    {
+        "timestamp": "2026-02-02T01:49:35.255387",
+        "module": "config.py",
+        "action": "Config Sınıfı Tanımlandı",
+        "details": {}
+    },
+    {
+        "timestamp": "2026-02-02T01:49:35.260895",
+        "module": "physics.py",
+        "action": "Fizik Motoru Yüklendi",
+        "details": {}
+    },
+    {
+        "timestamp": "2026-02-02T01:49:35.266133",
+        "module": "entities.py",
+        "action": "Varlık Sınıfları Oluşturuldu",
+        "details": {}
+    },
+    {
+        "timestamp": "2026-02-02T01:49:35.270642",
+        "module": "environment.py",
+        "action": "UAV_IoT_Env Ortamı Oluşturuldu",
+        "details": {}
+    },
+    {
+        "timestamp": "2026-02-02T01:49:35.477184",
+        "module": "visualization.py",
+        "action": "Görselleştirme Modülü Hazırlandı",
+        "details": {}
+    },
+    {
+        "timestamp": "2026-02-02T01:49:36.197063",
+        "module": "visualizer.py",
+        "action": "Görselleştirme Modülü Başlatıldı",
+        "details": {}
+    },
+    {
+        "timestamp": "2026-02-02T01:49:36.202572",
+        "module": "main.py",
+        "action": "Simülasyon Başlatıldı",
+        "details": {}
+    },
+    {
+        "timestamp": "2026-02-02T01:49:36.207586",
+        "module": "logger.py",
+        "action": "Logger Başlatıldı",
+        "details": {}
     }
 ]
