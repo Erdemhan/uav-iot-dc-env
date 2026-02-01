@@ -1,6 +1,7 @@
 import numpy as np
 
 from .config import UAVConfig
+from .env_config import EnvConfig
 
 
 
@@ -33,7 +34,7 @@ def calculate_received_power(p_tx: float, d: float, beta_0: float) -> float:
     Received Power (P_rx) = P_tx * beta_0 / d^2
     To avoid d=0 issue, d is taken as at least 1m.
     """
-    d = max(d, 1.0)
+    d = np.maximum(d, 1.0)
     return p_tx * beta_0 / (d**2)
 
 def calculate_sinr(p_rx: float, noise_power: float, jamming_power: float) -> float:
@@ -41,9 +42,10 @@ def calculate_sinr(p_rx: float, noise_power: float, jamming_power: float) -> flo
     SINR = P_rx / (N0 + I_jam)
     """
     interference = noise_power + jamming_power
-    if interference <= 0:
-        return np.inf # Theoretical infinity
-    return p_rx / interference
+    # Vectorized safety check
+    # If interference is 0, return inf (handled by numpy widely, but explicit check for scalar existed)
+    # We rely on numpy's handling or ensure interference > 0 via N0
+    return p_rx / (interference + 1e-30) # Avoid exact zero
 
 def calculate_data_rate(bandwidth: float, sinr: float) -> float:
     """
@@ -79,16 +81,17 @@ def calculate_iot_energy(rate: float) -> float:
     E_total = E_acq + P_tx * (L_p / R) + P_enc * (L_p * t_enc)
     """
     cfg = UAVConfig
+    env_cfg = EnvConfig
     
     # If R (rate) is 0, transmission time becomes infinite, energy blows up.
     if rate <= 1e-9:
         transmission_energy = 0 # Transmission failed, energy not consumed (or up to timeout)
         # Goal is modeling, avoiding infinite loop.
         transmission_time = 10.0 # Timeout
-        transmission_energy = cfg.P_TX_NODE * transmission_time
+        transmission_energy = env_cfg.P_TX_NODE * transmission_time
     else:
         transmission_time = cfg.L_P / rate
-        transmission_energy = cfg.P_TX_NODE * transmission_time
+        transmission_energy = env_cfg.P_TX_NODE * transmission_time
         
     encoding_energy = cfg.P_ENC * (cfg.L_P * cfg.T_ENC)
     

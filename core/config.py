@@ -6,9 +6,13 @@ class UAVConfig:
     """
     Thesis proposal Table 3 and default simulation parameters.
     """
+    # Visualization settings
+    SIMULATION_DELAY = 0.3 # Seconds
+    
     # Physical Constants
     C = 3e8       # Speed of light (m/s)
     G = 9.8       # Gravity (m/s^2)
+
 
     # UAV Mechanical Parameters (Rotary Wing)
     H = 100.0     # Operation altitude (m)
@@ -27,15 +31,10 @@ class UAVConfig:
     ETA = 2.0     # Path loss exponent (Free space assumption)
     
     # Noise and Power
+    # Noise and Power
     N0_Linear = 10**(-100/10) * 1e-3 # Noise in Watts (example -100 dBm) 
     # Note: Since the user specified N0 + I_jam, we keep N0 as linear Watts.
     
-    P_TX_NODE = 0.1 # Node transmission power (Watt)
-    P_TX_UAV = 0.5  # UAV transmission power (Watt)
-
-    # IoT and Energy Parameters
-    # NUM_NODES and AREA_SIZE moved to EnvConfig
-
     
     # Defaults for Equation 288
     L_P = 1024      # Packet length (bits)

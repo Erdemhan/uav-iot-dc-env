@@ -1,6 +1,7 @@
 import numpy as np
 
 from core.config import UAVConfig
+from core.env_config import EnvConfig
 import core.physics as physics
 
 
@@ -38,7 +39,7 @@ class UAVAgent(MobileEntity, TransceiverEntity):
     def __init__(self, x: float, y: float, z: float):
         # Explicit calls to parent inits
         MobileEntity.__init__(self, x, y, z)
-        TransceiverEntity.__init__(self, x, y, z, tx_power=UAVConfig.P_TX_UAV)
+        TransceiverEntity.__init__(self, x, y, z, tx_power=EnvConfig.P_TX_UAV)
         
         self.total_energy_consumed = 0.0
 
@@ -53,10 +54,12 @@ class UAVAgent(MobileEntity, TransceiverEntity):
 
 class IoTNode(TransceiverEntity):
     def __init__(self, id: int, x: float, y: float):
-        super().__init__(x, y, 0.0, tx_power=UAVConfig.P_TX_NODE)
+        super().__init__(x, y, 0.0, tx_power=EnvConfig.P_TX_NODE)
         self.id = id
         self.aoi = 0.0 # Age of Information
         self.total_energy_consumed = 0.0
+        # Status: 0=Connected, 1=Out of Range, 2=Jammed
+        self.connection_status = 0
 
     def update_aoi(self, dt: float, success: bool):
         """
