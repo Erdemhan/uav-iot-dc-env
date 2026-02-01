@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+from core.env_config import EnvConfig
 
 
 class SimulationVisualizer:
@@ -111,9 +112,9 @@ class SimulationVisualizer:
         plt.scatter(self.df["uav_x"].iloc[-1], self.df["uav_y"].iloc[-1], color="blue", marker="s", s=100, label="End", zorder=5)
 
         # 5. Attacker Position
-        area_size = float(self.config.get("AREA_SIZE", 1000))
-        att_x = area_size/2 + 100
-        att_y = area_size/2 + 100
+        area_size = float(self.config.get("AREA_SIZE", EnvConfig.AREA_SIZE))
+        att_x = float(self.config.get("ATTACKER_POS_X", EnvConfig.ATTACKER_POS_X))
+        att_y = float(self.config.get("ATTACKER_POS_Y", EnvConfig.ATTACKER_POS_Y))
         plt.scatter(att_x, att_y, color="darkred", marker="X", s=250, label="Attacker", zorder=6)
         
         # Draw Jamming Effective Zone (approx) just for visual aid? 
