@@ -3,17 +3,17 @@ from gymnasium import spaces
 import numpy as np
 import math
 
-from tez_reporter import TezReporter
-from config import UAVConfig
-from entities import UAVAgent, IoTNode, SmartAttacker
-import physics
-from logger import SimulationLogger
 
-TezReporter("environment.py", "UAV_IoT_Env Ortamı Oluşturuldu")
+from core.config import UAVConfig
+from .entities import UAVAgent, IoTNode, SmartAttacker
+import core.physics as physics
+from core.logger import SimulationLogger
+
+
 
 class UAV_IoT_Env(gym.Env):
     """
-    OpenAI Gymnasium uyumlu UAV-IoT Simülasyon Ortamı.
+    OpenAI Gymnasium compatible UAV-IoT Simulation Environment.
     """
     metadata = {"render_modes": ["human"]}
 
@@ -22,36 +22,36 @@ class UAV_IoT_Env(gym.Env):
         
         self.logger = logger
         
-        # Alan sınırları
+        # Area bounds
         self.area_size = UAVConfig.AREA_SIZE
         
-        # Ajanların oluşturulması
+        # Create Agents
         self.uav = UAVAgent(x=self.area_size/2, y=self.area_size/2, z=UAVConfig.H)
         
         self.nodes = []
         for i in range(UAVConfig.NUM_NODES):
-            # Rastgele konumlandır
+            # Place randomly
             nx = np.random.uniform(0, self.area_size)
             ny = np.random.uniform(0, self.area_size)
             self.nodes.append(IoTNode(i, nx, ny))
             
-        self.attacker = SmartAttacker(x=self.area_size/2 + 100, y=self.area_size/2 + 100) # Sabit konum (şimdilik)
+        self.attacker = SmartAttacker(x=self.area_size/2 + 100, y=self.area_size/2 + 100) # Fixed position (for now)
         
-        # Action Space: Attacker Jamming Power (Sürekli)
-        # Örnek: 0 ile 2 Watt arası jamming
+        # Action Space: Attacker Jamming Power (Continuous)
+        # Example: Jamming between 0 and 2 Watts
         self.action_space = spaces.Box(low=0.0, high=0.5, shape=(1,), dtype=np.float32)
         
         # Observation Space:
         # UAV (x, y), Attacker (x, y), Nodes (x, y) * N, Node SINR * N, Node AoI * N
-        # Toplam boyut: 2 + 2 + 2*N + N + N = 4 + 4*N
+        # Total size: 2 + 2 + 2*N + N + N = 4 + 4*N
         obs_dim = 4 + 4 * UAVConfig.NUM_NODES
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32)
         
         self.current_step = 0
-        self.max_steps = 100 # Bölüm başına adım sayısı
-        self.dt = 5.0 # Zaman adımı (saniye)
+        self.max_steps = 100 # Steps per episode
+        self.dt = 5.0 # Time step (seconds)
         
-        # Dairesel hareket için açı
+        # Angle for circular motion
         self.uav_angle = 15.0
 
     def reset(self, seed=None, options=None):
@@ -60,12 +60,12 @@ class UAV_IoT_Env(gym.Env):
         self.current_step = 0
         self.uav_angle = 0.0
         
-        # UAV merkeze al
+        # Centers UAV
         self.uav.x = self.area_size/2
         self.uav.y = self.area_size/2
         self.uav.total_energy_consumed = 0.0
         
-        # Nodeları sıfırla
+        # Reset Nodes
         for node in self.nodes:
             node.aoi = 0.0
             node.total_energy_consumed = 0.0
@@ -84,9 +84,9 @@ class UAV_IoT_Env(gym.Env):
         for node in self.nodes:
             obs.extend([node.x, node.y])
             aois.append(node.aoi)
-            # SINR anlık hesaplanmalı, burada son bilinen değer saklanabilir ama
-            # step içinde hesaplayıp state'e koymak daha doğru. 
-            # Şimdilik 0 placeholder koyuyoruz, step fonksiyonunda güncel döner.
+            # SINR should be calculated instantaneously, storing the last known value here could work 
+            # but calculating it inside step and putting it into state is more accurate. 
+            # Putting 0 placeholder for now, returns current in step function.
             sinrs.append(0.0) 
             
         obs.extend(sinrs)
@@ -97,35 +97,35 @@ class UAV_IoT_Env(gym.Env):
     def step(self, action):
         self.current_step += 1
         
-        # 1. Aksiyon Uygula (Attacker)
+        # 1. Apply Action (Attacker)
         jam_power = float(action[0])
         self.attacker.set_jamming_power(jam_power)
         
-        # 2. UAV Hareketi (Basit Dairesel Yörünge)
-        # Merkez etrafında r=200m yarıçaplı daire
+        # 2. UAV Movement (Simple Circular Trajectory)
+        # Circle around center with r=200m
         radius = 200
         center_x, center_y = self.area_size/2, self.area_size/2
-        speed = 10.0 # m/s (Örnek hız)
+        speed = 10.0 # m/s (Example speed)
         
-        # Açısal hız w = v / r
+        # Angular speed w = v / r
         angular_speed = speed / radius
         self.uav_angle += angular_speed * self.dt
         
         new_x = center_x + radius * np.cos(self.uav_angle)
         new_y = center_y + radius * np.sin(self.uav_angle)
         
-        # Hız vektörü güncelle
+        # Update velocity vector
         self.uav.vx = (new_x - self.uav.x) / self.dt
         self.uav.vy = (new_y - self.uav.y) / self.dt
         
         self.uav.x = new_x
         self.uav.y = new_y
         
-        # UAV Enerji Tüketimi
+        # UAV Energy Consumption
         v_uav = self.uav.velocity_magnitude
         self.uav.consume_energy(v_uav, self.dt)
         
-        # 3. Fizik Hesaplamaları (Her bir node için)
+        # 3. Physics Calculations (For each node)
         total_sinr = 0
         jammed_count = 0
         step_log = {
@@ -137,17 +137,17 @@ class UAV_IoT_Env(gym.Env):
         }
         
         for i, node in enumerate(self.nodes):
-            # Mesafe
+            # Distance
             dist_uav = np.linalg.norm(node.position - self.uav.position)
             dist_jam = np.linalg.norm(node.position - self.attacker.position)
             
-            # Kanal Kazançları
+            # Channel Gains
             beta_uav = physics.calculate_path_loss(dist_uav)
-            # Jammer yer seviyesinde ise, jammer'dan node'a:
-            # Basitlik için aynı path loss modelini kullanalım (veya farklı olabilir)
+            # If jammer is on ground level, from jammer to node:
+            # Using same path loss model for simplicity (or can be different)
             beta_jam = physics.calculate_path_loss(dist_jam)
             
-            # Güçler
+            # Powers
             p_rx_signal = physics.calculate_received_power(node.tx_power, dist_uav, beta_uav)
             p_rx_jam = physics.calculate_received_power(self.attacker.jamming_power, dist_jam, beta_jam)
             
@@ -158,12 +158,12 @@ class UAV_IoT_Env(gym.Env):
             # Rate
             rate = physics.calculate_data_rate(UAVConfig.B, sinr)
             
-            # Bağlantı Durumu (Eşik SINR dB mesela 0 dB -> Linear 1.0)
+            # Connection Status (Threshold SINR dB e.g. 0 dB -> Linear 1.0)
             is_connected = sinr > 1.0 
             if not is_connected:
                 jammed_count += 1
                 
-            # Node Durum Güncelle
+            # Update Node Status
             node.update_aoi(self.dt, success=is_connected)
             node.consume_energy(rate)
             
@@ -175,17 +175,17 @@ class UAV_IoT_Env(gym.Env):
             step_log[f"node_{i}_energy"] = node.total_energy_consumed
             step_log[f"node_{i}_connected"] = 1 if is_connected else 0
 
-        # 4. Ödül: Saldırganın amacı iletişimi kesmek (+1 jammed node başına)
+        # 4. Reward: Attacker's goal is to cut communication (+1 per jammed node)
         reward = jammed_count
         
-        # 5. Loglama
+        # 5. Logging
         step_log["reward"] = reward
         step_log["jammed_count"] = jammed_count
         
         if self.logger:
             self.logger.log_step(step_log)
             
-        # Bitiş kontrolü
+        # Check termination
         terminated = self.current_step >= self.max_steps
         truncated = False
         
@@ -194,7 +194,7 @@ class UAV_IoT_Env(gym.Env):
         return self._get_obs(), reward, terminated, truncated, info
 
     def render(self):
-        # Render visualization.py tarafından yapılacak, state döndürmek yeterli olabilir
-        # veya Visualization sınıfı buraya parametre olarak geçilebilir.
-        # Main dosyasında Visualization.render(env) çağrısı yapılacak.
+        # Render will be done by visualization.py, returning state might be enough
+        # or Visualization class can be passed here as parameter.
+        # Visualization.render(env) call will be made in Main file.
         pass

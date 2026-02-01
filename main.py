@@ -1,56 +1,58 @@
-from tez_reporter import TezReporter
-from logger import SimulationLogger
-from environment import UAV_IoT_Env
-from visualization import Visualization
-from visualizer import SimulationVisualizer
+
+from core.logger import SimulationLogger
+from simulation.environment import UAV_IoT_Env
+from visualization.visualization import Visualization
+from visualization.visualizer import SimulationVisualizer
 import matplotlib.pyplot as plt
 import time
 
-TezReporter("main.py", "Simülasyon Başlatıldı")
+
 
 def main():
-    # 1. Logger Başlat
-    # Config'i environment içinden veya config.py'den alabiliriz. 
-    # Logger'a kaydetmek istediğimiz ekstra parametreleri verebiliriz.
+    # 1. Start Logger
+    # Can get Config from environment or config.py. 
+    # Can pass extra parameters to Logger.
     logger = SimulationLogger(config_dict={"Simulation": "Test Run v1"})
     
-    # 2. Ortamı Başlat
+    # 2. Start Environment
     env = UAV_IoT_Env(logger=logger)
     
-    # 3. Görselleştirmeyi Başlat
+    # 3. Start Visualization
     viz = Visualization()
     
-    # 4. Simülasyon Döngüsü
+    # 4. Simulation Loop
     obs, info = env.reset()
+    
+    print("Simulation Started...")
     
     try:
         for _ in range(100):
-            # Rastgele bir aksiyon seç (Saldırgan Gücü)
+            # Select Random Action (Attacker Power)
             action = env.action_space.sample()
             
-            # Adım İlerle
+            # Step
             obs, reward, terminated, truncated, info = env.step(action)
             
-            # Ekrana Çiz
+            # Render
             viz.render(env)
             
             if terminated or truncated:
                 break
                 
     except KeyboardInterrupt:
-        print("Kullanıcı tarafından durduruldu.")
+        print("Stopped by user.")
     finally:
-        # 5. Kapanış
+        # 5. Finish
         logger.close()
         plt.close()
-        print("Simülasyon tamamlandı. Analiz başlatılıyor...")
+        print("Simulation Completed. Analysis starting...")
         
-        # 6. Otomatik Analiz ve Görselleştirme
+        # 6. Automated Analysis and Visualization
         try:
             analysis_viz = SimulationVisualizer(exp_dir=logger.log_dir)
             analysis_viz.generate_report()
         except Exception as e:
-            print(f"Otomatik analiz hatası: {e}")
+            print(f"Automated Analysis Error: {e}")
 
 if __name__ == "__main__":
     main()

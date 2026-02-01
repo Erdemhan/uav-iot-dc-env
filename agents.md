@@ -1,20 +1,26 @@
-# Agent Protokolleri ve Çalışma Kuralları
+# Agent Protocols and Guidelines
 
-Bu dosya, proje üzerinde çalışan yapay zeka ajanlarının (veya geliştiricilerin) uyması gereken temel dokümantasyon ve bakım kurallarını tanımlar.
+This file defines the core documentation and maintenance rules that AI agents (or developers) must follow.
 
-## 1. Raporlama Protokolü (`RAPOR.md`)
-Her teknik güncelleme, kod değişikliği veya parametre revizyonundan sonra `RAPOR.md` dosyası kontrol edilmelidir.
+## 0. Language Policy
+*   **Code & Comments:** MUST be in **English**.
+*   **README.md & todo.md:** MUST be in **English**.
+*   **RAPOR.md:** MUST remain in **Turkish**.
+    *   *Reason:* The academic report follows specific thesis requirements.
 
-*   **Teknik Güncelleme:** Eğer yapılan değişiklik sistemin mimarisini, matematiksel modellerini veya senaryo akışını değiştiriyorsa, raporun ilgili teknik bölümleri ("2. Sistem Mimarisi", "3. Matematiksel Modeller" vb.) güncellenmelidir.
-*   **Gelişim Günlüğü (Change Log):** Yapılan her anlamlı değişiklik (Bug fix, özellik ekleme, parametre ayarı), "5. Gelişim Günlüğü" bölümüne **yeni bir tarih/saat bloğu** açılarak eklenmelidir.
-    *   Sıralama: **Eskiden Yeniye (Artan)** şekilde olmalıdır (En eski sürüm en üstte, en yeni sürüm en altta). *Not: Mevcut raporda bu yapı v1.0.0 -> v1.1.1 şeklindedir, buna uyulmalıdır.*
+## 1. Reporting Protocol (`RAPOR.md`)
+After every technical update, code change, or parameter revision, `RAPOR.md` must be checked.
 
-## 2. İş Akışı Dokümantasyonu (`README.md`)
-Projenin çalışma mantığını ve adımlarını içeren dosya artık `README.md` olarak adlandırılmıştır (Eski adıyla Workflow).
+*   **Technical Updates:** If changes affecting system architecture, mathematical models, or scenario flow are made, the relevant technical sections ("2. Sistem Mimarisi", "3. Matematiksel Modeller" etc.) must be updated.
+*   **Change Log:** Every significant change (Bug fix, feature addition, parameter tuning) must be added to the "5. Gelişim Günlüğü" section with a **new date/time block**.
+    *   Ordering: **Ascending (Oldest to Newest)**. (e.g., v1.0.0 -> v1.1.0).
 
-*   **Süreklilik:** Sistemin çalışma şeklini değiştiren bir güncelleme yapıldığında (Örn: Yeni bir script eklendiğinde, görselleştirme adımı değiştiğinde), `README.md` dosyası **mevcut mantığı ve yapısı bozulmadan** güncellenmelidir.
-*   **İçerik:** Başlatma, Simülasyon Döngüsü, Sonlandırma ve Analiz adımları her zaman güncel tutulmalıdır.
+## 2. Workflow Documentation (`README.md`)
+The file explaining the project logic is named `README.md`.
 
-## 3. Görev Takibi (`todo.md`)
-*   Planlanan özellikler ve düzeltilecek hatalar `todo.md` dosyasında takip edilmelidir.
-*   Tamamlanan görevler işaretlenmeli, yeni ihtiyaçlar listeye eklenmelidir.
+*   **Consistency:** When an update changes how the system works (e.g., adding a new script, changing visualization steps), `README.md` must be updated **without breaking the existing structure**.
+*   **Content:** Initialization, Simulation Loop, Termination, and Analysis steps must always be kept up-to-date.
+
+## 3. Task Tracking (`todo.md`)
+*   Planned features and bugs to fix are tracked in `todo.md`.
+*   Completed tasks should be checked off, and new requirements added.

@@ -16,23 +16,23 @@ Geliştirilen simülasyon ortamı, literatürdeki standartlara uygun olarak Pyth
 
 Simülasyon altyapısı, Nesne Yönelimli Programlama (OOP) prensipleri çerçevesinde, her biri spesifik bir görevi üstlenen gevşek bağlı (loose-coupled) modüllerden oluşmaktadır.
 
-### 2.1. Çekirdek Modüller
+### 2.1. Çekirdek Modüller (`core/`)
 
-*   **`config.py` (Konfigürasyon Yönetimi):** Sistemin tüm fiziksel, mekanik ve elektriksel parametrelerini (İHA rotor dinamikleri, frekans, bant genişliği vb.) merkezi bir yapıda tutar. Bu sayede parametrik analizler ve senaryo değişiklikleri tek bir noktadan yönetilebilir.
-*   **`physics.py` (Fizik Motoru):** Sistemin "stateless" (durumsuz) matematiksel hesaplama çekirdeğidir. Haberleşme kanalı (Path Loss, SINR, Shannon Kapasitesi) ve enerji tüketim modelleri (İHA uçuş gücü, IoT iletim enerjisi) burada saf fonksiyonlar (pure functions) olarak implemente edilmiştir.
-*   **`entities.py` (Varlık Modellemesi):** Simülasyon dünyasındaki aktörlerin (İHA, IoT Düğümü, Saldırgan) davranışlarını ve durumlarını modelleyen sınıfları içerir.
+*   **`core/config.py` (Konfigürasyon Yönetimi):** Sistemin tüm fiziksel, mekanik ve elektriksel parametrelerini (İHA rotor dinamikleri, frekans, bant genişliği vb.) merkezi bir yapıda tutar. Bu sayede parametrik analizler ve senaryo değişiklikleri tek bir noktadan yönetilebilir.
+*   **`core/physics.py` (Fizik Motoru):** Sistemin "stateless" (durumsuz) matematiksel hesaplama çekirdeğidir. Haberleşme kanalı (Path Loss, SINR, Shannon Kapasitesi) ve enerji tüketim modelleri (İHA uçuş gücü, IoT iletim enerjisi) burada saf fonksiyonlar (pure functions) olarak implemente edilmiştir.
+*   **`simulation/entities.py` (Varlık Modellemesi):** Simülasyon dünyasındaki aktörlerin (İHA, IoT Düğümü, Saldırgan) davranışlarını ve durumlarını modelleyen sınıfları içerir.
     *   *Miras Yapısı:* `BaseEntity` -> `MobileEntity` / `TransceiverEntity` -> `UAVAgent` / `IoTNode` şeklinde hiyerarşik bir yapı kurgulanmıştır.
 
 ### 2.2. Simülasyon ve Ortam
 
-*   **`environment.py` (OpenAI Gym Ortamı):** `UAV_IoT_Env` sınıfı, simülasyonun durum uzayı (state space), aksiyon uzayı (action space) ve ödül mekanizmasını (reward function) tanımlar. Zaman adımlı (time-stepped) bir akış içerisinde fizik motorunu ve varlıkları koordine eder.
+*   **`simulation/environment.py` (OpenAI Gym Ortamı):** `UAV_IoT_Env` sınıfı, simülasyonun durum uzayı (state space), aksiyon uzayı (action space) ve ödül mekanizmasını (reward function) tanımlar. Zaman adımlı (time-stepped) bir akış içerisinde fizik motorunu ve varlıkları koordine eder.
 *   **`main.py` (Yürütücü):** Simülasyonun başlatılması, döngünün yönetimi ve kaynakların (logger, visualizer) serbest bırakılmasından sorumludur.
 
 ### 2.3. Veri Yönetimi ve Analiz
 
-*   **`logger.py` (Telemetri Kaydı):** Simülasyon sırasında üretilen ham verileri (konumlar, SINR değerleri, enerji tüketimleri) periyodik olarak CSV formatında kayıt altına alır.
-*   **`tez_reporter.py` (Sistem Günlüğü):** Proje geliştirme sürecindeki modüler değişiklikleri ve olayları `project_history.json` dosyasına işleyerek izlenebilirlik sağlar.
-*   **`visualizer.py` (Görsel Analiz):** Simülasyon sonrası elde edilen verileri işleyerek akademik kalitede (SCIE standartlarında) grafikler ve yörünge analizleri üretir.
+*   **`core/logger.py` (Telemetri Kaydı):** Simülasyon sırasında üretilen ham verileri (konumlar, SINR değerleri, enerji tüketimleri) periyodik olarak CSV formatında kayıt altına alır.
+
+*   **`visualization/visualizer.py` (Görsel Analiz):** Simülasyon sonrası elde edilen verileri işleyerek akademik kalitede (SCIE standartlarında) grafikler ve yörünge analizleri üretir.
 
 ### 2.4. Mevcut Simülasyon Senaryosu (v1.0.0)
 

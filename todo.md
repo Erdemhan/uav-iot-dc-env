@@ -1,13 +1,13 @@
-# Yapılacaklar Listesi (To-Do)
+# To-Do List
 
-Bu dosya projede planlanan geliştirmeleri ve mevcut eksiklikleri takip etmek için kullanılır.
+This file tracks planned improvements and current tasks for the project.
 
-## Öncelikli Geliştirmeler
-- [ ] **RL Ajanı Entegrasyonu:** Saldırganın (Attacker) rastgele güç yerine akıllı bir strateji (DQN/PPO) ile güç belirlemesi.
-- [ ] **İHA Kaçınma Manevrası:** İHA'nın jamming tespit ettiğinde irtifa değiştirmesi veya rotadan sapması.
-- [ ] **Dinamik Node Konumlandırma:** IoT düğümlerinin hareketli olması senaryosu.
-- [ ] **Güç Tüketimi Analizi:** Farklı uçuş modlarının (Hover vs Cruise) enerjiye etkisinin detaylı grafiklenmesi.
+## Priority Improvements
+- [ ] **RL Agent Integration:** Attacker determines power using a smart strategy (DQN/PPO) instead of random power.
+- [ ] **UAV Evasion Maneuver:** UAV changes altitude or deviates from route when jamming is detected.
+- [ ] **Dynamic Node Positioning:** Scenario where IoT nodes are mobile.
+- [ ] **Power Consumption Analysis:** Detailed graphing of the energy impact of different flight modes (Hover vs Cruise).
 
-## İyileştirmeler / Bakım
-- [ ] **Config Ayrıştırması:** Parametrelerin JSON/YAML dosyasından dinamik okunması.
-- [ ] **Log Görselleştirme:** Canlı izleme sırasında metrik grafiklerinin (Matplotlib) ayrı bir pencerede anlık gösterimi.
+## Refactoring / Maintenance
+- [ ] **Config Separation:** Reading parameters dynamically from a JSON/YAML file.
+- [ ] **Log Visualization:** Real-time display of metric graphs (Matplotlib) in a separate window during monitoring.
