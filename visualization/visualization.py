@@ -11,6 +11,9 @@ class Visualization:
     def __init__(self):
         self.fig, self.ax = plt.subplots(figsize=(8, 8))
         self.area_size = EnvConfig.AREA_SIZE
+        # Distinct colors for nodes
+        cmap = plt.get_cmap('tab10')
+        self.node_colors = [cmap(i) for i in range(10)] # Support up to 10 distinct
         plt.ion() # Interactive mode
 
     def render(self, env):
@@ -24,16 +27,20 @@ class Visualization:
         self.ax.scatter(env.uav.x, env.uav.y, c='blue', marker='^', s=100, label='UAV')
         
         # Nodes
-        for node in env.nodes:
+        for i, node in enumerate(env.nodes):
+            # Base color from palette
+            node_base_color = self.node_colors[node.id % len(self.node_colors)]
+            
             if node.connection_status == 0: # Connected
-                color = 'green'
-                self.ax.plot([env.uav.x, node.x], [env.uav.y, node.y], color='green', linestyle='--', linewidth=0.5, alpha=0.5)
+                color = node_base_color
+                # Draw Line to UAV
+                self.ax.plot([env.uav.x, node.x], [env.uav.y, node.y], color=color, linestyle='--', linewidth=1.5, alpha=0.8)
             elif node.connection_status == 1: # Out of Range
                 color = 'gray'
             else: # Jammed (2)
                 color = 'red'
                 
-            self.ax.scatter(node.x, node.y, c=color, marker='o', s=50, label='IoT Node' if node.id == 0 else "")
+            self.ax.scatter(node.x, node.y, color=color, marker='o', s=60, edgecolors='black', label='IoT Node' if node.id == 0 else "")
         
         # Attacker
         self.ax.scatter(env.attacker.x, env.attacker.y, c='red', marker='x', s=80, label='Attacker')

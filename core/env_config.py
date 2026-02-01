@@ -11,11 +11,11 @@ class EnvConfig:
     # Attacker
     ATTACKER_POS_X = 600.0 # Absolute or relative logic can be used in env
     ATTACKER_POS_Y = 600.0 
-    MAX_JAMMING_POWER = 0.03 # Watts (Previously 0.5 in action space)
+    MAX_JAMMING_POWER = 0.1 # Watts (Previously 0.5 in action space)
 
     # Transmission Power (Scenario specific)
-    P_TX_NODE = 0.01 # Watt (Reduced to see Out of Range)
-    P_TX_UAV = 0.2  # Watt
+    P_TX_NODE = 0.005 # Watt (Reduced to see Out of Range)
+    P_TX_UAV = 0.05  # Watt
 
     # Simulation Stepping
     MAX_STEPS = 100

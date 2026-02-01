@@ -70,8 +70,20 @@ class SimulationVisualizer:
         status_cols = [c for c in self.df.columns if "node_" in c and "_status" in c]
         
         if status_cols:
-            # Axis 1 max: if any node is 2, result is 2. If max is 1, result 1.
-            self.df["step_status"] = self.df[status_cols].max(axis=1)
+            # Custom aggregation: If ANY node is Connected (0), status is 0 (to suppress generic Jammed/Range markers).
+            # If no connection, but ANY Jammed (2), status is 2.
+            # Else (all 1s), status is 1.
+            
+            # 1. Default to Out of Range (1)
+            self.df["step_status"] = 1
+            
+            # 2. Check for Jammed (2)
+            is_jammed = (self.df[status_cols] == 2).any(axis=1)
+            self.df.loc[is_jammed, "step_status"] = 2
+            
+            # 3. Check for Connected (0) - This overwrites Jammed!
+            is_connected = (self.df[status_cols] == 0).any(axis=1)
+            self.df.loc[is_connected, "step_status"] = 0
         else:
             # Fallback if logs old
             self.df["step_status"] = 0
@@ -90,23 +102,61 @@ class SimulationVisualizer:
         
         if node_x_cols and node_y_cols:
             # Take only the first row (Step 0)
+            # Take only the first row (Step 0)
             xs = self.df.iloc[0][node_x_cols].values
             ys = self.df.iloc[0][node_y_cols].values
-            plt.scatter(xs, ys, color="green", marker="s", s=100, label="IoT Nodes", zorder=4)
             
-            # Write Node IDs
+            # Plot each node with its distinct color
+            cmap = plt.get_cmap('tab10')
+            node_colors = [cmap(i) for i in range(10)]
+            
             for i, (Nx, Ny) in enumerate(zip(xs, ys)):
-                plt.text(Nx+10, Ny+10, f"N{i}", fontsize=9, color="green")
+                # Use modulo for color index (safe for >10 nodes)
+                c = node_colors[i % 10]
+                plt.scatter(Nx, Ny, color=c, marker="s", s=100, label="IoT Nodes" if i==0 else "", zorder=4, edgecolors='black')
+                plt.text(Nx+10, Ny+10, f"N{i}", fontsize=9, color="black", fontweight='bold')
 
         # 2. UAV Path (Line)
         plt.plot(self.df["uav_x"], self.df["uav_y"], color="gray", alpha=0.5, linewidth=2, label="UAV Path")
         
         # 3. UAV States (Scatter on Path)
-        # Status 0: Connected / Safe -> Green
-        safe_points = self.df[self.df["step_status"] == 0]
-        if not safe_points.empty:
-            plt.scatter(safe_points["uav_x"], safe_points["uav_y"], 
-                        color="lime", s=30, alpha=0.6, label="Safe / Connected")
+        # Status 0: Connected -> Distinct Colors with Offset
+        cmap = plt.get_cmap('tab10')
+        node_colors = [cmap(i) for i in range(10)]
+        
+        # Identify node status columns
+        node_status_cols = [c for c in self.df.columns if "node_" in c and "_status" in c]
+        num_nodes = len(node_status_cols)
+        
+        for i, col in enumerate(node_status_cols):
+             # Extract Node ID from col name (node_0_status -> 0)
+             try:
+                 node_id = int(col.split("_")[1])
+             except:
+                 node_id = i
+                 
+             # Filter connected steps for this node
+             connected = self.df[self.df[col] == 0]
+             
+             if not connected.empty:
+                 # Calculate Offset to prevent overlap
+                 # Radial spread or linear shift. Linear is simpler.
+                 # Shift range: [-30m, +30m]
+                 if num_nodes > 1:
+                     offset_mag = 15.0 
+                     # angle = 2*pi * i / num_nodes
+                     # dx = np.cos(angle) * offset_mag
+                     # dy = np.sin(angle) * offset_mag
+                     # Or simple linear shift
+                     dx = (i - num_nodes/2.0) * 10.0
+                     dy = (i % 2) * 10.0 # Stagger Y slightly
+                 else:
+                     dx, dy = 0, 0
+                     
+                 plt.scatter(connected["uav_x"] + dx, connected["uav_y"] + dy, 
+                             color=node_colors[node_id % 10], s=25, alpha=0.7, 
+                             label=f"N{node_id} Connected" if i < 5 else "") # Limit labels
+
             
         # Status 1: Out of Range -> Gray
         range_points = self.df[self.df["step_status"] == 1]
