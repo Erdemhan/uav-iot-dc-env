@@ -18,7 +18,8 @@ Simülasyon altyapısı, Nesne Yönelimli Programlama (OOP) prensipleri çerçev
 
 ### 2.1. Çekirdek Modüller (`core/`)
 
-*   **`core/config.py` (Konfigürasyon Yönetimi):** Sistemin tüm fiziksel, mekanik ve elektriksel parametrelerini (İHA rotor dinamikleri, frekans, bant genişliği vb.) merkezi bir yapıda tutar. Bu sayede parametrik analizler ve senaryo değişiklikleri tek bir noktadan yönetilebilir.
+*   **`core/config.py` (Konfigürasyon Yönetimi):** Sistemin fiziksel bant genişliği, frekans, gürültü seviyesi gibi temel donanım parametrelerini tutar.
+*   **`core/env_config.py` (Ortam ve Senaryo Konfigürasyonu):** Simülasyonun senaryo parametrelerini (Düğüm sayısı, alan boyutu, adım süresi, saldırgan konumu vb.) barındırır. Bu ayrım sayesinde fiziksel altyapı değiştirilmeden farklı senaryolar test edilebilir.
 *   **`core/physics.py` (Fizik Motoru):** Sistemin "stateless" (durumsuz) matematiksel hesaplama çekirdeğidir. Haberleşme kanalı (Path Loss, SINR, Shannon Kapasitesi) ve enerji tüketim modelleri (İHA uçuş gücü, IoT iletim enerjisi) burada saf fonksiyonlar (pure functions) olarak implemente edilmiştir.
 *   **`simulation/entities.py` (Varlık Modellemesi):** Simülasyon dünyasındaki aktörlerin (İHA, IoT Düğümü, Saldırgan) davranışlarını ve durumlarını modelleyen sınıfları içerir.
     *   *Miras Yapısı:* `BaseEntity` -> `MobileEntity` / `TransceiverEntity` -> `UAVAgent` / `IoTNode` şeklinde hiyerarşik bir yapı kurgulanmıştır.

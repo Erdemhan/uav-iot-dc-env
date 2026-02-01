@@ -5,10 +5,10 @@ import math
 
 
 from core.config import UAVConfig
+from core.env_config import EnvConfig
 from .entities import UAVAgent, IoTNode, SmartAttacker
 import core.physics as physics
 from core.logger import SimulationLogger
-
 
 
 class UAV_IoT_Env(gym.Env):
@@ -23,36 +23,41 @@ class UAV_IoT_Env(gym.Env):
         self.logger = logger
         
         # Area bounds
-        self.area_size = UAVConfig.AREA_SIZE
+        self.area_size = EnvConfig.AREA_SIZE
         
         # Create Agents
-        self.uav = UAVAgent(x=self.area_size/2, y=self.area_size/2, z=UAVConfig.H)
+        self.uav = UAVAgent(x=EnvConfig.UAV_START_X, y=EnvConfig.UAV_START_Y, z=UAVConfig.H)
         
         self.nodes = []
-        for i in range(UAVConfig.NUM_NODES):
+        for i in range(EnvConfig.NUM_NODES):
             # Place randomly
             nx = np.random.uniform(0, self.area_size)
             ny = np.random.uniform(0, self.area_size)
             self.nodes.append(IoTNode(i, nx, ny))
             
-        self.attacker = SmartAttacker(x=self.area_size/2 + 100, y=self.area_size/2 + 100) # Fixed position (for now)
+        # Fixed position from EnvConfig
+        # Note: EnvConfig has ATTACKER_POS_X/Y. If we want relative to center + 100 as before:
+        # self.attacker = SmartAttacker(x=self.area_size/2 + 100, ... )
+        # But we added ATTACKER_POS_X/Y to config, let's use them directly or if they are offsets.
+        # User asked to separate parameters. Let's use absolute positions from EnvConfig if defined roughly match.
+        # EnvConfig defined 600, 600. (Center is 500,500). So it matches.
+        self.attacker = SmartAttacker(x=EnvConfig.ATTACKER_POS_X, y=EnvConfig.ATTACKER_POS_Y)
         
         # Action Space: Attacker Jamming Power (Continuous)
-        # Example: Jamming between 0 and 2 Watts
-        self.action_space = spaces.Box(low=0.0, high=0.5, shape=(1,), dtype=np.float32)
+        self.action_space = spaces.Box(low=0.0, high=EnvConfig.MAX_JAMMING_POWER, shape=(1,), dtype=np.float32)
         
         # Observation Space:
         # UAV (x, y), Attacker (x, y), Nodes (x, y) * N, Node SINR * N, Node AoI * N
         # Total size: 2 + 2 + 2*N + N + N = 4 + 4*N
-        obs_dim = 4 + 4 * UAVConfig.NUM_NODES
+        obs_dim = 4 + 4 * EnvConfig.NUM_NODES
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32)
         
         self.current_step = 0
-        self.max_steps = 100 # Steps per episode
-        self.dt = 5.0 # Time step (seconds)
+        self.max_steps = EnvConfig.MAX_STEPS # Steps per episode
+        self.dt = EnvConfig.STEP_TIME # Time step (seconds)
         
         # Angle for circular motion
-        self.uav_angle = 15.0
+        self.uav_angle = np.radians(EnvConfig.UAV_START_ANGLE)
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -103,9 +108,9 @@ class UAV_IoT_Env(gym.Env):
         
         # 2. UAV Movement (Simple Circular Trajectory)
         # Circle around center with r=200m
-        radius = 200
+        radius = EnvConfig.UAV_RADIUS
         center_x, center_y = self.area_size/2, self.area_size/2
-        speed = 10.0 # m/s (Example speed)
+        speed = EnvConfig.UAV_SPEED # m/s
         
         # Angular speed w = v / r
         angular_speed = speed / radius

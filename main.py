@@ -8,11 +8,17 @@ import time
 
 
 
+from core.config import UAVConfig
+from core.env_config import EnvConfig
+
 def main():
     # 1. Start Logger
-    # Can get Config from environment or config.py. 
-    # Can pass extra parameters to Logger.
-    logger = SimulationLogger(config_dict={"Simulation": "Test Run v1"})
+    # Merge configs for logging
+    full_config = {}
+    full_config.update(UAVConfig.__dict__)
+    full_config.update(EnvConfig.__dict__)
+    
+    logger = SimulationLogger(config_dict=full_config)
     
     # 2. Start Environment
     env = UAV_IoT_Env(logger=logger)

@@ -2,13 +2,14 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 from core.config import UAVConfig
+from core.env_config import EnvConfig
 
 
 
 class Visualization:
     def __init__(self):
         self.fig, self.ax = plt.subplots(figsize=(8, 8))
-        self.area_size = UAVConfig.AREA_SIZE
+        self.area_size = EnvConfig.AREA_SIZE
         plt.ion() # Interactive mode
 
     def render(self, env):

@@ -34,8 +34,8 @@ class UAVConfig:
     P_TX_UAV = 0.5  # UAV transmission power (Watt)
 
     # IoT and Energy Parameters
-    NUM_NODES = 5
-    AREA_SIZE = 1000 # 1000x1000m area
+    # NUM_NODES and AREA_SIZE moved to EnvConfig
+
     
     # Defaults for Equation 288
     L_P = 1024      # Packet length (bits)
