@@ -76,44 +76,55 @@ class SimulationVisualizer:
         """İHA ve Saldırgan yörüngesini çizer."""
         plt.figure(figsize=(10, 10))
         
-        # 1. UAV Path
-        plt.plot(self.df["uav_x"], self.df["uav_y"], label="UAV Trajectory", color="blue", linewidth=2)
+        # 1. IoT Nodes (Green Squares)
+        # Her node için ilk adımın konumunu alalım (Sabit varsayımıyla)
+        # Regex ile node_x columnlarını bulalım
+        node_x_cols = sorted([c for c in self.df.columns if "node_" in c and "_x" in c])
+        node_y_cols = sorted([c for c in self.df.columns if "node_" in c and "_y" in c])
         
-        # 2. Start/End Points
-        plt.scatter(self.df["uav_x"].iloc[0], self.df["uav_y"].iloc[0], color="green", s=100, label="Start")
-        plt.scatter(self.df["uav_x"].iloc[-1], self.df["uav_y"].iloc[-1], color="blue", marker="s", s=100, label="End")
+        if node_x_cols and node_y_cols:
+            # Sadece ilk satırdaki (Step 0) konumları al
+            xs = self.df.iloc[0][node_x_cols].values
+            ys = self.df.iloc[0][node_y_cols].values
+            plt.scatter(xs, ys, color="green", marker="s", s=100, label="IoT Nodes", zorder=4)
+            
+            # Node ID'lerini yaz
+            for i, (Nx, Ny) in enumerate(zip(xs, ys)):
+                plt.text(Nx+10, Ny+10, f"N{i}", fontsize=9, color="green")
 
-        # 3. Jammed Events -> Red Dots
+        # 2. UAV Path (Line)
+        plt.plot(self.df["uav_x"], self.df["uav_y"], color="gray", alpha=0.5, linewidth=2, label="UAV Path")
+        
+        # 3. UAV States (Scatter on Path)
+        # Success (Not Jammed) -> Green Dot
+        success_points = self.df[self.df["is_jammed"] == 0]
+        if not success_points.empty:
+            plt.scatter(success_points["uav_x"], success_points["uav_y"], 
+                        color="lime", s=30, alpha=0.6, label="Successful Comms")
+            
+        # Jammed -> Red Dot
         jammed_points = self.df[self.df["is_jammed"] == 1]
         if not jammed_points.empty:
             plt.scatter(jammed_points["uav_x"], jammed_points["uav_y"], 
-                        color="red", s=30, zorder=5, label="Jamming Detection")
+                        color="red", s=50, marker="x", label="Jamming Detected")
 
-        # 4. Attacker Position (Static assumed or from config if available)
-        # Config'den okumaya çalışalım, yoksa hardcode
-        # Environment'te: self.area_size/2 + 100
+        # 4. Start/End Points
+        plt.scatter(self.df["uav_x"].iloc[0], self.df["uav_y"].iloc[0], color="blue", marker="^", s=150, label="Start", zorder=5)
+        plt.scatter(self.df["uav_x"].iloc[-1], self.df["uav_y"].iloc[-1], color="blue", marker="s", s=100, label="End", zorder=5)
+
+        # 5. Attacker Position
         area_size = float(self.config.get("AREA_SIZE", 1000))
         att_x = area_size/2 + 100
         att_y = area_size/2 + 100
-        plt.scatter(att_x, att_y, color="red", marker="X", s=200, label="Attacker Station")
-
-        # 5. Nodes (Estimated from config count, positions random so can't plot exact without logs)
-        # Note: If node positions were not logged per step (only changed if mobile), 
-        # normally we should log them once. 
-        # But environment logs 'node_i_x' IF we implemented it.
-        # Let's check environment again... 
-        # Environment.py: `obs.extend([node.x, node.y])` -> Observation has it.
-        # But `log_step` dict? 
-        # `log_step = {"step":..., "uav_x":..., ...}` 
-        # And loop: `step_log[f"node_{i}_sinr"] = ...`
-        # It seems I did NOT log node positions in CSV explicitly in loop!
-        # So I cannot plot exact node positions unless I re-simulate or parse config if saved there (random seed?).
-        # I will skip plotting nodes to avoid misleading info, or plot a placeholder text.
+        plt.scatter(att_x, att_y, color="darkred", marker="X", s=250, label="Attacker", zorder=6)
         
-        plt.title("UAV Trajectory & Jamming Events", fontsize=14)
+        # Draw Jamming Effective Zone (approx) just for visual aid? 
+        # No, dynamic power makes it hard.
+        
+        plt.title("UAV Trajectory & Network Status", fontsize=14)
         plt.xlabel("Position X (m)")
         plt.ylabel("Position Y (m)")
-        plt.legend()
+        plt.legend(loc='upper right', frameon=True)
         plt.xlim(0, area_size)
         plt.ylim(0, area_size)
         

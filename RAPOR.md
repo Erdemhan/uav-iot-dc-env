@@ -74,15 +74,19 @@ Burada $P_{rx}$ alınan güç, $N_0$ termal gürültü ve $I_{jam}$ saldırganı
 Sistem performansını değerlendirmek ve senaryo çıktılarını yorumlamak için `visualizer.py` modülü tarafından üretilen, SCIE makale formatına uygun iki temel grafik seti kullanılmaktadır.
 
 ### 4.1. Yörünge ve Olay Analizi (`trajectory.png`)
-Bu grafik, simülasyonun mekansal (spatial) analizini sağlar.
+Bu grafik, simülasyonun mekansal (spatial) analizini ve ağ topolojisini gösterir.
 
 *   **İçerik:**
     *   **İHA Yörüngesi (Mavi Çizgi):** İHA'nın görev süresince izlediği fiziksel rotayı gösterir.
+    *   **IoT Düğümleri (Yeşil Kareler):** Sahadaki sabit sensör düğümlerinin konumlarını ve kimliklerini (N0, N1...) gösterir.
+    *   **Başarılı İletişim (Yeşil Noktalar):** İHA'nın sağlıklı veri akışı sağladığı (SINR > Threshold) konumları işaret eder.
+    *   **Kesinti Noktaları (Kırmızı Çarpı):** İHA'nın bu noktalardayken maruz kaldığı iletişim kesintilerini (Jamming Events) gösterir.
     *   **Saldırgan Konumu (Kırmızı 'X'):** Jamming kaynağının konumunu işaret eder.
-    *   **Kesinti Noktaları (Kırmızı Scatter):** İHA'nın bu noktalardayken maruz kaldığı iletişim kesintilerini (Jamming Events) gösterir.
+
 *   **Yorumlama:**
-    *   Kırmızı noktaların yoğunlaştığı bölgeler, saldırganın etki alanını (Effective Jamming Range) gösterir.
-    *   İHA'nın bu bölgelerden kaçınması veya irtifa değiştirmesi gerektiği gibi çıkarımlar bu grafik üzerinden yapılır.
+    *   Yeşil ve Kırmızı noktaların dağılımı, **Güvenli İletişim Bölgesi** (Safe Zone) ve **Saldırı Etki Alanı** (Effective Jamming Range) sınırlarını görselleştirir.
+    *   İHA'nın saldırgana yaklaştıkça yeşil noktaların yerini kırmızı çarpılara bırakması, mesafeye bağlı sinyal bozunumunu doğrular.
+    *   Hangi düğümlerin (Nodes) daha riskli bölgede olduğu topolojik olarak analiz edilebilir.
 
 ### 4.2. Metrik Analizi (`metrics_analysis.png`)
 Bu grafik, sistemin zamansal (temporal) performansını üç alt panelde inceler.
@@ -103,7 +107,6 @@ Bu grafik, sistemin zamansal (temporal) performansını üç alt panelde inceler
 ## 5. GELİŞİM GÜNLÜĞÜ (CHANGE LOG)
 
 ### [02.02.2026 01:07] - Başlangıç Sürümü (v1.0.0)
-
 **Yapılan Değişiklikler:**
 1.  **Altyapı Kurulumu:** Tüm temel modüller (`main`, `config`, `physics`, `entities`, `env`) sıfırdan kodlandı.
 2.  **Model Entegrasyonu:** Tez önerisindeki matematiksel formüller `physics.py` içerisine fonksiyonel olarak gömüldü.
@@ -116,3 +119,14 @@ Bu grafik, sistemin zamansal (temporal) performansını üç alt panelde inceler
 
 **Amaç:**
 Tez çalışmasının simülasyon gereksinimlerini karşılayan, doğrulanmış (verified) ve veri üretebilen kararlı bir sürümün oluşturulması.
+
+### [02.02.2026 01:40] - Otomasyon Sürümü (v1.1.0)
+**Yapılan Değişiklikler:**
+1.  **Tam Otomasyon:** `main.py` güncellenerek simülasyon bitiminde `visualizer` modülünün otomatik tetiklenmesi sağlandı.
+2.  **Görselleştirme İyileştirmesi:** İHA rotası üzerinde başarılı/başarısız iletişim ve IoT düğüm konumları eklendi.
+3.  **Veri Zenginleştirme:** `environment.py` loglarına düğüm konumları ve bağlantı durumu eklendi.
+
+### [02.02.2026 01:42] - Parametre Güncellemesi (v1.1.1)
+**Yapılan Değişiklikler:**
+1.  **Saldırgan Gücü Revizyonu:** `environment.py` içerisinde tanımlı olan maksimum Jamming gücü **2.0 Watt**'tan **1.0 Watt**'a düşürüldü.
+    *   *Sebep:* Mevcut senaryoda 2 Watt güç, tüm ağın sürekli (%100) kesintiye uğramasına neden olduğu için, daha dengeli bir analiz (kısmi kesinti) elde etmek amacıyla üst limit sınırlandırıldı.
