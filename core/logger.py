@@ -3,16 +3,16 @@ import json
 import datetime
 import pandas as pd
 from typing import Dict, Any, List
-from tez_reporter import TezReporter
+
 
 class SimulationLogger:
     """
-    Simülasyon verilerini (Telemetry) kaydeder.
+    Records simulation data (Telemetry).
     """
     def __init__(self, config_dict: Dict[str, Any] = None):
-        TezReporter("logger.py", "Logger Başlatıldı")
+
         
-        # Log klasörünü oluştur: logs/EXP_YYYYMMDD_HHMMSS
+        # Create log folder: logs/EXP_YYYYMMDD_HHMMSS
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         self.log_dir = os.path.join("logs", f"EXP_{timestamp}")
         os.makedirs(self.log_dir, exist_ok=True)
@@ -24,32 +24,32 @@ class SimulationLogger:
             self.save_config(config_dict)
 
     def save_config(self, config: Dict[str, Any]):
-        """Config parametrelerini json olarak kaydeder."""
+        """Saves config parameters as json."""
         path = os.path.join(self.log_dir, "config.json")
-        # Parametreler içinde serialize edilemeyen nesneler varsa stringe çeviriyoruz
+        # Convert non-serializable objects in parameters to string
         safe_config = {k: str(v) for k, v in config.items()}
         with open(path, "w", encoding="utf-8") as f:
             json.dump(safe_config, f, indent=4)
 
     def log_step(self, data_dict: Dict[str, Any]):
-        """Her adımın verisini belleğe alır."""
+        """Buffers data for each step."""
         self.buffer.append(data_dict)
 
     def flush(self):
-        """Bellekteki veriyi diske yazar."""
+        """Writes buffered data to disk."""
         if not self.buffer:
             return
             
         df = pd.DataFrame(self.buffer)
         
-        # Dosya yoksa header ile yaz, varsa header olmadan ekle
+        # If file doesn't exist write with header, else append without header
         mode = 'w' if not os.path.exists(self.csv_path) else 'a'
         header = not os.path.exists(self.csv_path)
         
         df.to_csv(self.csv_path, mode=mode, header=header, index=False)
-        self.buffer = [] # Bufferı temizle
+        self.buffer = [] # Clear buffer
 
     def close(self):
-        """Kapanışta kalan verileri yaz."""
+        """Write remaining data on close."""
         self.flush()
-        print(f"[SimulationLogger] Kayıtlar {self.log_dir} dizinine kaydedildi.")
+        print(f"[SimulationLogger] Logs saved to {self.log_dir}.")

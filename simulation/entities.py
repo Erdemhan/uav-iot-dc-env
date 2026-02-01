@@ -1,9 +1,9 @@
 import numpy as np
-from tez_reporter import TezReporter
-from config import UAVConfig
-import physics
 
-TezReporter("entities.py", "Varlık Sınıfları Oluşturuldu")
+from core.config import UAVConfig
+import core.physics as physics
+
+
 
 class BaseEntity:
     def __init__(self, x: float, y: float, z: float = 0.0):
@@ -44,7 +44,7 @@ class UAVAgent(MobileEntity, TransceiverEntity):
 
     def consume_energy(self, speed: float, dt: float):
         """
-        Physics modülünü kullanarak enerji tüketimini hesaplar ve ekler.
+        Calculates and adds energy consumption using the Physics module.
         """
         power = physics.calculate_flight_power(speed)
         energy = power * dt
@@ -60,18 +60,18 @@ class IoTNode(TransceiverEntity):
 
     def update_aoi(self, dt: float, success: bool):
         """
-        Eğer iletişim başarılıysa AoI sıfırlanır (veya iletim süresi kadar olur),
-        değilse geçer zaman kadar artar.
+        If communication is successful, AoI is reset (or becomes transmission time),
+        otherwise it increases by the elapsed time.
         """
         if success:
-            self.aoi = 0.0 # Taze bilgi alındı
+            self.aoi = 0.0 # Fresh information received
         else:
             self.aoi += dt
 
     def consume_energy(self, rate: float):
         """
-        Physics modülünü kullanarak bir paketlik enerji tüketimini hesaplar.
-        Rate: Veri hızı (bps)
+        Calculates the energy consumption for one packet using the Physics module.
+        Rate: Data rate (bps)
         """
         e_packet = physics.calculate_iot_energy(rate)
         self.total_energy_consumed += e_packet

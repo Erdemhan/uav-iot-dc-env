@@ -5,9 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-from tez_reporter import TezReporter
 
-TezReporter("visualizer.py", "Görselleştirme Modülü Başlatıldı")
 
 class SimulationVisualizer:
     def __init__(self, exp_dir: str = None):
@@ -38,15 +36,15 @@ class SimulationVisualizer:
         sns.set_style("whitegrid")
 
     def find_latest_experiment(self, logs_dir="logs") -> str:
-        """En son tarihli deney klasörünü bulur."""
+        """Finds the latest experiment folder."""
         all_dirs = glob.glob(os.path.join(logs_dir, "EXP_*"))
         if not all_dirs:
-            raise FileNotFoundError("Hiçbir deney kaydı bulunamadı (logs/ boş).")
+            raise FileNotFoundError("No experiment logs found (logs/ empty).")
         latest_dir = max(all_dirs, key=os.path.getmtime)
         return latest_dir
 
     def _preprocess_data(self):
-        """Ham veriyi analiz için hazırlar."""
+        """Prepares raw data for analysis."""
         # 1. Calculate Average System SINR (dB)
         # Find all columns starting with 'node_' and ending with '_sinr'
         sinr_cols = [c for c in self.df.columns if "node_" in c and "_sinr" in c]
@@ -73,22 +71,22 @@ class SimulationVisualizer:
             self.df["is_jammed"] = 0
 
     def plot_trajectory(self):
-        """İHA ve Saldırgan yörüngesini çizer."""
+        """Draws UAV and Attacker trajectory."""
         plt.figure(figsize=(10, 10))
         
         # 1. IoT Nodes (Green Squares)
-        # Her node için ilk adımın konumunu alalım (Sabit varsayımıyla)
-        # Regex ile node_x columnlarını bulalım
+        # Get position of first step for each node (Assuming static)
+        # Find node_x columns via regex
         node_x_cols = sorted([c for c in self.df.columns if "node_" in c and "_x" in c])
         node_y_cols = sorted([c for c in self.df.columns if "node_" in c and "_y" in c])
         
         if node_x_cols and node_y_cols:
-            # Sadece ilk satırdaki (Step 0) konumları al
+            # Take only the first row (Step 0)
             xs = self.df.iloc[0][node_x_cols].values
             ys = self.df.iloc[0][node_y_cols].values
             plt.scatter(xs, ys, color="green", marker="s", s=100, label="IoT Nodes", zorder=4)
             
-            # Node ID'lerini yaz
+            # Write Node IDs
             for i, (Nx, Ny) in enumerate(zip(xs, ys)):
                 plt.text(Nx+10, Ny+10, f"N{i}", fontsize=9, color="green")
 
@@ -134,7 +132,7 @@ class SimulationVisualizer:
         plt.close()
 
     def plot_metrics(self):
-        """Zaman serisi metriklerini çizer (SINR, AoI, Energy)."""
+        """Draws time series metrics (SINR, AoI, Energy)."""
         fig, axes = plt.subplots(3, 1, figsize=(10, 15), sharex=True)
         
         steps = self.df["step"]
@@ -186,7 +184,7 @@ class SimulationVisualizer:
         plt.close()
 
     def generate_report(self):
-        """Rapor oluşturmayı tetikler."""
+        """Triggers report generation."""
         print(f"--- Visualization Report: {self.exp_dir} ---")
         self.plot_trajectory()
         self.plot_metrics()

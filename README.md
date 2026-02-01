@@ -1,99 +1,119 @@
-# Simülasyon Çalışma Akışı (Workflow)
+# Simulation Workflow
 
-Bu doküman, `UAV_IoT_Sim` projesinin çalışma mantığını adım adım açıklar.
+This document explains the working logic of the `UAV_IoT_Sim` project step by step.
 
-## 1. Başlatma (Initialization) - `main.py`
-Simülasyon `python main.py` komutuyla başlatıldığında sırasıyla şunlar gerçekleşir:
-
-1.  **Logger Kurulumu (`SimulationLogger`)**:
-    *   `logs/` klasörü altında o anki tarih/saat ile yeni bir klasör oluşturulur (Örn: `EXP_20260201_200542`).
-    *   Simülasyon parametreleri `config.py`'den okunur ve bu klasöre `config.json` olarak kaydedilir.
-    
-2.  **Ortam Kurulumu (`UAV_IoT_Env`)**:
-    *   `UAVAgent`: Belirlenen irtifada (100m) ve başlangıç konumunda oluşturulur.
-    *   `IoTNode` (x5): Rastgele konumlara (1000x1000m alan içine) yerleştirilir.
-    *   `SmartAttacker`: Sabit bir konuma yerleştirilir.
-    
-3.  **Görselleştirme (`Visualization`)**:
-    *   Matplotlib penceresi açılır ve interaktif mod (`plt.ion()`) devreye girer.
-
-## 2. Simülasyon Döngüsü (The Loop)
-Simülasyon belirlenen adım sayısı (Varsayılan: 100) kadar döner. Her adımda (`env.step(action)`) şu işlemler yapılır:
-
-### A. Aksiyon Seçimi (Action)
-*   Şu an için rastgele bir **Jamming Gücü** (0 - 2 Watt arası) seçilir (İleride RL ajanı tarafından seçilecek).
-*   Saldırganın gücü bu değere güncellenir.
-
-### B. Fiziksel Hesaplamalar (`physics.py`)
-1.  **İHA Hareketi**:
-    *   İHA dairesel bir yörüngede (r=200m) hareket ettirilir.
-    *   Yeni konum ve hız vektörü güncellenir.
-2.  **Kanal ve İletişim**:
-    *   **İHA -> Node** ve **Jammer -> Node** mesafeleri hesaplanır.
-    *   `physics.calculate_path_loss` ile yol kayıpları bulunur.
-    *   Her düğüm için **SINR** (Sinyal/Gürültü+Jamming) hesaplanır.
-    *   Shannon denklemi ile anlık **Veri Hızı (Data Rate)** bulunur.
-
-### C. Durum Güncellemeleri (`entities.py`)
-1.  **Bağlantı Kontrolü**: Eğer SINR belirli bir eşiğin altındaysa (Örn: 1.0) düğüm "Jammed" (Engellenmiş) sayılır.
-2.  **Bilgi Yaşı (AoI)**:
-    *   Bağlantı varsa: AoI = 0 (Sıfırlanır).
-    *   Bağlantı yoksa: AoI += geçen süre (Eskir).
-3.  **Enerji Tüketimi**:
-    *   **İHA**: Uçuş hızına bağlı aerodinamik güç harcaması hesaplanır.
-    *   **IoT Node**: Veri gönderme ve şifreleme maliyetleri hesaplanır.
-
-### D. Loglama (`logger.py`)
-Her adımın sonunda tüm kritik veriler belleğe alınır:
-*   Adım No
-*   İHA ve Saldırgan Konumları
-*   Her bir Node için: SINR, AoI, Harcanan Enerji
-*   Saldırganın o anki gücü
-
-### E. Görselleştirme (`render`)
-*   Harita üzerindeki noktalar güncellenir.
-*   Eğer saldırgan aktifse (Güç > 0.1W), etrafına kırmızı bir daire çizilir.
-*   Ekrana anlık adım ve güç bilgisi yazılır.
-
-## 3. Sonlandırma (Termination)
-Döngü bittiğinde veya kullanıcı durdurduğunda:
-1.  **Veri Kaydı**: Bellekteki tüm veriler `history.csv` dosyasına yazılır.
-2.  Pencere kapatılır.
-3.  Log dosyalarının konumu ekrana yazdırılır.
-
-## 4. Analiz ve Görselleştirme - `visualizer.py`
-Simülasyon bittikten sonra sonuçları grafiklemek için:
-```bash
-python visualizer.py
+## Project Structure
 ```
-Bu komut, en son deney klasörünü bulur ve aşağıdaki grafikleri üretir.
+uav-iot-dc-env/
+├── core/               # Core modules
+│   ├── config.py       # Configuration
+│   ├── physics.py      # Physics engine
+│   └── logger.py       # Logging system
+├── simulation/         # Simulation environment
+│   ├── environment.py  # Gym environment
+│   └── entities.py     # Entity classes
+├── visualization/      # Visualization
+│   ├── visualization.py # Runtime visualization
+│   └── visualizer.py   # Analysis and reporting
+├── logs/               # Simulation outputs
+├── main.py             # Launcher
+├── README.md           # Workflow documentation
+└── RAPOR.md            # Technical report (Turkish)
+```
 
-### Sonuçların Yorumlanması (Örnek: EXP_20260201_200542)
+## 1. Initialization - `main.py`
+When the simulation is started with `python main.py`, the following happens sequentially:
 
-Aşağıdaki grafikler, saldırı altındaki bir senaryonun örnek çıktılarıdır.
+1.  **Logger Setup (`SimulationLogger`)**:
+    *   A new folder with the current date/time is created under `logs/` (e.g., `EXP_20260201_200542`).
+    *   Simulation parameters are read from `core/config.py` and saved as `config.json` in this folder.
+    
+2.  **Environment Setup (`UAV_IoT_Env`)**:
+    *   `UAVAgent`: Created at the specified altitude (100m) and start position.
+    *   `IoTNode` (x5): Placed at random positions (within the 1000x1000m area).
+    *   `SmartAttacker`: Placed at a fixed position.
+    
+3.  **Visualization (`Visualization`)**:
+    *   A Matplotlib window opens, and interactive mode (`plt.ion()`) is enabled.
 
-#### A. Yörünge ve Saldırı Analizi (`trajectory.png`)
-![Trajectory Plot](logs/EXP_20260202_014936/trajectory.png)
+## 2. Simulation Loop
+The simulation runs for a specified number of steps (Default: 100). In each step (`env.step(action)`), the following operations are performed:
 
-*   **Mavi Çizgi**: İHA'nın izlediği dairesel rota.
-*   **Kırmızı "X"**: Sabit saldırganın (Jammer) konumu.
-*   **Kırmızı Noktalar**: İHA'nın bu noktalardayken iletişimin kesildiği (Jammed) anları gösterir.
-    *   *Yorum:* İHA, saldırgana yaklaştıkça (sağ üst köşe) kırmızı noktaların yoğunlaşması, Jammer etkisinin mesafeyle arttığını doğrular.
+### A. Action Selection
+*   Currently, a random **Jamming Power** (0 - 1 Watt) is selected (Future: to be selected by an RL agent).
+*   The attacker's power is updated to this value.
 
-#### B. Metrik Analizi (`metrics_analysis.png`)
-![Metrics Analysis](logs/EXP_20260202_014936/metrics_analysis.png)
+### B. Physical Calculations (`core/physics.py`)
+1.  **UAV Movement**:
+    *   The UAV is moved in a circular trajectory (r=200m).
+    *   New position and velocity vectors are updated.
+2.  **Channel and Communication**:
+    *   **UAV -> Node** and **Jammer -> Node** distances are calculated.
+    *   Path losses are found using `physics.calculate_path_loss`.
+    *   **SINR** (Signal/Noise+Jamming) is calculated for each node.
+    *   Instantaneous **Data Rate** is found using the Shannon equation.
 
-Bu grafik üç panelden oluşur:
+### C. State Updates (`simulation/entities.py`)
+1.  **Connection Check**: If SINR is below a certain threshold (e.g., 1.0), the node is considered "Jammed".
+2.  **Age of Information (AoI)**:
+    *   If connected: AoI = 0 (Reset).
+    *   If not connected: AoI += time elapsed (Stale).
+3.  **Energy Consumption**:
+    *   **UAV**: Aerodynamic power consumption based on flight speed is calculated.
+    *   **IoT Node**: Costs for data sending and encryption are calculated.
 
-1.  **Üst Panel (SINR & Jamming):**
-    *   **Mavi Çizgi (SINR):** Sinyal kalitesi.
-    *   **Kırmızı Kesikli Çizgi (Jamming Power):** Saldırganın gücü.
-    *   *Yorum:* Kırmızı çizgi yükseldiğinde (saldırı arttığında), mavi çizgi (SINR) ani düşüşler yaşar. 0 dB (Gri çizgi) altına inen noktalar bağlantı kopmasını ifade eder.
+### D. Logging (`core/logger.py`)
+At the end of each step, all critical data is buffered:
+*   Step No
+*   UAV and Attacker Positions
+*   For each Node: SINR, AoI, Energy Consumed
+*   Attacker's current power
 
-2.  **Orta Panel (Age of Information - AoI):**
-    *   **Yeşil Çizgi:** Bilginin tazeliği (Düşük olması iyidir).
-    *   *Yorum:* "Testere dişi" deseni görülür. Çizgi yukarı doğru tırmanırken (Lineer artış) veri alınamıyordur (Jamming veya uzaklık). Çizginin sıfıra düştüğü anlar, başarılı veri transferi anıdır.
+### E. Visualization (`render`)
+*   Points on the map are updated.
+*   If the attacker is active (Power > 0.1W), a red circle is drawn around it.
+*   Instantaneous step and power information is written to the screen.
 
-3.  **Alt Panel (Energy):**
-    *   **Turuncu Çizgi:** İHA'nın toplam enerji tüketimi.
-    *   *Yorum:* Zamanla kümülatif olarak artar. Eğimin değişmesi, hız değişimlerine (Manevra) işaret eder.
+## 3. Termination
+When the loop ends or is stopped by the user:
+1.  **Data Recording**: All data in the buffer is written to the `history.csv` file.
+2.  Window is closed.
+3.  The location of the log files is printed to the screen.
+
+## 4. Analysis and Visualization - `visualization/visualizer.py`
+To graph the results after the simulation ends:
+```bash
+python visualization/visualizer.py 
+# Note: Usually called automatically by main.py
+```
+This command finds the latest experiment folder and generates the following graphs.
+
+### Interpreting Results (Example)
+
+The following graphs simplify example outputs of a scenario under attack.
+
+#### A. Trajectory and Attack Analysis (`trajectory.png`)
+![Trajectory Plot](logs/EXP_20260202_015949/trajectory.png)
+
+*   **Blue Line**: The circular route followed by the UAV.
+*   **Red "X"**: Position of the fixed attacker (Jammer).
+*   **Red Dots**: Moments when communication was cut (Jammed) while the UAV was at these points.
+    *   *Comment:* The concentration of red dots as the UAV approaches the attacker (top right corner) confirms that the Jammer effect increases with proximity.
+
+#### B. Metrics Analysis (`metrics_analysis.png`)
+![Metrics Analysis](logs/EXP_20260202_015949/metrics_analysis.png)
+
+This graph consists of three panels:
+
+1.  **Top Panel (SINR & Jamming):**
+    *   **Blue Line (SINR):** Signal quality.
+    *   **Red Dashed Line (Jamming Power):** Attacker's power.
+    *   *Comment:* When the red line rises (attack increases), the blue line (SINR) experiences sudden drops. Points falling below 0 dB (Gray line) indicate connection loss.
+
+2.  **Middle Panel (Age of Information - AoI):**
+    *   **Green Line:** Freshness of information (Lower is better).
+    *   *Comment:* A "sawtooth" pattern is seen. When the line climbs upwards (Linear increase), data is not being received (Jamming or distance). The moment the line drops to zero is the moment of successful data transfer.
+
+3.  **Bottom Panel (Energy):**
+    *   **Orange Line:** Total energy consumption of the UAV.
+    *   *Comment:* Increases cumulatively over time. Changes in slope indicate speed changes (Maneuver).
