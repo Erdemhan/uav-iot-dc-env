@@ -73,7 +73,7 @@ At the end of each step, all critical data is buffered:
 
 ### E. Visualization (`render`)
 *   Points on the map are updated.
-*   If the attacker is active (Power > 0.1W), a red circle is drawn around it.
+*   **Jamming Contour**: A dynamic red contour is drawn where SINR < 0 dB, showing the real-time effective jamming zone.
 *   Instantaneous step and power information is written to the screen.
 
 ## 3. Termination
@@ -97,11 +97,11 @@ The following graphs simplify example outputs of a scenario under attack.
 #### A. Trajectory and Attack Analysis (`trajectory.png`)
 ![Trajectory Plot](logs/EXP_20260202_025051/trajectory.png)
 
-*   **Blue Line**: The circular route followed by the UAV.
+*   **Blue Line**: The path followed by the UAV (Visiting nodes).
 *   **Red "X"**: Position of the fixed attacker (Jammer).
-*   **Green Dot**: Successful connection established.
-*   **Red Dot (X)**: Jamming detected (Communication lost due to attack).
-*   **Gray Dot**: Out of Range (Communication lost due to distance).
+*   **Colored Dots**: Successful connection points. Each node has a distinct color (e.g., Node 0 is Blue, Node 1 is Orange).
+*   **Red Dot (X)**: Jamming detected (Communication lost due to attack, only shown if ALL connections are lost).
+*   **Gray Dot**: Out of Range (Only shown if ALL connections are lost and no jamming).
     *   *Comment:* The concentration of red dots as the UAV approaches the attacker (top right corner) confirms that the Jammer effect increases with proximity.
 
 #### B. Metrics Analysis (`metrics_analysis.png`)

@@ -14,7 +14,7 @@ class EnvConfig:
     MAX_JAMMING_POWER = 0.1 # Watts (Previously 0.5 in action space)
 
     # Transmission Power (Scenario specific)
-    P_TX_NODE = 0.005 # Watt (Reduced to see Out of Range)
+    P_TX_NODE = 0.001 # Watt (Reduced to see Out of Range)
     P_TX_UAV = 0.05  # Watt
 
     # Simulation Stepping
