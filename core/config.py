@@ -7,7 +7,7 @@ class UAVConfig:
     Thesis proposal Table 3 and default simulation parameters.
     """
     # Visualization settings
-    SIMULATION_DELAY = 0.3 # Seconds
+    SIMULATION_DELAY = 0.1 # Seconds
     
     # Physical Constants
     C = 3e8       # Speed of light (m/s)

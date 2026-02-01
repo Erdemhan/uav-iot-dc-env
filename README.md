@@ -95,7 +95,7 @@ This command finds the latest experiment folder and generates the following grap
 The following graphs simplify example outputs of a scenario under attack.
 
 #### A. Trajectory and Attack Analysis (`trajectory.png`)
-![Trajectory Plot](logs/EXP_20260202_014936/trajectory.png)
+![Trajectory Plot](logs/EXP_20260202_025051/trajectory.png)
 
 *   **Blue Line**: The circular route followed by the UAV.
 *   **Red "X"**: Position of the fixed attacker (Jammer).
@@ -105,7 +105,7 @@ The following graphs simplify example outputs of a scenario under attack.
     *   *Comment:* The concentration of red dots as the UAV approaches the attacker (top right corner) confirms that the Jammer effect increases with proximity.
 
 #### B. Metrics Analysis (`metrics_analysis.png`)
-![Metrics Analysis](logs/EXP_20260202_014936/metrics_analysis.png)
+![Metrics Analysis](logs/EXP_20260202_025051/metrics_analysis.png)
 
 This graph consists of three panels:
 
