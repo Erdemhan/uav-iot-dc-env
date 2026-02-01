@@ -56,8 +56,8 @@ class UAV_IoT_Env(gym.Env):
         self.max_steps = EnvConfig.MAX_STEPS # Steps per episode
         self.dt = EnvConfig.STEP_TIME # Time step (seconds)
         
-        # Angle for circular motion
-        self.uav_angle = np.radians(EnvConfig.UAV_START_ANGLE)
+        # Waypoint Navigation State
+        self.target_node_index = 0 # Start by visiting Node 0
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -106,18 +106,48 @@ class UAV_IoT_Env(gym.Env):
         jam_power = float(action[0])
         self.attacker.set_jamming_power(jam_power)
         
-        # 2. UAV Movement (Simple Circular Trajectory)
-        # Circle around center with r=200m
-        radius = EnvConfig.UAV_RADIUS
-        center_x, center_y = self.area_size/2, self.area_size/2
-        speed = EnvConfig.UAV_SPEED # m/s
+        # 2. UAV Movement (Waypoint Navigation)
+        # Visit nodes in order: 0 -> 1 -> ... -> N -> 0
+        if not self.nodes:
+            target_pos = np.array([self.area_size/2, self.area_size/2, 100.0])
+        else:
+            target_node = self.nodes[self.target_node_index]
+            target_pos = np.array([target_node.x, target_node.y, self.uav.z])
+            
+        current_pos = np.array([self.uav.x, self.uav.y, self.uav.z])
+        direction_vector = target_pos - current_pos
+        dist_to_target = np.linalg.norm(direction_vector[:2]) # XY distance
         
-        # Angular speed w = v / r
-        angular_speed = speed / radius
-        self.uav_angle += angular_speed * self.dt
+        # Check if reached (within 10m or so)
+        if dist_to_target < 10.0:
+            # Switch to next node
+            self.target_node_index = (self.target_node_index + 1) % len(self.nodes)
+            # Retarget immediately (optional)
+            target_node = self.nodes[self.target_node_index]
+            target_pos = np.array([target_node.x, target_node.y, self.uav.z])
+            direction_vector = target_pos - current_pos
+            dist_to_target = np.linalg.norm(direction_vector[:2])
+
+        # Move
+        speed = EnvConfig.UAV_SPEED
+        step_dist = speed * self.dt
         
-        new_x = center_x + radius * np.cos(self.uav_angle)
-        new_y = center_y + radius * np.sin(self.uav_angle)
+        if dist_to_target > 0:
+            # Normalizing direction
+            norm_dir = direction_vector / np.linalg.norm(direction_vector)
+            velocity_vector = norm_dir * speed
+        else:
+            velocity_vector = np.zeros(3)
+            
+        # Update Position (Simple Euler)
+        # We cap movement so we don't overshoot excessively if close
+        if step_dist >= dist_to_target:
+             new_pos = target_pos # Snap to target
+             velocity_vector = (new_pos - current_pos) / self.dt # Effective velocity
+        else:
+             new_pos = current_pos + velocity_vector * self.dt
+
+        new_x, new_y = new_pos[0], new_pos[1]
         
         # Update velocity vector
         self.uav.vx = (new_x - self.uav.x) / self.dt

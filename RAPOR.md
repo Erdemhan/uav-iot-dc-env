@@ -41,8 +41,8 @@ Bu sürümde kullanılan senaryo, temel sistem dinamiklerini doğrulamak amacıy
 
 *   **Operasyonel Alan:** 1000m x 1000m boyutlarında 2 boyutlu düzlem.
 *   **İHA Davranışı (Blue Team):**
-    *   Alan merkezinde belirlenen bir yarıçapta (r=200m) ve irtifada (h=100m) **sabit dairesel yörünge** izlemektedir.
-    *   Amacı, yerdeki düğümlerden veri toplamak ve enerji tüketimini optimize etmektir.
+    *   **Waypoint Navigasyonu:** İHA, simülasyon alanındaki IoT düğümlerini sırasıyla (Node 0 -> Node 1 -> ...) ziyaret eder.
+    *   Bir düğüme ulaştığında (mesafe < 10m), bir sonraki düğümü hedef olarak belirler. Bu sayede tüm sensörlerden yakından veri toplamayı hedefler.
 *   **Saldırgan Davranışı (Red Team):**
     *   Alan merkezine yakın sabit bir konumda bulunmaktadır.
     *   **Stokastik Jamming:** Her zaman adımında 0 ile 2 Watt arasında rastgele bir güç seviyesi belirleyerek iletişim kanalını karıştırmaktadır.
