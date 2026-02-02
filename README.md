@@ -5,10 +5,10 @@ This document explains the working logic of the `UAV_IoT_Sim` project step by st
 ## Project Structure
 ```
 uav-iot-dc-env/
-├── core/               # Core modules
-├── core/               # Core modules
+├── confs/              # Configuration Files
 │   ├── config.py       # System Configuration (Physics, Delay)
 │   ├── env_config.py   # Environment & Scenario Config (Nodes, Power, Speed)
+├── core/               # Core modules
 │   ├── physics.py      # Physics engine
 │   └── logger.py       # Logging system
 ├── simulation/         # Simulation environment
@@ -28,7 +28,7 @@ When the simulation is started with `python main.py`, the following happens sequ
 
 1.  **Logger Setup (`SimulationLogger`)**:
     *   A new folder with the current date/time is created under `logs/` (e.g., `EXP_20260201_200542`).
-    *   Simulation parameters are read from `core/config.py` and `core/env_config.py`, then saved as `config.json` in this folder.
+    *   Simulation parameters are read from `confs/config.py` and `confs/env_config.py`, then saved as `config.json` in this folder.
     
 2.  **Environment Setup (`UAV_IoT_Env`)**:
     *   `UAVAgent`: Created at the specified altitude (100m) and start position.

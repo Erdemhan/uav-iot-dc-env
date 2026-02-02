@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
 
-from core.config import UAVConfig
-from core.env_config import EnvConfig
+from confs.config import UAVConfig
+from confs.env_config import EnvConfig
 
 
 
@@ -70,8 +70,8 @@ class Visualization:
                 
                 # Physics Calculations (Vectorized)
                 import core.physics as physics
-                from core.env_config import EnvConfig
-                from core.config import UAVConfig
+                from confs.env_config import EnvConfig
+                from confs.config import UAVConfig
 
                 # Beta
                 beta_uav = physics.calculate_path_loss(d_uav)

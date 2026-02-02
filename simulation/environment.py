@@ -4,8 +4,8 @@ import numpy as np
 import math
 
 
-from core.config import UAVConfig
-from core.env_config import EnvConfig
+from confs.config import UAVConfig
+from confs.env_config import EnvConfig
 from .entities import UAVAgent, IoTNode, SmartAttacker
 import core.physics as physics
 from core.logger import SimulationLogger

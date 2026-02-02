@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-from core.env_config import EnvConfig
+from confs.env_config import EnvConfig
 
 
 class SimulationVisualizer:
