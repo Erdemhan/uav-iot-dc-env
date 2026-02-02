@@ -1,7 +1,7 @@
 import numpy as np
 
-from .config import UAVConfig
-from .env_config import EnvConfig
+from confs.config import UAVConfig
+from confs.env_config import EnvConfig
 
 
 

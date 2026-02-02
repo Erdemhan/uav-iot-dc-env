@@ -8,8 +8,8 @@ import time
 
 
 
-from core.config import UAVConfig
-from core.env_config import EnvConfig
+from confs.config import UAVConfig
+from confs.env_config import EnvConfig
 
 def main():
     # 1. Start Logger

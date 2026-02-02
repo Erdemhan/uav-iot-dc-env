@@ -16,10 +16,12 @@ Geliştirilen simülasyon ortamı, literatürdeki standartlara uygun olarak Pyth
 
 Simülasyon altyapısı, Nesne Yönelimli Programlama (OOP) prensipleri çerçevesinde, her biri spesifik bir görevi üstlenen gevşek bağlı (loose-coupled) modüllerden oluşmaktadır.
 
-### 2.1. Çekirdek Modüller (`core/`)
+### 2.1. Konfigürasyon Modülleri (`confs/`)
 
-*   **`core/config.py` (Konfigürasyon Yönetimi):** Sistemin fiziksel bant genişliği, frekans, gürültü seviyesi gibi temel donanım parametrelerini tutar.
-*   **`core/env_config.py` (Ortam ve Senaryo Konfigürasyonu):** Simülasyonun senaryo parametrelerini (Düğüm sayısı, alan boyutu, adım süresi, saldırgan konumu vb.) barındırır. Bu ayrım sayesinde fiziksel altyapı değiştirilmeden farklı senaryolar test edilebilir.
+*   **`confs/config.py` (Sistem Konfigürasyonu):** Sistemin fiziksel bant genişliği, frekans, gürültü seviyesi gibi temel donanım parametrelerini tutar.
+*   **`confs/env_config.py` (Ortam ve Senaryo Konfigürasyonu):** Simülasyonun senaryo parametrelerini (Düğüm sayısı, alan boyutu, adım süresi, saldırgan konumu vb.) barındırır. Bu ayrım sayesinde fiziksel altyapı değiştirilmeden farklı senaryolar test edilebilir.
+
+### 2.2. Çekirdek Modüller (`core/`)
 *   **`core/physics.py` (Fizik Motoru):** Sistemin "stateless" (durumsuz) matematiksel hesaplama çekirdeğidir. Haberleşme kanalı (Path Loss, SINR, Shannon Kapasitesi) ve enerji tüketim modelleri (İHA uçuş gücü, IoT iletim enerjisi) burada saf fonksiyonlar (pure functions) olarak implemente edilmiştir.
 *   **`simulation/entities.py` (Varlık Modellemesi):** Simülasyon dünyasındaki aktörlerin (İHA, IoT Düğümü, Saldırgan) davranışlarını ve durumlarını modelleyen sınıfları içerir.
     *   *Miras Yapısı:* `BaseEntity` -> `MobileEntity` / `TransceiverEntity` -> `UAVAgent` / `IoTNode` şeklinde hiyerarşik bir yapı kurgulanmıştır.
@@ -27,7 +29,7 @@ Simülasyon altyapısı, Nesne Yönelimli Programlama (OOP) prensipleri çerçev
 ### 2.2. Simülasyon ve Ortam
 
 *   **`simulation/environment.py` (OpenAI Gym Ortamı):** `UAV_IoT_Env` sınıfı, simülasyonun durum uzayı (state space), aksiyon uzayı (action space) ve ödül mekanizmasını (reward function) tanımlar. Zaman adımlı (time-stepped) bir akış içerisinde fizik motorunu ve varlıkları koordine eder.
-*   **`main.py` (Yürütücü):** Simülasyonun başlatılması, döngünün yönetimi ve kaynakların (logger, visualizer) serbest bırakılmasından sorumludur. `config.py` içerisindeki `SIMULATION_DELAY` parametresi ile simülasyon akış hızı kontrol edilebilir.
+*   **`main.py` (Yürütücü):** Simülasyonun başlatılması, döngünün yönetimi ve kaynakların (logger, visualizer) serbest bırakılmasından sorumludur. `confs/config.py` içerisindeki `SIMULATION_DELAY` parametresi ile simülasyon akış hızı kontrol edilebilir.
 
 ### 2.3. Veri Yönetimi ve Analiz
 
@@ -140,3 +142,8 @@ Tez çalışmasının simülasyon gereksinimlerini karşılayan, doğrulanmış 
     *   **Düğüm Renkleri:** Her düğüm benzersiz bir renge (tab10) atandı.
     *   **Offset Logic:** Çoklu bağlantı durumunda noktaların üst üste binmesi, koordinat kaydırma (offset) yöntemiyle engellendi.
     *   **Akıllı Filtreleme:** Eğer İHA en az bir düğüme bağlıysa, görsel kirliliği önlemek için diğer düğümlerin Jammed/Out-of-Range sembolleri gizlendi.
+
+### [02.02.2026 03:00] - Mimari Refaktör (v1.2.1)
+**Yapılan Değişiklikler:**
+1.  **Dizin Yapısı Düzenlemesi:** Konfigürasyon dosyaları (`config.py`, `env_config.py`) `core/` klasöründen yeni oluşturulan `confs/` klasörüne taşındı.
+2.  **Modülarite:** Konfigürasyon ve Çekirdek mantığı birbirinden tamamen izole edildi. Tüm modüller (`simulation`, `visualization`, `core`) yeni yapıya uygun olarak güncellendi.
