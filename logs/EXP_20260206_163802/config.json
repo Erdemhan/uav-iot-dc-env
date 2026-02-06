@@ -1,5 +1,5 @@
 {
-    "__module__": "core.env_config",
+    "__module__": "confs.env_config",
     "__doc__": "\n    Simulation Environment and Scenario Parameters.\n    Separated from physical/system parameters.\n    ",
     "SIMULATION_DELAY": "0.1",
     "C": "300000000.0",
@@ -28,7 +28,7 @@
     "ATTACKER_POS_X": "600.0",
     "ATTACKER_POS_Y": "600.0",
     "MAX_JAMMING_POWER": "0.1",
-    "P_TX_NODE": "0.005",
+    "P_TX_NODE": "0.002",
     "P_TX_UAV": "0.05",
     "MAX_STEPS": "100",
     "STEP_TIME": "5.0",
