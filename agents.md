@@ -14,6 +14,7 @@ After every technical update, code change, or parameter revision, `RAPOR.md` mus
 *   **Technical Updates:** If changes affecting system architecture, mathematical models, or scenario flow are made, the relevant technical sections ("2. Sistem Mimarisi", "3. Matematiksel Modeller" etc.) must be updated.
 *   **Change Log:** Every significant change (Bug fix, feature addition, parameter tuning) must be added to the "5. Gelişim Günlüğü" section with a **new date/time block**.
     *   Ordering: **Ascending (Oldest to Newest)**. (e.g., v1.0.0 -> v1.1.0).
+*   **Technology Stack:** If a new library or tool (e.g., PettingZoo, NumPy) is added to the project, it MUST be documented in the **"2.5. Kullanılan Altyapı ve Teknolojiler"** section of `RAPOR.md`. The description should explain *what it is* and *why/how it is used* in this project.
 
 ## 2. Workflow Documentation (`README.md`)
 The file explaining the project logic is named `README.md`.
