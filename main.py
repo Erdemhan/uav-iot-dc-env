@@ -1,51 +1,70 @@
 
 from core.logger import SimulationLogger
-from simulation.environment import UAV_IoT_Env
+from simulation.pettingzoo_env import UAV_IoT_PZ_Env
+from simulation.controllers import UAVRuleBasedController
 from visualization.visualization import Visualization
 from visualization.visualizer import SimulationVisualizer
 import matplotlib.pyplot as plt
 import time
-
-
-
+import numpy as np
 from confs.config import UAVConfig
 from confs.env_config import EnvConfig
 
 def main():
     # 1. Start Logger
-    # Merge configs for logging
     full_config = {}
     full_config.update(UAVConfig.__dict__)
     full_config.update(EnvConfig.__dict__)
     
     logger = SimulationLogger(config_dict=full_config)
     
-    # 2. Start Environment
-    env = UAV_IoT_Env(logger=logger)
+    # 2. Start Environment (PettingZoo)
+    env = UAV_IoT_PZ_Env(logger=logger)
+    
+    # 3. Start Controller
+    uav_controller = UAVRuleBasedController(env)
     
     # 3. Start Visualization
     viz = Visualization()
     
     # 4. Simulation Loop
-    obs, info = env.reset()
+    observations, infos = env.reset()
+    uav_controller.reset() # Reset controller state
     
-    print("Simulation Started...")
+    print("Simulation Started (PettingZoo Multi-Agent)...")
     
     try:
-        for _ in range(100):
-            # Select Random Action (Attacker Power)
-            action = env.action_space.sample()
+        # Loop for MAX_STEPS from config
+        for _ in range(EnvConfig.MAX_STEPS):
+            actions = {}
             
+            # --- UAV Action (Rule Based) ---
+            if 'uav_0' in env.agents:
+                uav_action = uav_controller.get_action() 
+                actions['uav_0'] = uav_action
+            
+            # --- Jammer Action (Learning/Random) ---
+            if 'jammer_0' in env.agents:
+                # Sample from action space for now (Random Agent)
+                actions['jammer_0'] = env.action_spaces['jammer_0'].sample()
+            
+            # --- Node Actions (Passive) ---
+            for agent_id in env.agents:
+                if agent_id.startswith('node_'):
+                    # No-Op
+                     actions[agent_id] = 0
+
             # Step
-            obs, reward, terminated, truncated, info = env.step(action)
+            observations, rewards, terminations, truncations, infos = env.step(actions)
             
             # Render
             viz.render(env)
             
-            # Wait a bit (Optional, for visual monitoring)
+            # Wait a bit
             time.sleep(UAVConfig.SIMULATION_DELAY) 
             
-            if terminated or truncated:
+            # Check global termination
+            if any(terminations.values()) or any(truncations.values()):
                 break
                 
     except KeyboardInterrupt:

@@ -12,8 +12,9 @@ uav-iot-dc-env/
 │   ├── physics.py      # Physics engine
 │   └── logger.py       # Logging system
 ├── simulation/         # Simulation environment
-│   ├── environment.py  # Gym environment
-│   └── entities.py     # Entity classes
+│   ├── pettingzoo_env.py # PettingZoo ParallelEnv
+│   ├── controllers.py    # Rule-based controllers (UAV)
+│   └── entities.py       # Entity classes
 ├── visualization/      # Visualization
 │   ├── visualization.py # Runtime visualization
 │   └── visualizer.py   # Analysis and reporting
@@ -30,10 +31,13 @@ When the simulation is started with `python main.py`, the following happens sequ
     *   A new folder with the current date/time is created under `logs/` (e.g., `EXP_20260201_200542`).
     *   Simulation parameters are read from `confs/config.py` and `confs/env_config.py`, then saved as `config.json` in this folder.
     
-2.  **Environment Setup (`UAV_IoT_Env`)**:
-    *   `UAVAgent`: Created at the specified altitude (100m) and start position.
-    *   `IoTNode` (x5): Placed at random positions (within the 1000x1000m area).
-    *   `SmartAttacker`: Placed at a fixed position.
+2.  **Environment Setup (`UAV_IoT_PZ_Env`)**:
+    *   **Multi-Agent Structure**: The environment is initialized as a PettingZoo `ParallelEnv`.
+    *   **Agents**:
+        *   `uav_0`: Controlled via velocity commands (currently by `UAVRuleBasedController`).
+        *   `jammer_0`: Controlled via power commands.
+        *   `node_0`..`node_N`: Passive IoT nodes.
+    *   `UAVRuleBasedController`: A controller is instantiated to manage the UAV's waypoint navigation logic.
     
 3.  **Visualization (`Visualization`)**:
     *   A Matplotlib window opens, and interactive mode (`plt.ion()`) is enabled.
@@ -42,8 +46,10 @@ When the simulation is started with `python main.py`, the following happens sequ
 The simulation runs for a specified number of steps (Default: 100). In each step (`env.step(action)`), the following operations are performed:
 
 ### A. Action Selection
-*   Currently, a random **Jamming Power** (0 - 1 Watt) is selected (Future: to be selected by an RL agent).
-*   The attacker's power is updated to this value.
+*   **UAV (`uav_0`)**: The `UAVRuleBasedController` calculates the necessary velocity vector (`vx`, `vy`) to reach the next waypoint.
+*   **Jammer (`jammer_0`)**: A random jamming power (or RL-based action) is selected.
+*   **Nodes**: Passive (No-Op).
+*   All actions are passed to `env.step(actions)` dictionary.
 
 ### B. Physical Calculations (`core/physics.py`)
 1.  **UAV Movement**:

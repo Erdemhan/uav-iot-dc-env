@@ -27,9 +27,9 @@ Simülasyon altyapısı, Nesne Yönelimli Programlama (OOP) prensipleri çerçev
     *   *Miras Yapısı:* `BaseEntity` -> `MobileEntity` / `TransceiverEntity` -> `UAVAgent` / `IoTNode` şeklinde hiyerarşik bir yapı kurgulanmıştır.
 
 ### 2.2. Simülasyon ve Ortam
-
-*   **`simulation/environment.py` (OpenAI Gym Ortamı):** `UAV_IoT_Env` sınıfı, simülasyonun durum uzayı (state space), aksiyon uzayı (action space) ve ödül mekanizmasını (reward function) tanımlar. Zaman adımlı (time-stepped) bir akış içerisinde fizik motorunu ve varlıkları koordine eder.
-*   **`main.py` (Yürütücü):** Simülasyonun başlatılması, döngünün yönetimi ve kaynakların (logger, visualizer) serbest bırakılmasından sorumludur. `confs/config.py` içerisindeki `SIMULATION_DELAY` parametresi ile simülasyon akış hızı kontrol edilebilir.
+*   **`simulation/pettingzoo_env.py` (PettingZoo Ortamı):** `UAV_IoT_PZ_Env` sınıfı, simülasyonun çoklu ajan (multi-agent) yapısını destekleyen `pettingzoo.utils.ParallelEnv` tabanlı ortamdır. İHA, Saldırgan ve her bir IoT düğümü ayrı birer ajan olarak modellenmiştir.
+*   **`simulation/controllers.py` (Kural Tabanlı Kontrolcüler):** İHA gibi belirli kurallara (örn. navigasyon) dayalı hareket eden ajanların davranış mantığını kapsüller.
+*   **`main.py` (Yürütücü):** Simülasyon döngüsünü PettingZoo API'sine uygun şekilde (sözlük yapılı aksiyon/gözlem) yönetir. `confs/config.py` içerisindeki `SIMULATION_DELAY` parametresi ile simülasyon akış hızı kontrol edilebilir.
 
 ### 2.3. Veri Yönetimi ve Analiz
 
@@ -37,7 +37,17 @@ Simülasyon altyapısı, Nesne Yönelimli Programlama (OOP) prensipleri çerçev
 
 *   **`visualization/visualizer.py` (Görsel Analiz):** Simülasyon sonrası elde edilen verileri işleyerek akademik kalitede (SCIE standartlarında) grafikler ve yörünge analizleri üretir.
 
-### 2.4. Mevcut Simülasyon Senaryosu (v1.0.0)
+### 2.5. Kullanılan Altyapı ve Teknolojiler
+
+Projenin geliştirilmesinde, akademik standartlara uygunluk ve yüksek performans gereksinimleri gözetilerek aşağıdaki açık kaynaklı kütüphaneler kullanılmıştır:
+
+*   **PettingZoo (Python):** Çoklu ajan (Multi-Agent) takviyeli öğrenme ortamları için endüstri standardı olan bu kütüphane, projemizin temel yapı taşıdır. `ParallelEnv` API'si kullanılarak, İHA, Jammer ve IoT düğümlerinin eş zamanlı olarak etkileşime girdiği, ölçeklenebilir ve oyun teorik analizlere uygun bir simülasyon ortamı oluşturulmuştur.
+*   **OpenAI Gymnasium:** PettingZoo'nun üzerine inşa edildiği temel API yapısıdır. Ajanların durum-aksiyon uzaylarının (Box, Discrete) tanımlanmasında standartları belirler.
+*   **NumPy:** Yüksek performanslı vektörel matematik işlemleri için kullanılmıştır. Fizik motorundaki (`physics.py`) sinyal gücü, SINR ve enerji hesaplamaları, döngüler yerine NumPy vektör operasyonları ile optimize edilerek simülasyon hızı artırılmıştır.
+*   **Matplotlib:** Simülasyon verilerinin görselleştirilmesi ve analiz grafiklerinin (`trajectory.png`, `metrics_analysis.png`) oluşturulması için kullanılmıştır.
+*   **Pandas:** Simülasyon loglarının (`history.csv`) işlenmesi, filtrelenmesi ve zaman serisi analizlerinin yapılması amacıyla veri manipülasyonu için tercih edilmiştir.
+
+### 2.6. Mevcut Simülasyon Senaryosu (v1.0.0)
 
 Bu sürümde kullanılan senaryo, temel sistem dinamiklerini doğrulamak amacıyla oluşturulmuş "Baseline" (Taban) senaryosudur.
 
@@ -147,3 +157,10 @@ Tez çalışmasının simülasyon gereksinimlerini karşılayan, doğrulanmış 
 **Yapılan Değişiklikler:**
 1.  **Dizin Yapısı Düzenlemesi:** Konfigürasyon dosyaları (`config.py`, `env_config.py`) `core/` klasöründen yeni oluşturulan `confs/` klasörüne taşındı.
 2.  **Modülarite:** Konfigürasyon ve Çekirdek mantığı birbirinden tamamen izole edildi. Tüm modüller (`simulation`, `visualization`, `core`) yeni yapıya uygun olarak güncellendi.
+
+### [06.02.2026 15:55] - Multi-Agent Mimari Göçü (v1.3.0)
+**Yapılan Değişiklikler:**
+1.  **PettingZoo Geçişi:** OpenAI Gymnasium (`gym.Env`) yapısından PettingZoo (`ParallelEnv`) yapısına geçildi. Bu sayede simülasyon, tek ajanlı yapıdan çok ajanlı (Multi-Agent) yapıya evrildi.
+2.  **Ölçeklenebilir Ajan Tanımı:** İHA (`uav_0`), Jammer (`jammer_0`) ve IoT Düğümleri (`node_0`,`node_1`,...) artık sistemde birer "ajan" olarak tanımlanmıştır.
+3.  **Kural Tabanlı Kontrolcü:** İHA'nın navigasyon mantığı, çevre kodundan (`env.step`) çıkarılarak harici bir kontrolcü sınıfına (`UAVRuleBasedController`) taşındı. Bu, İHA'nın ileride farklı politika algoritmalarıyla (RL vb.) değiştirilebilmesine olanak tanımaktadır.
+4.  **Ağ ve Oyun Teorisi Altyapısı:** Yeni mimari, oyun teorik yaklaşımların (örn. Jammer ve İHA arasındaki Stackelberg oyunları) uygulanabilmesi için gerekli olan eş zamanlı aksiyon (simultaneous action) altyapısını sağlamaktadır.
