@@ -101,7 +101,7 @@ This command finds the latest experiment folder and generates the following grap
 The following graphs simplify example outputs of a scenario under attack.
 
 #### A. Trajectory and Attack Analysis (`trajectory.png`)
-![Trajectory Plot](logs/EXP_20260202_025051/trajectory.png)
+![Trajectory Plot](logs/EXP_20260206_163802/trajectory.png)
 
 *   **Blue Line**: The path followed by the UAV (Visiting nodes).
 *   **Red "X"**: Position of the fixed attacker (Jammer).
@@ -111,7 +111,7 @@ The following graphs simplify example outputs of a scenario under attack.
     *   *Comment:* The concentration of red dots as the UAV approaches the attacker (top right corner) confirms that the Jammer effect increases with proximity.
 
 #### B. Metrics Analysis (`metrics_analysis.png`)
-![Metrics Analysis](logs/EXP_20260202_025051/metrics_analysis.png)
+![Metrics Analysis](logs/EXP_20260206_163802/metrics_analysis.png)
 
 This graph consists of three panels:
 
@@ -129,7 +129,7 @@ This graph consists of three panels:
     *   *Comment:* Increases cumulatively over time. Changes in slope indicate speed changes (Maneuver).
 
 #### C. Communication Statistics (`advanced_metrics.png`)
-![Advanced Metrics](logs/EXP_20260206_160812/advanced_metrics.png)
+![Advanced Metrics](logs/EXP_20260206_163802/advanced_metrics.png)
 
 1.  **Total Successful Duration:** How long each node maintained instances of valid connection (SINR > Threshold).
 2.  **Max Continuous Streak:** The longest uninterrupted specific connection interval for each node.
