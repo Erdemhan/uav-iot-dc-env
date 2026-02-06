@@ -247,11 +247,123 @@ class SimulationVisualizer:
         print(f"Metrics analysis saved: {save_path}")
         plt.close()
 
+    def plot_advanced_metrics(self):
+        """Draws per-node communication statistics (Success Duration, Max Streak)."""
+        # Find relevant columns
+        total_time_cols = sorted([c for c in self.df.columns if "node_" in c and "_total_time" in c])
+        max_cont_cols = sorted([c for c in self.df.columns if "node_" in c and "_max_continuous_time" in c])
+        
+        if not total_time_cols:
+            print("Advanced metrics (total_time/max_continuous_time) not found in logs.")
+            return
+
+        # Get final values (last step)
+        final_total = self.df.iloc[-1][total_time_cols].values
+        final_max = self.df.iloc[-1][max_cont_cols].values
+        
+        num_nodes = len(total_time_cols)
+        node_indices = np.arange(num_nodes)
+        
+        # Plot
+        fig, axes = plt.subplots(2, 1, figsize=(10, 10))
+        
+        # 1. Total Successful Duration
+        ax1 = axes[0]
+        ax1.bar(node_indices, final_total, color='skyblue', edgecolor='black')
+        ax1.set_title("Total Successful Communication Duration per Node", fontsize=14)
+        ax1.set_ylabel("Duration (seconds)", fontsize=12)
+        ax1.set_xticks(node_indices)
+        ax1.set_xticklabels([f"Node {i}" for i in range(num_nodes)])
+        ax1.grid(axis='y', linestyle='--', alpha=0.7)
+        
+        # Add values on top
+        for i, v in enumerate(final_total):
+            ax1.text(i, v + 0.1, f"{v:.1f}s", ha='center', va='bottom')
+            
+        # Global Avg Annotation
+        avg_total = np.mean(final_total)
+        ax1.axhline(avg_total, color='red', linestyle='--', linewidth=1.5, label=f"Avg: {avg_total:.2f}s")
+        ax1.legend()
+
+        # 2. Max Continuous Duration
+        ax2 = axes[1]
+        ax2.bar(node_indices, final_max, color='salmon', edgecolor='black')
+        ax2.set_title("Max Continuous Connection Streak per Node", fontsize=14)
+        ax2.set_ylabel("Duration (seconds)", fontsize=12)
+        ax2.set_xticks(node_indices)
+        ax2.set_xticklabels([f"Node {i}" for i in range(num_nodes)])
+        ax2.grid(axis='y', linestyle='--', alpha=0.7)
+        
+        for i, v in enumerate(final_max):
+            ax2.text(i, v + 0.1, f"{v:.1f}s", ha='center', va='bottom')
+
+        plt.tight_layout()
+        save_path = os.path.join(self.exp_dir, "advanced_metrics.png")
+        plt.savefig(save_path, dpi=300)
+        print(f"Advanced metrics saved: {save_path}")
+        plt.close()
+
+    def show_dashboard(self):
+        """Displays all generated plots in a single window."""
+        img_traj_path = os.path.join(self.exp_dir, "trajectory.png")
+        img_metrics_path = os.path.join(self.exp_dir, "metrics_analysis.png")
+        img_adv_path = os.path.join(self.exp_dir, "advanced_metrics.png")
+        
+        images = []
+        titles = []
+        
+        if os.path.exists(img_traj_path):
+            images.append(plt.imread(img_traj_path))
+            titles.append("Trajectory Analysis")
+        if os.path.exists(img_metrics_path):
+            images.append(plt.imread(img_metrics_path))
+            titles.append("Metrics Analysis")
+        if os.path.exists(img_adv_path):
+            images.append(plt.imread(img_adv_path))
+            titles.append("Advanced Communication Stats")
+            
+        if not images:
+            print("No images to display in dashboard.")
+            return
+            
+        # Create a grid
+        n_imgs = len(images)
+        cols = 3 if n_imgs >= 3 else n_imgs
+        # Adjust layout dynamically? For now just 1 row
+        
+        fig, axes = plt.subplots(1, n_imgs, figsize=(6 * n_imgs, 6))
+        
+        if n_imgs == 1:
+            axes = [axes]
+            
+        for ax, img, title in zip(axes, images, titles):
+            ax.imshow(img)
+            ax.axis('off')
+            ax.set_title(title, fontsize=12)
+            
+        plt.tight_layout()
+        plt.suptitle(f"Simulation Dashboard: {os.path.basename(self.exp_dir)}", fontsize=16)
+        
+        # Bring window to front (OS dependent, experimental)
+        try:
+            mng = plt.get_current_fig_manager()
+            # TkAgg backend
+            if hasattr(mng, 'window'):
+               mng.window.attributes('-topmost', 1)
+               mng.window.attributes('-topmost', 0)
+        except:
+            pass
+            
+        print("Opening Dashboard Window...")
+        plt.ioff() # Disable interactive mode to ensure blocking
+        plt.show(block=True)
+
     def generate_report(self):
         """Triggers report generation."""
         print(f"--- Visualization Report: {self.exp_dir} ---")
         self.plot_trajectory()
         self.plot_metrics()
+        self.plot_advanced_metrics()
         print("Visualization Completed.")
 
 if __name__ == "__main__":

@@ -40,8 +40,13 @@ class UAVRuleBasedController:
         direction_vector = target_pos - current_pos
         dist_to_target = np.linalg.norm(direction_vector[:2]) # XY distance
         
-        # Check if reached (within 10m)
-        if dist_to_target < 10.0:
+        # Dynamic threshold to prevent overshooting
+        # If step is 25m (5m/s * 5s), threshold must be > 12.5m or ideally > 25m to guarantee capture.
+        step_distance = EnvConfig.UAV_SPEED * self.dt
+        arrival_threshold = max(10.0, step_distance * 1.1) 
+        
+        # Check if reached
+        if dist_to_target < arrival_threshold:
             # Switch to next node
             self.target_node_index = (self.target_node_index + 1) % len(nodes)
             # Recalculate for new target

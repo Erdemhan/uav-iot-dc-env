@@ -170,6 +170,8 @@ class UAV_IoT_PZ_Env(ParallelEnv):
             step_log[f"node_{i}_aoi"] = node.aoi
             step_log[f"node_{i}_energy"] = node.total_energy_consumed
             step_log[f"node_{i}_status"] = status
+            step_log[f"node_{i}_total_time"] = node.total_connected_duration
+            step_log[f"node_{i}_max_continuous_time"] = node.max_continuous_duration
 
         # 3. Rewards & Termination
         # Reward: Global reward for Jammer is maximize jammed nodes.

@@ -31,16 +31,20 @@ class Visualization:
             # Base color from palette
             node_base_color = self.node_colors[node.id % len(self.node_colors)]
             
+            # 1. Draw Node Body (Always distinct color)
+            self.ax.scatter(node.x, node.y, color=node_base_color, marker='s', s=80, edgecolors='black', label='IoT Node' if node.id == 0 else "", zorder=3)
+            
+            # 2. Draw Label
+            self.ax.text(node.x + 15, node.y + 15, f"N{node.id}", fontsize=9, fontweight='bold', color='black', zorder=4)
+
+            # 3. Status Overlays
             if node.connection_status == 0: # Connected
-                color = node_base_color
-                # Draw Line to UAV
-                self.ax.plot([env.uav.x, node.x], [env.uav.y, node.y], color=color, linestyle='--', linewidth=1.5, alpha=0.8)
-            elif node.connection_status == 1: # Out of Range
-                color = 'gray'
-            else: # Jammed (2)
-                color = 'red'
+                # Line to UAV
+                self.ax.plot([env.uav.x, node.x], [env.uav.y, node.y], color=node_base_color, linestyle='--', linewidth=1.5, alpha=0.8)
                 
-            self.ax.scatter(node.x, node.y, color=color, marker='o', s=60, edgecolors='black', label='IoT Node' if node.id == 0 else "")
+            elif node.connection_status == 2: # Jammed
+                # Red X on top
+                self.ax.scatter(node.x, node.y, color='red', marker='x', s=100, linewidth=2, zorder=5)
         
         # Attacker
         self.ax.scatter(env.attacker.x, env.attacker.y, c='red', marker='x', s=80, label='Attacker')
