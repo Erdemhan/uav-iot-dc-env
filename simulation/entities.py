@@ -60,16 +60,27 @@ class IoTNode(TransceiverEntity):
         self.total_energy_consumed = 0.0
         # Status: 0=Connected, 1=Out of Range, 2=Jammed
         self.connection_status = 0
+        
+        # Advanced Metrics
+        self.current_connected_duration = 0.0
+        self.total_connected_duration = 0.0
+        self.max_continuous_duration = 0.0
 
     def update_aoi(self, dt: float, success: bool):
         """
-        If communication is successful, AoI is reset (or becomes transmission time),
-        otherwise it increases by the elapsed time.
+        Updates Age of Information and Connection Stats.
         """
         if success:
             self.aoi = 0.0 # Fresh information received
+            
+            # Stats
+            self.current_connected_duration += dt
+            self.total_connected_duration += dt
+            if self.current_connected_duration > self.max_continuous_duration:
+                self.max_continuous_duration = self.current_connected_duration
         else:
             self.aoi += dt
+            self.current_connected_duration = 0.0 # Reset streak
 
     def consume_energy(self, rate: float):
         """

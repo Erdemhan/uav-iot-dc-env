@@ -115,6 +115,19 @@ Bu grafik, sistemin zamansal (temporal) performansını üç alt panelde inceler
     *   İHA'nın toplam kümülatif enerji tüketimini gösterir.
     *   *Yorum:* Eğimin (slope) artması, İHA'nın daha fazla güç tükettiği manevraları veya yüksek hızları işaret eder.
 
+### 4.3. İletişim İstatistikleri (`advanced_metrics.png`)
+Bu grafik seti, her bir IoT düğümünün operasyonel performansını detaylandırır.
+
+1.  **Toplam Başarılı İletişim Süresi (Üst Panel):**
+    *   Her bir düğümün (Node 0, Node 1...) simülasyon boyunca toplam kaç saniye boyunca İHA ile başarılı bağlantı kurduğunu gösteren sütun grafiğidir.
+    *   *Kırmızı Kesik Çizgi:* Tüm düğümlerin ortalama başarılı iletişim süresini gösterir.
+2.  **Maksimum Kesintisiz İletişim (Alt Panel):**
+    *   Her bir düğümün bağlantı kopmadan (AoI resetlenmeden) sürdürebildiği en uzun iletişim süresini (Streak) gösterir.
+    *   Bu metrik, sistemin kararlılığını ve jamming'in iletişim sürekliliği üzerindeki etkisini ölçmek için kritiktir.
+
+### 4.4. Dashboard Analizi
+Simülasyon tamamlandığında, yukarıdaki tüm analizler (`Trajectory`, `Metrics`, `Advanced Stats`) tek bir **"Dashboard"** penceresinde operatöre sunulur. Bu sayede simülasyon sonuçlarına bütüncül (holistic) bir bakış açısı sağlanır.
+
 ---
 
 ## 5. GELİŞİM GÜNLÜĞÜ (CHANGE LOG)
@@ -164,3 +177,9 @@ Tez çalışmasının simülasyon gereksinimlerini karşılayan, doğrulanmış 
 2.  **Ölçeklenebilir Ajan Tanımı:** İHA (`uav_0`), Jammer (`jammer_0`) ve IoT Düğümleri (`node_0`,`node_1`,...) artık sistemde birer "ajan" olarak tanımlanmıştır.
 3.  **Kural Tabanlı Kontrolcü:** İHA'nın navigasyon mantığı, çevre kodundan (`env.step`) çıkarılarak harici bir kontrolcü sınıfına (`UAVRuleBasedController`) taşındı. Bu, İHA'nın ileride farklı politika algoritmalarıyla (RL vb.) değiştirilebilmesine olanak tanımaktadır.
 4.  **Ağ ve Oyun Teorisi Altyapısı:** Yeni mimari, oyun teorik yaklaşımların (örn. Jammer ve İHA arasındaki Stackelberg oyunları) uygulanabilmesi için gerekli olan eş zamanlı aksiyon (simultaneous action) altyapısını sağlamaktadır.
+
+### [06.02.2026 16:15] - Gelişmiş Metrikler ve Dashboard (v1.4.0)
+**Yapılan Değişiklikler:**
+1.  **Yeni Haberleşme Metrikleri:** Her düğüm için "Toplam Başarılı İletişim Süresi" ve "Maksimum Kesintisiz İletişim Süresi" (Max Continuous Streak) metrikleri sisteme eklendi.
+2.  **Dashboard Arayüzü:** Simülasyon sonunda üretilen tüm grafikleri (Yörünge, Zaman Serileri, İstatistikler) tek bir pencerede birleştiren `show_dashboard()` özelliği `visualizer.py` modülüne entegre edildi.
+3.  **Varlık Güncellemesi:** `IoTNode` sınıfı, kendi iletişim tarihçesini (History) tutacak şekilde akıllandırıldı.

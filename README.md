@@ -127,3 +127,12 @@ This graph consists of three panels:
 3.  **Bottom Panel (Energy):**
     *   **Orange Line:** Total energy consumption of the UAV.
     *   *Comment:* Increases cumulatively over time. Changes in slope indicate speed changes (Maneuver).
+
+#### C. Communication Statistics (`advanced_metrics.png`)
+![Advanced Metrics](logs/EXP_20260206_160812/advanced_metrics.png)
+
+1.  **Total Successful Duration:** How long each node maintained instances of valid connection (SINR > Threshold).
+2.  **Max Continuous Streak:** The longest uninterrupted specific connection interval for each node.
+
+#### D. Simulation Dashboard
+A unified window displaying all the above graphs side-by-side matches for a holistic view of the mission status.

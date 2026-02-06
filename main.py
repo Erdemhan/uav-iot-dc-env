@@ -79,6 +79,8 @@ def main():
         try:
             analysis_viz = SimulationVisualizer(exp_dir=logger.log_dir)
             analysis_viz.generate_report()
+            # Show Dashboard
+            analysis_viz.show_dashboard()
         except Exception as e:
             print(f"Automated Analysis Error: {e}")
 
