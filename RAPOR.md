@@ -54,7 +54,8 @@ Bu sürümde kullanılan senaryo, temel sistem dinamiklerini doğrulamak amacıy
 *   **Operasyonel Alan:** 1000m x 1000m boyutlarında 2 boyutlu düzlem.
 *   **İHA Davranışı (Blue Team):**
     *   **Waypoint Navigasyonu:** İHA, simülasyon alanındaki IoT düğümlerini sırasıyla (Node 0 -> Node 1 -> ...) ziyaret eder.
-    *   Bir düğüme ulaştığında (mesafe < 10m), bir sonraki düğümü hedef olarak belirler. Bu sayede tüm sensörlerden yakından veri toplamayı hedefler.
+    *   **Askıda Kalma (Hover):** Bir düğüme ulaştığında (mesafe < 27.5m), sensörlerden güvenli veri toplamak amacıyla 5 saniye (1 simülasyon adımı) boyunca o konumda **sabit** durur (Hovering).
+    *   Bu bekleme süresinden sonra bir sonraki düğümü hedef olarak belirler.
 *   **Saldırgan Davranışı (Red Team):**
     *   Alan merkezine yakın sabit bir konumda bulunmaktadır.
     *   **Stokastik Jamming:** Her zaman adımında 0 ile 2 Watt arasında rastgele bir güç seviyesi belirleyerek iletişim kanalını karıştırmaktadır.
@@ -77,7 +78,7 @@ $$ SINR = \frac{P_{rx}}{N_0 + I_{jam}} $$
 Burada $P_{rx}$ alınan güç, $N_0$ termal gürültü ve $I_{jam}$ saldırganın oluşturduğu girişim gücüdür. Veri hızı ise Shannon-Hartley teoremi ile hesaplanmaktadır (Denklem 245, 248).
 
 ### 3.2. Enerji Modelleri
-*   **İHA:** Döner kanatlı İHA enerji tüketimi, ileri uçuş hızı ($v$) ve askıda kalma (hover) durumlarını içeren kapsamlı bir aerodinamik model ile hesaplanmaktadır (Denklem 263, 272).
+*   **İHA:** Döner kanatlı İHA enerji tüketimi, ileri uçuş hızı ($v$) ve askıda kalma (hover) durumlarını içeren kapsamlı bir aerodinamik model ile hesaplanmaktadır (Denklem 263, 272). Hover durumunda ($v=0$), indüklenen güç (induced power) arttığı için güç tüketimi ileri uçuşa göre daha yüksektir.
 *   **IoT Düğüm:** Veri toplama, şifreleme ve iletim süreçlerinin toplam enerji maliyeti modellenmiştir (Denklem 288).
 
 ---
@@ -183,3 +184,9 @@ Tez çalışmasının simülasyon gereksinimlerini karşılayan, doğrulanmış 
 1.  **Yeni Haberleşme Metrikleri:** Her düğüm için "Toplam Başarılı İletişim Süresi" ve "Maksimum Kesintisiz İletişim Süresi" (Max Continuous Streak) metrikleri sisteme eklendi.
 2.  **Dashboard Arayüzü:** Simülasyon sonunda üretilen tüm grafikleri (Yörünge, Zaman Serileri, İstatistikler) tek bir pencerede birleştiren `show_dashboard()` özelliği `visualizer.py` modülüne entegre edildi.
 3.  **Varlık Güncellemesi:** `IoTNode` sınıfı, kendi iletişim tarihçesini (History) tutacak şekilde akıllandırıldı.
+186: 
+187: ### [06.02.2026 17:00] - Davranışsal Gerçekçilik (v1.5.0)
+188: **Yapılan Değişiklikler:**
+189: 1.  **Hover (Askıda Kalma) Mantığı:** İHA'nın sadece üzerinden geçmek yerine, düğümlere vardığında verimli veri toplamak adına 5 saniye boyunca havada asılı kalması (Hover) sağlandı.
+190: 2.  **Dinamik Navigasyon:** Hedefe varış kriteri, simülasyon adım büyüklüğüne (Step Size) göre dinamik hale getirilerek "overshoot" (hedefi ıskalama) problemleri çözüldü.
+191: 3.  **Güç Tüketimi Görünürlüğü:** Analiz modülünde enerji grafiklerinin anlık güç değişimlerini (Hover vs Flight) yansıtması sağlandı (Kullanıcı isteği üzerine kümülatif gösterime geri dönüldü ancak altyapı bu detayı desteklemektedir).

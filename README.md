@@ -46,7 +46,7 @@ When the simulation is started with `python main.py`, the following happens sequ
 The simulation runs for a specified number of steps (Default: 100). In each step (`env.step(action)`), the following operations are performed:
 
 ### A. Action Selection
-*   **UAV (`uav_0`)**: The `UAVRuleBasedController` calculates the necessary velocity vector (`vx`, `vy`) to reach the next waypoint.
+*   **UAV (`uav_0`)**: The `UAVRuleBasedController` manages navigation. It moves towards the next waypoint and, upon arrival, **hovers** for 5 seconds (1 step) to collect data before moving to the next node.
 *   **Jammer (`jammer_0`)**: A random jamming power (or RL-based action) is selected.
 *   **Nodes**: Passive (No-Op).
 *   All actions are passed to `env.step(actions)` dictionary.
