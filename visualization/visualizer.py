@@ -234,6 +234,7 @@ class SimulationVisualizer:
         ax_aoi.grid(True, which="both", linestyle='--')
 
         # Subplot 3: UAV Energy Consumption
+        # Subplot 3: UAV Energy Consumption
         ax_eng = axes[2]
         ax_eng.plot(steps, self.df["uav_energy"], color="orange", linewidth=2, label="Total Energy")
         ax_eng.set_xlabel("Time Step", fontsize=12)
