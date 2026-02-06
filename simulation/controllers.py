@@ -16,12 +16,16 @@ class UAVRuleBasedController:
         self.target_node_index = 0
         self.area_size = EnvConfig.AREA_SIZE
         self.dt = EnvConfig.STEP_TIME
+        
+        # Hover state
+        self.hover_timer = 0.0
+        self.hover_duration = 5.0 # Seconds
+        self.is_hovering = False
 
     def get_action(self, observation=None) -> np.ndarray:
         """
-        Determines the velocity vector (vx, vy) for the UAV to reach the next waypoint.
-        Returns:
-            np.ndarray: [vx, vy]
+        Determines the velocity vector (vx, vy) for the UAV.
+        Implements moving to waypoint -> hovering -> moving to next.
         """
         uav = self.env.uav
         nodes = self.env.nodes
@@ -31,29 +35,39 @@ class UAVRuleBasedController:
 
         if not nodes:
             # Fallback if no nodes
-            target_pos = np.array([self.area_size/2, self.area_size/2, UAVConfig.H])
-        else:
-            target_node = nodes[self.target_node_index]
-            target_pos = np.array([target_node.x, target_node.y, uav.z])
-            
+            return np.zeros(2, dtype=np.float32)
+
+        # Logic
+        if self.is_hovering:
+            self.hover_timer += self.dt
+            if self.hover_timer >= self.hover_duration:
+                # Finished hovering, move to next node
+                self.is_hovering = False
+                self.hover_timer = 0.0
+                self.target_node_index = (self.target_node_index + 1) % len(nodes)
+            else:
+                # Stay hovering
+                return np.zeros(2, dtype=np.float32)
+
+        # Navigation Mode
+        target_node = nodes[self.target_node_index]
+        target_pos = np.array([target_node.x, target_node.y, uav.z])
         current_pos = np.array([uav.x, uav.y, uav.z])
+        
         direction_vector = target_pos - current_pos
         dist_to_target = np.linalg.norm(direction_vector[:2]) # XY distance
         
-        # Dynamic threshold to prevent overshooting
-        # If step is 25m (5m/s * 5s), threshold must be > 12.5m or ideally > 25m to guarantee capture.
+        # Dynamic threshold
         step_distance = EnvConfig.UAV_SPEED * self.dt
         arrival_threshold = max(10.0, step_distance * 1.1) 
         
         # Check if reached
         if dist_to_target < arrival_threshold:
-            # Switch to next node
-            self.target_node_index = (self.target_node_index + 1) % len(nodes)
-            # Recalculate for new target
-            target_node = nodes[self.target_node_index]
-            target_pos = np.array([target_node.x, target_node.y, uav.z])
-            direction_vector = target_pos - current_pos
-            dist_to_target = np.linalg.norm(direction_vector[:2])
+            # Reached target, start hovering
+            self.is_hovering = True
+            self.hover_timer = 0.0
+            # Stop immediately
+            return np.zeros(2, dtype=np.float32)
             
         speed = EnvConfig.UAV_SPEED
         
@@ -63,8 +77,9 @@ class UAVRuleBasedController:
         else:
             velocity_vector = np.zeros(3)
             
-        # We return only vx, vy as action
         return velocity_vector[:2].astype(np.float32)
 
     def reset(self):
         self.target_node_index = 0
+        self.hover_timer = 0.0
+        self.is_hovering = False
