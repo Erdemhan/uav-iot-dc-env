@@ -1,4 +1,7 @@
 
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.logger import SimulationLogger
 from simulation.pettingzoo_env import UAV_IoT_PZ_Env
 from simulation.controllers import UAVRuleBasedController

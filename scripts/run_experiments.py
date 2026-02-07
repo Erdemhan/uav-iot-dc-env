@@ -1,5 +1,7 @@
 
 import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import subprocess
 import shutil
 import glob
@@ -58,24 +60,24 @@ def main():
     # 1. Baseline (QJC)
     # Train
     print("--- Training Baseline (QJC) ---")
-    subprocess.call("python train_baseline.py", shell=True)
+    subprocess.call("python scripts/train_baseline.py", shell=True)
     # Evaluate (Main.py now loads the trained model)
     # Run HEADLESS (No Viz)
-    run_step("python main.py --no-viz", "Baseline Evaluation", "baseline")
+    run_step("python scripts/main.py --no-viz", "Baseline Evaluation", "baseline")
     
     # 2. PPO (Train + Eval)
     # Train
     print("--- Training PPO ---")
-    subprocess.call("python train.py", shell=True) 
+    subprocess.call("python scripts/train.py", shell=True) 
     # Evaluate (Produces log)
-    run_step("python evaluate.py --algo PPO --dir ./ray_results --no-viz", "PPO Evaluation", "ppo")
+    run_step("python scripts/evaluate.py --algo PPO --dir ./ray_results --no-viz", "PPO Evaluation", "ppo")
     
     # 3. DQN (Train + Eval)
     # Train
     print("--- Training DQN ---")
-    subprocess.call("python train_dqn.py", shell=True) 
+    subprocess.call("python scripts/train_dqn.py", shell=True) 
     # Evaluate (Produces log)
-    run_step("python evaluate.py --algo DQN --dir ./ray_results_dqn --no-viz", "DQN Evaluation", "dqn")
+    run_step("python scripts/evaluate.py --algo DQN --dir ./ray_results_dqn --no-viz", "DQN Evaluation", "dqn")
     
     print("\n" + "="*60)
     print("All Experiments Completed. Generating Comparison...")
