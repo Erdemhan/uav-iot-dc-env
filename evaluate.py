@@ -60,6 +60,17 @@ def main():
     parser.add_argument("--no-viz", action="store_true", help="Disable visualization")
     args = parser.parse_args()
 
+    # Reproducibility
+    from confs.model_config import GlobalConfig
+    import torch
+    import numpy as np
+    torch.manual_seed(GlobalConfig.RANDOM_SEED)
+    np.random.seed(GlobalConfig.RANDOM_SEED)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(GlobalConfig.RANDOM_SEED)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
     ray.init() 
     register_env("uav_iot_ppo_v1", env_creator_ppo)
     register_env("uav_iot_dqn_v1", env_creator_dqn)
@@ -93,7 +104,8 @@ def main():
     if not args.no_viz:
         viz = Visualization()
     
-    obs_dict, infos = env.reset()
+    # Reset with seed
+    obs_dict, infos = env.reset(seed=GlobalConfig.RANDOM_SEED)
     env.uav_controller = env.uav_controller # Ensure controller exists (set in reset)
     
     print("Starting Evaluation Episode...")
