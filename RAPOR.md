@@ -12,6 +12,23 @@ Bu proje, Doktora Tezi kapsamında İnsansız Hava Araçları (İHA) ve Nesneler
 
 Geliştirilen simülasyon ortamı, literatürdeki standartlara uygun olarak Python tabanlı, modüler, genişletilebilir ve bilimsel geçerliliği olan matematiksel modellere dayalı bir altyapıya sahiptir. OpenAI Gymnasium arayüzü benimsenerek, ileride Derin Pekiştirmeli Öğrenme (Deep Reinforcement Learning - DRL) algoritmalarının entegrasyonuna hazır hale getirilmiştir.
 
+---
+
+## 2. İLGİLİ ÇALIŞMALAR (LİTERATÜR ÖZETİ)
+
+İHA destekli iletişim ağlarında karıştırma (jamming) saldırılarına karşı güvenilirlik sağlama problemi üç ana eksende incelenmiştir:
+
+### 2.1. Oyun Teorisi Tabanlı Yaklaşımlar
+Liao et al. (2025), İHA konuşlandırmasını bir **Tıkanıklık Oyunu (Congestion Game)** ve taşıyıcı seçimini **Stackelberg Oyunu** olarak modellemiştir. Bu yöntemler matematiksel bir denge (Nash Equilibrium) garantisi sunsa da, oyuncuların tam rasyonel olduğunu varsayar ve dinamik tehditlere adaptasyon süreleri uzundur.
+
+### 2.2. Geleneksel Yöntemler
+Parçacık Sürü Optimizasyonu (PSO) ve Bulanık C-Means (FCM) gibi sezgisel algoritmalar genellikle statik ortam optimizasyonu için kullanılır. Düşman (adversarial) bir jammerın anlık strateji değiştirdiği senaryolarda yetersiz kalabilirler.
+
+### 2.3. Pekiştirmeli Öğrenme (RL) Yaklaşımları
+QJC (Q-Learning Based Jamming) gibi temel RL yöntemleri, düşük işlem maliyeti sunar ancak genellikle "kör" (blind) stratejilerdir; yani ortamı algılamadan sadece ödül geçmişine bakarlar.
+
+**Önerilen Yöntem:** Çalışmamızda kullanılan PPO ve DQN algoritmaları, jammerın sinyal gücünü (RSS) ve spektrum doluluğunu algıladığı "Smart Jammer" modeline dayanır. Bu, kör öğrenme yerine **durum-farkında (state-aware)** ve veriye dayalı (data-driven) bir savunma/saldırı mekanizması sağlar.
+
 ## 2. SİSTEM MİMARİSİ
 
 Simülasyon altyapısı, Nesne Yönelimli Programlama (OOP) prensipleri çerçevesinde, her biri spesifik bir görevi üstlenen gevşek bağlı (loose-coupled) modüllerden oluşmaktadır.
@@ -66,20 +83,35 @@ Bu sürümde kullanılan senaryo, "Adil ve Kıyaslanabilir Akıllı Tehdit" (Fai
 
 ---
 
-## 3. MATEMATİKSEL MODELLER
+## 3. MATERYAL VE YÖNTEMLER
 
-Sistemin gerçekçiliği, tez önerisinde belirtilen aşağıdaki modellerin entegrasyonu ile sağlanmıştır:
+Bu bölüm, sistemin fiziksel ve matematiksel altyapısını detaylandırmaktadır.
 
-### 3.1. Haberleşme Kanalı (Air-to-Ground)
-Hava-Yer kanalı için serbest uzay yol kaybı modeli temel alınmış ve aşağıdaki SINR (Sinyal-Gürültü ve Girişim Oranı) denklemi kullanılmıştır:
+### 3.1. Sistem Modeli
+Senaryo, $1000 \times 1000$ metrelik bir alana, $N=5$ adet IoT düğümü, 1 adet İHA ve 1 adet Akıllı Jammer içermektedir.
 
-$$ SINR = \frac{P_{rx}}{N_0 + I_{jam}} $$
+#### 3.1.1. Haberleşme Kanalı (Air-to-Ground)
+İHA ile düğümler arasındaki iletişim kalitesi, anlık **SINR (Signal-to-Interference-plus-Noise Ratio)** değeri ile belirlenir:
 
-Burada $P_{rx}$ alınan güç, $N_0$ termal gürültü ve $I_{jam}$ saldırganın oluşturduğu girişim gücüdür. Veri hızı ise Shannon-Hartley teoremi ile hesaplanmaktadır (Denklem 245, 248).
+$$ \text{SINR}_i = \frac{P_{rx,i}}{N_0 B + I_{jam}} $$
 
-### 3.2. Enerji Modelleri
-*   **İHA:** Döner kanatlı İHA enerji tüketimi, ileri uçuş hızı ($v$) ve askıda kalma (hover) durumlarını içeren kapsamlı bir aerodinamik model ile hesaplanmaktadır (Denklem 263, 272). Hover durumunda ($v=0$), indüklenen güç (induced power) arttığı için güç tüketimi ileri uçuşa göre daha yüksektir.
-*   **IoT Düğüm:** Veri toplama, şifreleme ve iletim süreçlerinin toplam enerji maliyeti modellenmiştir (Denklem 288).
+Burada:
+*   $P_{rx,i}$: Friis denklemi ile hesaplanan alınan sinyal gücü ($P_{tx} G ( \frac{\lambda}{4 \pi d} )^\alpha$).
+*   $N_0 B$: Termal gürültü gücü.
+*   $I_{jam}$: Jammer'dan kaynaklanan girişim ($P_{jam} \times h_{jam}$).
+
+#### 3.1.2. Enerji Tüketim Modelleri
+*   **İHA Uçuş Enerjisi:** Aerodinamik prensiplere dayalı güç tüketimi $P_{UAV}(v)$:
+    $$ P_{UAV}(v) = P_0 \left( 1 + \frac{3v^2}{U_{tip}^2} \right) + P_i \left( \sqrt{1 + \frac{v^4}{4v_0^4}} - \frac{v^2}{2v_0^2} \right)^{1/2} + \frac{1}{2} d_0 \rho s A v^3 $$
+*   **IoT Enerjisi:** Veri toplama, şifreleme ve iletim ($E_{tx} = P_{tx} \times L/R$) maliyetlerinin toplamıdır.
+
+### 3.2. Problem Formülasyonu (MDP)
+Problem, $\langle \mathcal{S}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma \rangle$ ile tanımlanan bir Markov Karar Sürecidir.
+
+*   **Durum Uzayı ($\mathcal{S}$):** Uzaklık (RSS Proxy), Kanal Durumu, Düğüm Bağlantı Haritası.
+*   **Aksiyon Uzayı ($\mathcal{A}$):** Kanal Seçimi ($C_k$) ve Güç Seviyesi ($P_m$).
+*   **Ödül Fonksiyonu ($\mathcal{R}$):**
+    $$ r_t = (w_{jam} \cdot N_{jammed}) + (w_{track} \cdot \mathbb{I}_{track}) - (w_{cost} \cdot E_{consumed}) $$
 
 ---
 

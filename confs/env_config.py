@@ -26,9 +26,9 @@ class EnvConfig:
     UAV_START_Y = 500.0 # Center
     UAV_START_Z = 100.0 # H (This duplicates UAVConfig.H slightly but is init pos)
     
-    UAV_RADIUS = 225.0 # Circular path radius
-    UAV_SPEED = 5.0 # m/s
-    UAV_START_ANGLE = 15.0 # degrees or radians (Env uses radians inside usually, but lets say init val)
+    UAV_START_Z = 100.0 # H (This duplicates UAVConfig.H slightly but is init pos)
+    
+    UAV_SPEED = 5.0 # m/s (Increased for larger area)
     
     # Note: UAVConfig.H is physical operating altitude. UAV_START_Z should match or be set, 
     # but strictly speaking H is a system parameter. We can reference UAVConfig.H in env.

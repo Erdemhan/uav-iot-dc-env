@@ -13,7 +13,8 @@ class UAVRuleBasedController:
     """
     def __init__(self, env):
         self.env = env # Store reference to environment
-        self.target_node_index = 0
+        self.target_node = None # Current target node object
+        self.waypoint_queue = [] # List of nodes to visit in order
         self.area_size = EnvConfig.AREA_SIZE
         self.dt = EnvConfig.STEP_TIME
         
@@ -38,7 +39,10 @@ class UAVRuleBasedController:
         Called every step.
         """
         uav = self.env.uav
-        target_node = self.env.nodes[self.target_node_index]
+        target_node = self.target_node
+        
+        if target_node is None:
+            return
         
         # Check if current target node is Jammed (Status 2)
         # We access the entity state directly.
@@ -79,14 +83,31 @@ class UAVRuleBasedController:
                 # Finished hovering, move to next node
                 self.is_hovering = False
                 self.hover_timer = 0.0
-                self.target_node_index = (self.target_node_index + 1) % len(nodes)
+                
+                # Get next target from queue
+                if self.waypoint_queue:
+                    self.target_node = self.waypoint_queue.pop(0)
+                else:
+                     # If queue empty, recalculate path or restart?
+                     # Let's restart the tour from current position to cover dynamic changes if any, 
+                     # or just loop. For now, simple loop: recalculate full path from current pos.
+                     self._calculate_nn_path()
+                     if self.waypoint_queue:
+                         self.target_node = self.waypoint_queue.pop(0)
             else:
                 # Stay hovering
                 return np.zeros(2, dtype=np.float32)
 
         # Navigation Mode
-        target_node = nodes[self.target_node_index]
-        target_pos = np.array([target_node.x, target_node.y, uav.z])
+        if self.target_node is None:
+             if self.env.nodes:
+                 self._calculate_nn_path()
+                 if self.waypoint_queue:
+                     self.target_node = self.waypoint_queue.pop(0)
+             else:
+                 return np.zeros(2, dtype=np.float32)
+
+        target_pos = np.array([self.target_node.x, self.target_node.y, uav.z])
         current_pos = np.array([uav.x, uav.y, uav.z])
         
         direction_vector = target_pos - current_pos
@@ -115,6 +136,48 @@ class UAVRuleBasedController:
         return velocity_vector[:2].astype(np.float32)
 
     def reset(self):
-        self.target_node_index = 0
         self.hover_timer = 0.0
         self.is_hovering = False
+        self.waypoint_queue = []
+        self.target_node = None
+        # Path will be calculated on first get_action call or explicitly here if env is ready
+        if self.env.nodes and self.env.uav:
+            self._calculate_nn_path()
+            if self.waypoint_queue:
+                self.target_node = self.waypoint_queue.pop(0)
+
+    def _calculate_nn_path(self):
+        """
+        Calculates Traveling Salesman Path using Nearest Neighbor Heuristic.
+        Starting from current UAV position.
+        """
+        if not self.env.nodes or not self.env.uav:
+            return
+
+        # Clone list to not modify original
+        unvisited = self.env.nodes[:]
+        current_pos = np.array([self.env.uav.x, self.env.uav.y])
+        
+        path = []
+        
+        while unvisited:
+            # Find closest node to current_pos
+            closest_node = None
+            min_dist = float('inf')
+            closest_idx = -1
+            
+            for i, node in enumerate(unvisited):
+                dist = np.linalg.norm(np.array([node.x, node.y]) - current_pos)
+                if dist < min_dist:
+                    min_dist = dist
+                    closest_node = node
+                    closest_idx = i
+            
+            # Add to path
+            path.append(closest_node)
+            
+            # Update current_pos and remove from unvisited
+            current_pos = np.array([closest_node.x, closest_node.y])
+            unvisited.pop(closest_idx)
+            
+        self.waypoint_queue = path
