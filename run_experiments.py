@@ -77,9 +77,12 @@ def main():
     # Evaluate (Produces log)
     run_step("python evaluate.py --algo DQN --dir ./ray_results_dqn --no-viz", "DQN Evaluation", "dqn")
     
-    print("All Experiments Completed.")
-    print("Results are in 'experiments/' folder.")
-    print("Run comparison script next.")
+    print("\n" + "="*60)
+    print("All Experiments Completed. Generating Comparison...")
+    print("="*60 + "\n")
+    
+    # Automatically run comparison visualization
+    subprocess.call("python visualization/compare.py", shell=True)
 
 if __name__ == "__main__":
     main()

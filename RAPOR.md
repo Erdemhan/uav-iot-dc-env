@@ -83,7 +83,88 @@ Burada $P_{rx}$ alınan güç, $N_0$ termal gürültü ve $I_{jam}$ saldırganı
 
 ---
 
-## 4. ANALİZ VE GÖRSELLEŞTİRME YÖNTEMLERİ
+## 4. ÖDÜL (REWARD) MEKANİZMALARININ DETAYLI AÇIKLAMASI
+
+Jammer'ın eğitimi, üç farklı algoritma için (Baseline, PPO, DQN) dikkatli tasarlanmış ödül fonksiyonları ile yönlendirilmektedir. Bu ödül yapıları, hem jamming etkinliğini maksimize ederken, hem de enerji verimliliğini koruyan stratejilerin öğrenilmesini teşvik eder.
+
+### 4.1. Baseline (QJC Algoritması) Ödül Yapısı
+
+Klasik Q-Learning yaklaşımı, ayrık bir durum-aksiyon ödül tablosu kullanır:
+
+*   **Durum (State):** Mevcut kanal (0, 1, 2)
+*   **Aksiyon (Action):** Güç seviyesi (0-9)
+*   **Ödül Formülü:**
+    ```
+    Ödül = (Jamlenmiş_Düğüm_Sayısı × 10) - (Enerji_Tüketimi × 0.1)
+    ```
+
+Bu basit linear yapı, tablosal Q-Learning için yeterli geri bildirim sağlar.
+
+### 4.2. PPO & DQN (Derin Takviyeli Öğrenme) Ödül Yapısı
+
+Her iki derin öğrenme algoritması da **aynı üç bileşenli** ödül yapısını paylaşır:
+
+#### Bileşen 1: Jamming Başarı Ödülü (Sparse, Yüksek Değer)
+```
+ödül_başarı = jamlenen_düğüm_sayısı × 10
+```
+*   **Amaç:** Birincil hedef - jamming etkinliğini maksimize etmek
+*   **Aralık:** 0 ile 50 arası (5 düğüm için)
+*   **Tip:** Seyrek ödül (sadece jamming başarılı olduğunda verilir)
+
+#### Bileşen 2: Kanal Takip Ödülü (Dense, Düşük Değer)
+```python
+if (jammer_kanalı == uav_kanalı AND jammer_gücü > 0.01):
+    ödül_takip = 0.5
+else:
+    ödül_takip = 0.0
+```
+*   **Amaç:** Jammer'ı İHA'nın frekans atlama davranışını takip etmesi için yönlendirmek
+*   **KRİTİK KOŞUL:** Sadece **güç kullanıldığında** verilir (sömürüyü önler)
+*   **Tip:** Yoğun rehberlik sinyali (her adımda kontrol edilir)
+*   **Tasarım Mantığı:** Güç eşik kontrolü (`> 0.01W`), ajanların "sıfır güçle sadece kanal takibi yaparak ödül alma" açığını kapatır.
+
+#### Bileşen 3: Enerji Maliyet Cezası
+```
+ödül_enerji = -(jammer_güç_tüketimi × 0.1)
+```
+*   **Amaç:** Enerji verimli jamming stratejilerini teşvik etmek
+*   **Aralık:** 0 ile -0.01W (tipik değerler)
+*   **Etki:** Gereksiz yüksek güç kullanımını cesaretlendirmez
+
+#### Toplam Ödül
+```
+toplam_ödül = ödül_başarı + ödül_takip - ödül_enerji
+```
+
+### 4.3. Ödül Tasarımının Teorik Temelleri
+
+1.  **Güç Eşik Kontrolü:**
+    *   **Problem:** İlk versiyonda takip ödülü (`+0.5`) güçten bağımsızdı.
+    *   **Sonuç:** Ajanlar "İHA kanalını takip et ama jamming yapma" şeklinde dejenere bir politika öğrendi.
+    *   **Çözüm:** `power > 0.01W` koşulu eklenerek, ödülün sadece gerçek jamming faaliyeti sırasında verilmesi sağlandı.
+
+2.  **Ölçeklendirme Dengesi:**
+    *   Başarı ödülü (10×) > Takip ödülü (0.5) → Jamming birincil hedef olarak kalır.
+    *   Enerji cezası (0.1×) → Jamming'i caydırmayacak kadar küçük, ama verimsiz güç kullanımını optimize edecek kadar anlamlı.
+
+3.  **Seyrek vs Yoğun Ödül Trade-off'u:**
+    *   **Seyrek (Jamming):** Doğrudan hedefi yansıtır ama öğrenmeyi zorlaştırır (credit assignment problem).
+    *   **Yoğun (Takip):** Gradient akışını stabilize eder ve erken aşamada keşfi hızlandırır.
+    *   **Birlikte:** İki ödül tipi sinerjik çalışarak hem exploration hem de exploitation'ı dengeştirir.
+
+### 4.4. Algoritma Karşılaştırması - Ödül Kullanımı
+
+| Metrik                  | Baseline (QJC) | PPO           | DQN           |
+|-------------------------|----------------|---------------|---------------|
+| **Ödül Yapısı**         | Linear combina | 3-Comp Hybrid | 3-Comp Hybrid |
+| **Güç Eşik Kontrolü**   | Yok (Not Needed) | Var (0.01W)   | Var (0.01W)   |
+| **Policy Gradient**     | Tabular Update | CLIP-PPO      | Q-Learning    |
+| **Exploration Strategy**| ε-greedy       | Entropy Bonus | ε-decay       |
+
+---
+
+## 5. ANALİZ VE GÖRSELLEŞTİRME YÖNTEMLERİ
 
 Sistem performansını değerlendirmek ve senaryo çıktılarını yorumlamak için `visualizer.py` modülü tarafından üretilen, SCIE makale formatına uygun iki temel grafik seti kullanılmaktadır.
 
@@ -129,9 +210,10 @@ Bu grafik seti, her bir IoT düğümünün operasyonel performansını detayland
 ### 4.4. Dashboard Analizi
 Simülasyon tamamlandığında, yukarıdaki tüm analizler (`Trajectory`, `Metrics`, `Advanced Stats`) tek bir **"Dashboard"** penceresinde operatöre sunulur. Bu sayede simülasyon sonuçlarına bütüncül (holistic) bir bakış açısı sağlanır.
 
+
 ---
 
-## 5. GELİŞİM GÜNLÜĞÜ (CHANGE LOG)
+## 6. GELİŞİM GÜNLÜĞÜ (CHANGE LOG)
 
 ### [02.02.2026 01:07] - Başlangıç Sürümü (v1.0.0)
 **Yapılan Değişiklikler:**
