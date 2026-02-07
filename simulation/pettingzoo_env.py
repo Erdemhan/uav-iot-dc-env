@@ -250,10 +250,11 @@ class UAV_IoT_PZ_Env(ParallelEnv):
         reward_energy_cost = jam_total_power_cost * 0.1
         
         # C. Tracking Reward (Dense guidance)
-        # If Jammer is on the same channel as UAV, give small plus.
-        # This encourages "locking on" even if power is low or distance is far.
+        # Only reward tracking if jammer is ACTUALLY using power
+        # This prevents zero-power exploitation strategy
         reward_tracking = 0.0
-        if self.attacker.current_channel == self.uav.current_channel:
+        if (self.attacker.current_channel == self.uav.current_channel 
+            and self.attacker.jamming_power > 0.01):  # Minimum power threshold
             reward_tracking = 0.5 
         
         jammer_reward = reward_jam_success + reward_tracking - reward_energy_cost

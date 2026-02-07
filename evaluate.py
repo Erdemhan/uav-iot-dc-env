@@ -27,10 +27,12 @@ from core.logger import SimulationLogger
 import argparse
 
 def env_creator_ppo(config):
-    return ParallelPettingZooEnv(UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=False))
+    from confs.model_config import GlobalConfig
+    return ParallelPettingZooEnv(UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS))
 
 def env_creator_dqn(config):
-    return ParallelPettingZooEnv(UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=True))
+    from confs.model_config import GlobalConfig
+    return ParallelPettingZooEnv(UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS))
 
 def find_latest_checkpoint(base_dir="./ray_results"):
     # Find all checkpoint folders recursively
@@ -85,9 +87,9 @@ def main():
     logger = SimulationLogger(config_dict=full_config)
     
     # Auto UAV mode for compatibility
-    # CRITICAL: DQN checkpoint expects flattened Discrete(30)
-    is_dqn = (args.algo == "DQN")
-    env = UAV_IoT_PZ_Env(logger=logger, auto_uav=True, flatten_actions=is_dqn)
+    # Use GlobalConfig to ensure consistency with training
+    from confs.model_config import GlobalConfig
+    env = UAV_IoT_PZ_Env(logger=logger, auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS)
     if not args.no_viz:
         viz = Visualization()
     
@@ -135,6 +137,9 @@ def main():
                         policy_id="jammer_policy",
                         explore=False
                     )
+            
+            # CRITICAL FIX: Add jammer action to actions dict!
+            actions['jammer_0'] = jam_action
             
             # Nodes
             for agent in env.agents:

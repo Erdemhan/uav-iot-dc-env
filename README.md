@@ -83,7 +83,56 @@ At the end of each step, all critical data is buffered:
 *   **Jamming Contour**: A dynamic red contour is drawn where SINR < 0 dB, showing the real-time effective jamming zone.
 *   Instantaneous step and power information is written to the screen.
 
-## 3. Termination
+## 3. Reward Mechanisms
+
+The jammer's training is driven by carefully designed reward functions that balance jamming effectiveness with energy efficiency.
+
+### A. Baseline (QJC Algorithm)
+The Q-Learning approach uses a discrete action-reward table:
+*   **State**: Current channel (0, 1, 2)
+*   **Action**: Power level (0-9)
+*   **Reward**: Number of jammed nodes × 10 - energy cost × 0.1
+
+### B. PPO & DQN (Deep RL)
+Both algorithms share the same reward structure with three components:
+
+#### 1. Jamming Success Reward (Sparse, High)
+```
+reward_success = jammed_node_count × 10
+```
+*   **Purpose**: Primary objective - maximize jamming effectiveness
+*   **Range**: 0 to 50 (for 5 nodes)
+*   **Type**: Sparse reward (only when jamming occurs)
+
+#### 2. Channel Tracking Reward (Dense, Low)
+```python
+if (jammer_channel == uav_channel AND jammer_power > 0.01):
+    reward_tracking = 0.5
+else:
+    reward_tracking = 0.0
+```
+*   **Purpose**: Guide the jammer to track UAV's frequency hopping
+*   **Condition**: CRITICAL - Only given when actually using power (prevents exploitation)
+*   **Type**: Dense guidance signal
+
+#### 3. Energy Cost Penalty
+```
+reward_energy = -jammer_power_consumption × 0.1
+```
+*   **Purpose**: Encourage energy-efficient jamming strategies
+*   **Range**: 0 to -0.01W (typical)
+
+#### Total Reward
+```
+total_reward = reward_success + reward_tracking - reward_energy
+```
+
+### C. Reward Design Rationale
+*   **Power Threshold Check**: The tracking reward requires `power > 0.01W` to prevent agents from learning a "zero-power channel tracking" exploit.
+*   **Scaling Balance**: Success reward (10×) dominates tracking (0.5), ensuring jamming is the primary objective.
+*   **Energy Trade-off**: Cost penalty (0.1×) is small enough to not deter jamming but large enough to prefer efficient strategies.
+
+## 4. Termination
 When the loop ends or is stopped by the user:
 1.  **Data Recording**: All data in the buffer is written to the `history.csv` file.
 2.  Window is closed.
