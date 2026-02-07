@@ -5,19 +5,27 @@ import numpy as np
 from confs.config import UAVConfig
 from confs.env_config import EnvConfig
 from simulation.entities import UAVAgent, IoTNode, SmartAttacker
+from simulation.controllers import UAVRuleBasedController
 import core.physics as physics
 from core.logger import SimulationLogger
 
 class UAV_IoT_PZ_Env(ParallelEnv):
     metadata = {"render_modes": ["human"], "name": "uav_iot_v1"}
 
-    def __init__(self, logger: SimulationLogger = None):
+    def __init__(self, logger: SimulationLogger = None, auto_uav: bool = False, flatten_actions: bool = False):
         super().__init__()
         self.logger = logger
         self.area_size = EnvConfig.AREA_SIZE
+        self.auto_uav = auto_uav
+        self.flatten_actions = flatten_actions
         
         # --- Agents Configuration ---
-        self.possible_agents = ["uav_0", "jammer_0"] + [f"node_{i}" for i in range(EnvConfig.NUM_NODES)]
+        # If auto_uav is True, UAV is part of environment (not an agent)
+        if self.auto_uav:
+            self.possible_agents = ["jammer_0"] + [f"node_{i}" for i in range(EnvConfig.NUM_NODES)]
+        else:
+            self.possible_agents = ["uav_0", "jammer_0"] + [f"node_{i}" for i in range(EnvConfig.NUM_NODES)]
+            
         self.agents = self.possible_agents[:]
         
         # --- Entities ---
@@ -25,14 +33,22 @@ class UAV_IoT_PZ_Env(ParallelEnv):
         self.uav = None
         self.attacker = None
         self.nodes = []
+        
+        # Internal Controller for Auto Mode
+        self.uav_controller = None
 
         # --- Spaces ---
         self.observation_spaces = {}
         self.action_spaces = {}
         
         # Common Observation Space Dimension
-        # UAV (x, y), Attacker (x, y), Nodes (x, y) * N, Node SINR * N, Node AoI * N
-        obs_dim = 4 + 4 * EnvConfig.NUM_NODES
+        # Sensing Mode:
+        # Instead of UAV(x,y) and Jammer(x,y) -> Just Distance (1)
+        # Channels (2)
+        # Nodes (x,y normalized) * N (Nodes are static/known map) or also Distance?
+        # Let's keep Nodes as map knowledge (assuming Jammer knows where IoT devices are fixed).
+        # obs_dim = 1 + 2 + 3 * N  (Dist_UAV + Chs + Node(x,y,AoI))
+        obs_dim = 1 + 2 + 3 * EnvConfig.NUM_NODES
         common_obs_space = spaces.Box(low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32)
 
         for agent in self.possible_agents:
@@ -46,8 +62,11 @@ class UAV_IoT_PZ_Env(ParallelEnv):
                 self.action_spaces[agent] = spaces.Box(low=-max_speed, high=max_speed, shape=(2,), dtype=np.float32)
             
             elif agent == "jammer_0":
-                # Action: Jamming Power [P_jam]
-                self.action_spaces[agent] = spaces.Box(low=0.0, high=EnvConfig.MAX_JAMMING_POWER, shape=(1,), dtype=np.float32)
+                # Action: [Channel (3), Power Level (10)]
+                if self.flatten_actions:
+                    self.action_spaces[agent] = spaces.Discrete(30)
+                else:
+                    self.action_spaces[agent] = spaces.MultiDiscrete([3, 10])
             
             else: # Nodes
                 # Action: No-Op (Discrete(1))
@@ -56,6 +75,12 @@ class UAV_IoT_PZ_Env(ParallelEnv):
         self.current_step = 0
         self.max_steps = EnvConfig.MAX_STEPS
         self.dt = EnvConfig.STEP_TIME
+
+    def observation_space(self, agent):
+        return self.observation_spaces[agent]
+
+    def action_space(self, agent):
+        return self.action_spaces[agent]
 
     def reset(self, seed=None, options=None):
         self.agents = self.possible_agents[:]
@@ -78,6 +103,10 @@ class UAV_IoT_PZ_Env(ParallelEnv):
             ny = np.random.uniform(0, self.area_size)
             self.nodes.append(IoTNode(i, nx, ny))
 
+        if self.auto_uav:
+            self.uav_controller = UAVRuleBasedController(self)
+            self.uav_controller.reset()
+
         observations = {agent: self._get_obs() for agent in self.agents}
         infos = {agent: {} for agent in self.agents}
         
@@ -88,37 +117,58 @@ class UAV_IoT_PZ_Env(ParallelEnv):
         
         # 1. Apply Actions
         # UAV
-        if "uav_0" in actions:
+        uav_action = None
+        
+        if self.auto_uav:
+            # Get Action from Internal Controller
+            uav_action = self.uav_controller.get_action()
+        elif "uav_0" in actions:
             uav_action = actions["uav_0"]
-            # Apply velocity update
-            # uav_action is [vx, vy]. 
-            # We calculate new position based on this velocity.
-            # In the rule-based controller transparency, we trust the controller gives valid velocity.
-            # But we should clamp to max speed just in case.
+            
+        if uav_action is not None:
             speed = np.linalg.norm(uav_action)
             if speed > EnvConfig.UAV_SPEED:
                 uav_action = (uav_action / speed) * EnvConfig.UAV_SPEED
             
-            # Simple Euler Integration
             self.uav.vx = uav_action[0]
             self.uav.vy = uav_action[1]
             self.uav.x += self.uav.vx * self.dt
             self.uav.y += self.uav.vy * self.dt
             
-            # Boundary checks (Optional but good practice)
             self.uav.x = np.clip(self.uav.x, 0, self.area_size)
             self.uav.y = np.clip(self.uav.y, 0, self.area_size)
             
-            # Energy
             v_uav = self.uav.velocity_magnitude
             self.uav.consume_energy(v_uav, self.dt)
 
         # Jammer
+        jam_power_out = 0.0
+        jam_total_power_cost = 0.0
+        
         if "jammer_0" in actions:
             jam_action = actions["jammer_0"]
-            self.attacker.set_jamming_power(float(jam_action[0]))
+            if self.flatten_actions:
+                # Discrete(30) -> [Channel, PowerLevel]
+                # ch = action // 10 (0,1,2), p_level = action % 10 (0-9)
+                ch_idx = int(jam_action // 10)
+                p_level = int(jam_action % 10)
+            else:
+                # MultiDiscrete: [Channel, PowerLevel]
+                ch_idx = jam_action[0]
+                p_level = jam_action[1]
             
-        # Nodes (No action needed as they are static/passive mostly)
+            # Update Entity State
+            self.attacker.current_channel = ch_idx
+            
+            # Map Power: Level 0..9 -> 0..Max
+            jam_power_out = (p_level / 9.0) * EnvConfig.MAX_JAMMING_POWER
+            self.attacker.set_jamming_power(jam_power_out)
+            
+            # Calculate Consumption Cost (Cui et al.)
+            freq = UAVConfig.CHANNELS[ch_idx]
+            jam_total_power_cost = physics.calculate_jammer_power_consumption(jam_power_out, freq)
+            
+        # Nodes (No action)
 
         # 2. Physics & Logic Interactions
         step_log = {
@@ -126,29 +176,42 @@ class UAV_IoT_PZ_Env(ParallelEnv):
             "uav_x": self.uav.x,
             "uav_y": self.uav.y,
             "jammer_power": self.attacker.jamming_power,
-            "uav_energy": self.uav.total_energy_consumed
+            "uav_energy": self.uav.total_energy_consumed,
+            "uav_channel": self.uav.current_channel,
+            "jammer_channel": self.attacker.current_channel
         }
 
         total_sinr = 0
         jammed_count = 0
         
         for i, node in enumerate(self.nodes):
+            # Update Node Channel (Assume synced with UAV for reception)
+            node.current_channel = self.uav.current_channel
+            
             dist_uav = np.linalg.norm(node.position - self.uav.position)
             dist_jam = np.linalg.norm(node.position - self.attacker.position)
             
-            beta_uav = physics.calculate_path_loss(dist_uav)
-            beta_jam = physics.calculate_path_loss(dist_jam)
+            # Frequency dependent Path Loss
+            freq = UAVConfig.CHANNELS[self.uav.current_channel]
+            beta_uav = physics.calculate_path_loss(dist_uav, fc=freq)
+            beta_jam = physics.calculate_path_loss(dist_jam, fc=freq) # Jammer distance on same freq
             
             p_rx_signal = physics.calculate_received_power(node.tx_power, dist_uav, beta_uav)
-            p_rx_jam = physics.calculate_received_power(self.attacker.jamming_power, dist_jam, beta_jam)
+            
+            # Interference Check: Only if Channels Match
+            p_rx_jam = 0.0
+            if self.uav.current_channel == self.attacker.current_channel:
+                 p_rx_jam = physics.calculate_received_power(self.attacker.jamming_power, dist_jam, beta_jam)
             
             sinr = physics.calculate_sinr(p_rx_signal, UAVConfig.N0_Linear, p_rx_jam)
+            
+            # Theoretical (No Jam)
             sinr_no_jam = physics.calculate_sinr(p_rx_signal, UAVConfig.N0_Linear, 0.0)
             
             rate = physics.calculate_data_rate(UAVConfig.B, sinr)
             
-            connected_now = sinr > 1.0
-            connected_theoretical = sinr_no_jam > 1.0
+            connected_now = sinr > UAVConfig.SINR_THRESHOLD
+            connected_theoretical = sinr_no_jam > UAVConfig.SINR_THRESHOLD
             
             status = 0
             if connected_now:
@@ -164,34 +227,42 @@ class UAV_IoT_PZ_Env(ParallelEnv):
             node.update_aoi(self.dt, success=(status == 0))
             node.consume_energy(rate)
             
-            step_log[f"node_{i}_x"] = node.x
-            step_log[f"node_{i}_y"] = node.y
+            step_log[f"node_{i}_status"] = status
             step_log[f"node_{i}_sinr"] = sinr
             step_log[f"node_{i}_aoi"] = node.aoi
-            step_log[f"node_{i}_energy"] = node.total_energy_consumed
-            step_log[f"node_{i}_status"] = status
-            step_log[f"node_{i}_total_time"] = node.total_connected_duration
-            step_log[f"node_{i}_max_continuous_time"] = node.max_continuous_duration
+            # Log coordinates for Visualization (Static but needed by Visualizer parsing)
+            step_log[f"node_{i}_x"] = node.x
+            step_log[f"node_{i}_y"] = node.y
 
-        # 3. Rewards & Termination
-        # Reward: Global reward for Jammer is maximize jammed nodes.
-        # For this environment, we can define rewards per agent.
-        # Jammer: +1 per jammed node.
-        # UAV: -1 per jammed node (Cooperative with nodes), or Minimize AoI.
-        # Nodes: Minimize AoI.
+        # 3. Rewards
+        # Jammer Reward: Success - Cost
+        # Scaling: +10 per jammed node, -0.1 per Watt cost (Example)
+        reward_jam_success = float(jammed_count) * 10
+        reward_energy_cost = jam_total_power_cost * 0.1
         
-        # Important: The user asked to keep Jammer as Learning agent, others Rule-based.
-        # We assign rewards regardless, mostly for Jammer.
+        # 3. Rewards
+        # Jammer Reward: Success - Cost
+        
+        # A. Success Reward (High sparse reward)
+        reward_jam_success = float(jammed_count) * 10
+        
+        # B. Cost Penalty (Low dense penalty)
+        reward_energy_cost = jam_total_power_cost * 0.1
+        
+        # C. Tracking Reward (Dense guidance)
+        # If Jammer is on the same channel as UAV, give small plus.
+        # This encourages "locking on" even if power is low or distance is far.
+        reward_tracking = 0.0
+        if self.attacker.current_channel == self.uav.current_channel:
+            reward_tracking = 0.5 
+        
+        jammer_reward = reward_jam_success + reward_tracking - reward_energy_cost
+        uav_reward = -float(jammed_count) 
         
         rewards = {}
         terminated = self.current_step >= self.max_steps
         truncations = {agent: False for agent in self.agents}
         terminations = {agent: terminated for agent in self.agents}
-        
-        jammer_reward = float(jammed_count)
-        # Simple placeholder rewards for others
-        uav_reward = -float(jammed_count) 
-        node_reward = 0.0 
         
         for agent in self.agents:
             if agent == "jammer_0":
@@ -199,16 +270,16 @@ class UAV_IoT_PZ_Env(ParallelEnv):
             elif agent == "uav_0":
                 rewards[agent] = uav_reward
             else:
-                rewards[agent] = node_reward
+                rewards[agent] = 0.0
 
-        # 4. Logging
+        # 4. Logging & Obs
         step_log["jammed_count"] = jammed_count
+        step_log["jammer_cost"] = jam_total_power_cost
         if self.logger:
             self.logger.log_step(step_log)
 
-        # 5. Get Observations
         observations = {agent: self._get_obs() for agent in self.agents}
-        infos = {agent: step_log for agent in self.agents} # Sharing logs in info
+        infos = {agent: step_log for agent in self.agents}
 
         if terminated:
             self.agents = []
@@ -217,29 +288,29 @@ class UAV_IoT_PZ_Env(ParallelEnv):
 
     def _get_obs(self):
         # Construct global observation vector
+        # Normalization Factor
+        norm_scale = self.area_size
+        
         obs = []
-        obs.extend([self.uav.x, self.uav.y])
-        obs.extend([self.attacker.x, self.attacker.y])
+        
+        # SENSING Based Observation (RSSI Proxy)
+        # Instead of Absolute Coordinates, we give Distance.
+        dist = np.linalg.norm(self.uav.position - self.attacker.position)
+        norm_dist = dist / norm_scale
+        obs.append(norm_dist)
+        
+        # Channels 
+        obs.extend([float(self.uav.current_channel), float(self.attacker.current_channel)])
         
         sinrs = []
         aois = []
         for node in self.nodes:
-            obs.extend([node.x, node.y])
-            aois.append(node.aoi)
-            # Re-calculating SINR here might be redundant but strictly accurate for "observation"
-            # We can approximate with last step logic or just re-calc.
-            # For efficiency let's re-calc briefly or store in node.
-            # Using stored variables from step would be better design but let's re-calc for stateless safety
-            dist_uav = np.linalg.norm(node.position - self.uav.position)
-            dist_jam = np.linalg.norm(node.position - self.attacker.position)
-            beta_uav = physics.calculate_path_loss(dist_uav)
-            beta_jam = physics.calculate_path_loss(dist_jam)
-            p_rx = physics.calculate_received_power(node.tx_power, dist_uav, beta_uav)
-            p_jam = physics.calculate_received_power(self.attacker.jamming_power, dist_jam, beta_jam)
-            val_sinr = physics.calculate_sinr(p_rx, UAVConfig.N0_Linear, p_jam)
-            sinrs.append(val_sinr)
+            # Jammer knows static node locations (Map)
+            obs.extend([node.x / norm_scale, node.y / norm_scale])
+            aois.append(node.aoi) 
+            # sinrs.append(0.0) # Removed SINR from INPUT to reduce noise/dim
             
-        obs.extend(sinrs)
+        # obs.extend(sinrs)
         obs.extend(aois)
         
         return np.array(obs, dtype=np.float32)

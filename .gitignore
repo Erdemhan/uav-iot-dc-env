@@ -208,3 +208,20 @@ __marimo__/
 
 # Simulation Logs
 logs/
+liaovd(2025).pdf
+
+# Ray Results
+ray_results/
+ray_results_dqn/
+
+# Experiment Outputs
+experiments/
+comparison_result.png
+
+# Checkpoints
+checkpoints/
+
+# Temporary Analysis Scripts
+check_fairness.py
+baseline_q_table
+

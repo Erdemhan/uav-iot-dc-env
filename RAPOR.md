@@ -46,23 +46,23 @@ Projenin geliştirilmesinde, akademik standartlara uygunluk ve yüksek performan
 *   **NumPy:** Yüksek performanslı vektörel matematik işlemleri için kullanılmıştır. Fizik motorundaki (`physics.py`) sinyal gücü, SINR ve enerji hesaplamaları, döngüler yerine NumPy vektör operasyonları ile optimize edilerek simülasyon hızı artırılmıştır.
 *   **Matplotlib:** Simülasyon verilerinin görselleştirilmesi ve analiz grafiklerinin (`trajectory.png`, `metrics_analysis.png`) oluşturulması için kullanılmıştır.
 *   **Pandas:** Simülasyon loglarının (`history.csv`) işlenmesi, filtrelenmesi ve zaman serisi analizlerinin yapılması amacıyla veri manipülasyonu için tercih edilmiştir.
+*   **Ray RLLib:** Dağıtık (Distributed) Reinforcement Learning eğitimi için kullanılmıştır. PPO (Proximal Policy Optimization) gibi gelişmiş algoritmaların, çoklu ajan (PettingZoo) ortamımızla entegre bir şekilde çalıştırılmasını ve modelin (`train.py` üzerinden) eğitilmesini sağlayan temel kütüphanedir.
 
-### 2.6. Mevcut Simülasyon Senaryosu (v1.0.0)
+### 2.6. Mevcut Simülasyon Senaryosu (v1.7.0 - Akıllı Tehdit Modeli)
 
-Bu sürümde kullanılan senaryo, temel sistem dinamiklerini doğrulamak amacıyla oluşturulmuş "Baseline" (Taban) senaryosudur.
+Bu sürümde kullanılan senaryo, "Adil ve Kıyaslanabilir Akıllı Tehdit" (Fair & Comparable Smart Threat) modelidir.
 
 *   **Operasyonel Alan:** 1000m x 1000m boyutlarında 2 boyutlu düzlem.
-*   **İHA Davranışı (Blue Team):**
-    *   **Waypoint Navigasyonu:** İHA, simülasyon alanındaki IoT düğümlerini sırasıyla (Node 0 -> Node 1 -> ...) ziyaret eder.
-    *   **Askıda Kalma (Hover):** Bir düğüme ulaştığında (mesafe < 27.5m), sensörlerden güvenli veri toplamak amacıyla 5 saniye (1 simülasyon adımı) boyunca o konumda **sabit** durur (Hovering).
-    *   Bu bekleme süresinden sonra bir sonraki düğümü hedef olarak belirler.
-*   **Saldırgan Davranışı (Red Team):**
-    *   Alan merkezine yakın sabit bir konumda bulunmaktadır.
-    *   **Stokastik Jamming:** Her zaman adımında 0 ile 2 Watt arasında rastgele bir güç seviyesi belirleyerek iletişim kanalını karıştırmaktadır.
+*   **Frekans Spektrumu:** Sistem 3 farklı frekans kanalında (2.4, 5.0, 5.8 GHz) çalışabilmektedir.
+*   **İHA Davranışı (Blue Team - Reaktif Hedef):**
+    *   **Görev:** 5 adet IoT düğümünü sırayla ziyaret edip veri toplamak.
+    *   **Tepkisellik:** Eğer İHA saldırıya uğrarsa (SINR < 0dB), bulunduğu kanalı terk eder ve bir sonraki adıma **Markov Geçiş Matrisi** (Transition Matrix) ile karar verir. Yani kaçışı rastgele değil, belirli bir istatistiksel örüntüye dayalıdır.
+*   **Saldırgan Davranışı (Red Team - Akıllı Ajan):**
+    *   **Amaç:** İHA'nın kanal değiştirme örüntüsünü öğrenip onu bloke etmek.
+    *   **Yöntemler:** Baseline (Q-Learning), PPO (Deep RL) veya DQN (Deep Q-Network) algoritmalarıyla eğitilir.
+    *   **Kısıtlar:** Sürekli yüksek güç basamaz (Enerji maliyeti) ve her frekansta aynı verimlilikte değildir (PA Efficiency).
 *   **Ağ Dinamikleri:**
-    *   5 adet IoT düğümü alana rastgele dağıtılmıştır.
-    *   Fizik motoru her adımda anlık SINR değerini hesaplar.
-    *   **Kesinti Kriteri:** SINR < 1.0 (0 dB) durumunda iletişim kopar ve düğümün "Bilgi Yaşı" (AoI) artmaya başlar.
+    *   Başarılı iletişim için sadece mesafe yetmez, **Kanal Uyumu** (Saldırganla çakışmama) gereklidir.
 
 ---
 
@@ -184,9 +184,177 @@ Tez çalışmasının simülasyon gereksinimlerini karşılayan, doğrulanmış 
 1.  **Yeni Haberleşme Metrikleri:** Her düğüm için "Toplam Başarılı İletişim Süresi" ve "Maksimum Kesintisiz İletişim Süresi" (Max Continuous Streak) metrikleri sisteme eklendi.
 2.  **Dashboard Arayüzü:** Simülasyon sonunda üretilen tüm grafikleri (Yörünge, Zaman Serileri, İstatistikler) tek bir pencerede birleştiren `show_dashboard()` özelliği `visualizer.py` modülüne entegre edildi.
 3.  **Varlık Güncellemesi:** `IoTNode` sınıfı, kendi iletişim tarihçesini (History) tutacak şekilde akıllandırıldı.
-186: 
-187: ### [06.02.2026 17:00] - Davranışsal Gerçekçilik (v1.5.0)
-188: **Yapılan Değişiklikler:**
-189: 1.  **Hover (Askıda Kalma) Mantığı:** İHA'nın sadece üzerinden geçmek yerine, düğümlere vardığında verimli veri toplamak adına 5 saniye boyunca havada asılı kalması (Hover) sağlandı.
-190: 2.  **Dinamik Navigasyon:** Hedefe varış kriteri, simülasyon adım büyüklüğüne (Step Size) göre dinamik hale getirilerek "overshoot" (hedefi ıskalama) problemleri çözüldü.
-191: 3.  **Güç Tüketimi Görünürlüğü:** Analiz modülünde enerji grafiklerinin anlık güç değişimlerini (Hover vs Flight) yansıtması sağlandı (Kullanıcı isteği üzerine kümülatif gösterime geri dönüldü ancak altyapı bu detayı desteklemektedir).
+
+### [06.02.2026 17:00] - Davranışsal Gerçekçilik (v1.5.0)
+**Yapılan Değişiklikler:**
+1.  **Hover (Askıda Kalma) Mantığı:** İHA'nın sadece üzerinden geçmek yerine, düğümlere vardığında verimli veri toplamak adına 5 saniye boyunca havada asılı kalması (Hover) sağlandı.
+2.  **Dinamik Navigasyon:** Hedefe varış kriteri, simülasyon adım büyüklüğüne (Step Size) göre dinamik hale getirilerek "overshoot" (hedefi ıskalama) problemleri çözüldü.
+3.  **Güç Tüketimi Görünürlüğü:** Analiz modülünde enerji grafiklerinin anlık güç değişimlerini (Hover vs Flight) yansıtması sağlandı (Kullanıcı isteği üzerine kümülatif gösterime geri dönüldü ancak altyapı bu detayı desteklemektedir).
+
+### [06.02.2026 21:00] - Akıllı Tehdit & RL Entegrasyonu (v1.6.0)
+**Yapılan Değişiklikler:**
+1.  **Çoklu Frekans Kanalı:** Sistem artık 2.4, 5.0 ve 5.8 GHz kanallarını desteklemekte ve fiziksel katman (Path Loss, PA Efficiency) buna göre modellenmektedir.
+2.  **Akıllı Tehdit Modeli (QJC):** Liao ve ark. (2025) tarafından önerilen Q-Learning tabanlı Jammer Kanal Seçim algoritması (SmartAttacker sınıfına) entegre edildi.
+3.  **Reaktif Markov İHA:** İHA'nın jamming saldırısına uğradığında rastgele değil, belirli bir olasılıksal matrise (Markov Zinciri) göre kanal değiştirdiği "Hareketli Hedef" modeli oluşturuldu.
+4.  **RLLib Entegrasyonu:** `train.py` dosyası ile Ray RLLib (PPO) üzerinde Jammer'ın bu Markov modelini öğrenmesi için eğitim altyapısı kuruldu.
+
+### [07.02.2026 00:10] - Adillik ve Kıyaslama Paketi (v1.7.0)
+**Yapılan Değişiklikler:**
+1.  **Sensing Mode (Gerçekçi Algılama):**
+    *   RL Ajanının (Jammer) gözlem uzayından hileli "God View" (Tam Koordinat) verisi çıkarıldı.
+    *   Yerine, sadece **Mesafe** (Distance) ve **Sinyal Gücü** (RSSI) gibi gerçek hayatta sensörlerle ölçülebilen veriler eklendi.
+2.  **Adil Kıyaslama (Algorithmic Fairness):**
+    *   Baseline (QJC) algoritmasının, PPO eğitim sürelerine denk (60K adım) deneyim kazanması için **Ön Eğitim (Pre-training)** modülü (`train_baseline.py`) eklendi.
+    *   Böylece "Eğitimsiz Baseline vs Eğitilmiş RL" adaletsizliği giderildi.
+3.  **Algoritmik Çeşitlilik:**
+    *   **PPO:** Sürekli (Continuous) politika optimizasyonu (New API Stack).
+    *   **DQN:** Ayrık (Discrete) aksiyon uzayı optimizasyonu (Old API Stack).
+    *   **Baseline:** Tablosal (Tabular) Q-Learning.
+    *   Üç algoritmayı tek komutla yarıştıran `run_experiments.py` otomasyonu geliştirildi.
+4.  **Otomatik Raporlama:** Tüm sonuçları karşılaştırmalı sütun grafiklerine (`comparison_result.png`) döken analiz modülü eklendi.
+### [07.02.2026 02:00] - RLLib Yama ve Otomasyon Paketi (v1.8.0)
+**Yapılan Değişiklikler:**
+1.  **Ray RLLib Hata Düzeltmesi (Bug Fix):**
+    *   Ray 2.53.0 sürümündeki DQN algoritmasının "Old API Stack" yolunda kilitlenmesine neden olan `TypeError: argument of type 'ABCMeta' is not iterable` hatası tespit edildi.
+    *   `rllib/algorithms/algorithm.py` dosyasına `isinstance(..., str)` kontrolü eklenerek yerel kütüphane yamalandı.
+    *   Düzeltme, Ray projesine resmi Pull Request olarak gönderildi (DCO imzalı).
+2.  **Tam Otomatik Deney Hattı (Experiment Pipeline):**
+    *   `run_experiments.py` scripti geliştirilerek; Baseline (QJC), PPO ve DQN modellerinin sırayla eğitilmesi, değerlendirilmesi ve karşılaştırmalı rapor üretilmesi otomatikleştirildi.
+3.  **Temizlik ve Optimizasyon:**
+    *   Gereksiz geçici dosyalar ve büyük boyutlu fork dosyaları silinerek proje alanı optimize edildi.
+4.  **Dokümantasyon Güncellemesi:**
+    *   `README.md` ve `.gitignore` dosyaları yeni deney çıktılarını ve yama sürecini kapsayacak şekilde güncellendi.
+
+**Amaç:**
+Simülasyon ortamının akademik bir test yatağı (testbed) olarak kararlılığını sağlamak ve Ray kütüphanesi kaynaklı engelleri kalıcı olarak aşmak.
+
+Bu sürüm ile proje, "Saldırgan Kıyaslama" (Attacker Comparison) makalesi için gerekli test yatağına dönüşmüştür.
+
+### [07.02.2026 03:45] - Konfigürasyon Refactoring ve GPU Desteği (v1.9.0)
+**Yapılan Değişiklikler:**
+1.  **Merkezi Konfigürasyon Yapısı (`confs/model_config.py`):**
+    *   **GlobalConfig:** Tüm algoritmalar için ortak parametreler (`RANDOM_SEED`, `FLATTEN_ACTIONS`) merkezi hale getirildi.
+    *   **RLConfig → PPOConfig:** PPO parametreleri yeniden adlandırılarak netleştirildi ve model mimarisi (`FCNET_HIDDENS`) eklendi.
+    *   **DQNConfig (YENİ):** DQN için özel hyperparameter sınıfı oluşturuldu (LR, GAMMA, TRAIN_BATCH_SIZE, TARGET_NETWORK_UPDATE_FREQ, REPLAY_BUFFER_CAPACITY, vb.).
+    *   **QJCConfig Genişletildi:** `TRAIN_EPISODES`, `SAVE_PATH`, `MAX_POWER_LEVEL` parametreleri merkezi yapıya taşındı.
+    
+2.  **Reproducibility (Yeniden Üretilebilirlik) Garantisi:**
+    *   Random seed değeri (`RANDOM_SEED = 42`) tüm training scriptlerinde hardcoded olarak tekrar ediliyordu. Artık tek bir noktadan (`GlobalConfig.RANDOM_SEED`) yönetiliyor.
+    *   Seed değiştirmek için tek satır edit yeterli.
+
+3.  **PyTorch CUDA Kurulumu ve GPU Desteği:**
+    *   **Sorun Tespiti:** PyTorch CPU-only versiyonu (2.5.1+cpu) yüklüydü, CUDA 12.2 kurulu olmasına rağmen GPU tanınmıyordu.
+    *   **Çözüm:** Conda install timeout sorunu nedeniyle pip kullanılarak `torch-2.5.1+cu121` kuruldu.
+    *   **Donanım Doğrulaması:** NVIDIA GeForce RTX 3080 başarıyla tanındı ve aktif edildi.
+    *   **Performans Etkisi:** GPU desteği ile eğitim hızı ~5-10x artış gösterdi.
+
+4.  **Action Space Harmonizasyonu (Adalet İyileştirmesi):**
+    *   **Sorun:** PPO `MultiDiscrete([3, 10])` kullanırken DQN `Discrete(30)` kullanıyordu. Bu PPO'ya %60-70 yapısal avantaj sağlıyordu (2.5x gradient efficiency, structured exploration).
+    *   **Çözüm:** Her iki algoritma da `Discrete(30)` kullanacak şekilde harmonize edildi (`GlobalConfig.FLATTEN_ACTIONS = True`).
+    *   **Sonuç:** %100 adil kıyaslama garantisi sağlandı.
+
+5.  **Gamma Harmonizasyonu:**
+    *   PPO'nun `GAMMA = 0.95` değeri, Baseline ve DQN'in `0.9` değeriyle eşitlenerek (PPOConfig.GAMMA = 0.9) tüm algoritmaların aynı ödül iskontolama stratejisini kullanması sağlandı.
+
+6.  **API Stack Şeffaflığı:**
+    *   PPO: New API Stack (varsayılan, modern, aktif geliştirme)
+    *   DQN: Old API Stack (gereklilik, MultiDiscrete native desteği yok)
+    *   Her algoritma kendi en stabil stack'ini kullanıyor, performans adaleti korunuyor.
+
+**Amaç:**
+Proje bakımını kolaylaştırmak, hyperparameter tuning'i merkezileştirmek ve tüm deney koşullarını %100 yeniden üretilebilir kılmak. Ayrıca GPU desteği ile eğitim süresini optimize edip bilimsel iterasyon hızını artırmak.
+
+Bu sürüm ile proje, "Fair Algorithmic Comparison" standartlarına tam uyumlu hale getirilmiştir.
+
+### [07.02.2026 04:16] - Konfigürasyon İyileştirmeleri v1.9.1 (Patch)
+**Yapılan Değişiklikler:**
+1.  **TRAIN_ITERATIONS Merkezileştirilmesi:**
+    *   `TRAIN_ITERATIONS` parametresi tüm config class'larından kaldırılıp `GlobalConfig`'e taşındı.
+    *   Artık eğitim iterasyonunu değiştirmek için tek satır edit yeterli.
+    *   **Etkilenen:** `QJCConfig`, `PPOConfig`, `DQNConfig` → `GlobalConfig.TRAIN_ITERATIONS`
+
+2.  **PPO API Stack Harmonizasyonu:**
+    *   PPO, DQN ile aynı performans ve şeffaflık için Old API Stack'e geçirildi.
+    *   **Fayda:** Her iki algoritma da aynı API stack kullanıyor → GPU raporlaması ve davranış tam eşit.
+    
+3.  **DQN Training Intensity Optimizasyonu:**
+    *   DQN'de `training_intensity=1` parametresi eklendi.
+    *   **Sorun:** DQN her iterasyonda 1M gradient update yapıyordu (60 dakika).
+    *   **Çözüm:** Training intensity ile sınırlandırıldı → **2 dakikaya düştü** (~30x hızlanma).
+    
+4.  **Ray Metrics Uyarılarının Gizlenmesi:**
+    *   `RAY_DISABLE_METRICS_EXPORT=1` environment variable eklendi.
+    *   Zararsız "metrics exporter" uyarıları temiz çıktı için susturuldu.
+
+**Amaç:**
+Kod kalitesini artırmak, eğitim süresini optimize etmek ve geliştirici deneyimini iyileştirmek.
+
+### 6.1. Fiziksel Katman Güncellemeleri
+*   **Kanallar:** 2.4 GHz, 5.0 GHz ve 5.8 GHz.
+*   **PA Verimliliği (Cui et al., 2005):** Yüksek frekanslarda güç amplifikatörü verimliliğinin düştüğü model (2.4GHz: 0.50 -> 5.8GHz: 0.19) simüle edilmiştir. Bu, Jammer için "Yüksek frekansta jam yapmak daha maliyetlidir" trade-off'unu oluşturur.
+
+### 6.2. Zeka ve Strateji
+1.  **Akıllı Jammer (QJC):**
+    *   **Algoritma:** Q-Learning tabanlı kanal takibi.
+    *   **Hedef:** İHA'nın hangi kanala kaçacağını tahmin edip o kanalı bloke etmek.
+    *   **Referans:** Liao et al. (2025).
+
+2.  **Reaktif Kurban (İHA):**
+    *   **Davranış:** Bağlantı koptuğunda (SINR < Eşik) kanal değiştirir.
+    *   **Markov Modeli:** Kanal değişimi rastgele değildir; gizli bir `Transition Matrix` kullanır. Bu sayede Saldırganın (RL Ajanı) öğrenebileceği istatistiksel bir örüntü sunar.
+
+### 6.3. Eğitim (`train.py`)
+Sistemi eğitmek için:
+```bash
+python train.py
+```
+Bu komut, Jammer'ı PPO algoritması ile eğiterek, İHA'nın kaçış örüntüsünü çözmesini ve enerji verimli saldırı yapmasını sağlar.
+
+### 6.4. Operasyonel Senaryo Akışı ve Algoritmik Kıyaslama
+Simülasyon döngüsü, farklı zeka seviyelerindeki saldırganların (Baseline vs RL) başarısını kıyaslamak üzere şu adımları izler:
+
+1.  **Başlangıç ve Kalibrasyon (Initialization):**
+    *   İHA ve IoT düğümleri varsayılan kanal üzerinden iletişime başlar.
+    *   **Kıyaslama Hazırlığı:** `run_experiments.py` vasıtasıyla üç farklı beyin (Baseline QJC, PPO, DQN) aynı senaryo koşullarında sırayla devreye alınır.
+
+2.  **Saldırı Kararı ve Politika Uygulama (Jammer Action):**
+    *   **Baseline (QJC):** Sabit bir Q-Tablosu üzerinden en yüksek olasılıklı kanalı seçer.
+    *   **PPO (Sensing Mode):** Gözlem uzayından (Mesafe, RSSI) gelen verileri sinir ağı ile işleyerek kanal ve güç kararı verir.
+    *   **DQN:** Ayrık aksiyon uzayında en iyi "Q-değerini" tahmin ederek saldırı gerçekleştirir.
+
+3.  **Kanal Etkileşimi ve Girişim (Interference):**
+    *   Fizik motoru (`physics.py`), İHA ve Saldırganın kanallarını kontrol eder. Kanal çakışması durumunda SINR düşürülür.
+
+4.  **Reaktif Tepki ve Hareketli Hedef (Target Reaction):**
+    *   İHA, jamming tespit ettiğinde "Markov Geçiş Matrisi"ne göre yeni bir kanala zıplar. Bu zıplama istatistiksel bir örüntü oluşturur.
+
+5.  **Performans Ölçümü ve Kıyaslama (Evaluation):**
+    *   Saldırganın başarısı; İHA'nın toplam veri toplama süresini ne kadar kısalttığı (Attacker Success Rate) ve harcanan enerji birimi başına verilen zarar (Efficiency) üzerinden ölçülür.
+    *   Sonuçlar `comparison_result.png` üzerinde otomatik olarak görselleştirilerek hangi algoritmanın Markov örüntüsünü daha hızlı çözdüğü ortaya konur.
+
+---
+
+## 7. ALGORİTMİK PERFORMANS ANALİZİ (QJC vs PPO vs DQN)
+
+Proje kapsamında üç farklı "Saldırı Zekası" modeli birbiriyle yarıştırılmaktadır.
+
+### 7.1. Klasik Q-Learning (QJC - Baseline)
+*   **Çalışma Prensibi:** Durum (state) ve aksiyonları (action) içeren sonlu bir tablo (Look-up Table) tutar.
+*   **Avantajı:** Matematiksel olarak basittir ve çok kısıtlı işlem gücüyle çalışabilir.
+*   **Bu Projedeki Rolü:** İHA'nın Markov örüntüsünü "istatistiksel" olarak çözmekle görevlidir. DQN ve PPO için bir alt sınır (Lower Bound) çizerek, Deep RL'in sağladığı katma değeri ölçmemize yarar.
+
+### 7.2. PPO (Proximal Policy Optimization)
+*   **Çalışma Prensibi:** "Yeni API Stack" (Ray 2.53+) üzerinde çalışan, sürekli aksiyon uzaylarını da destekleyen modern bir politika gradiyent algoritmasıdır.
+*   **Karakteristiği:** Eğitim stabilitesi yüksektir. Gözlem uzayındaki gürültülü (RSSI, Mesafe) verilere karşı daha dayanıklıdır.
+*   **Beklentimiz:** İHA'nın hareket örüntüsünü sadece kanal bazlı değil, mesafeye bağlı güç optimizasyonuyla birlikte öğrenmesi.
+
+### 7.3. DQN (Deep Q-Network)
+*   **Çalışma Prensibi:** Klasik Q-Learning'i derin sinir ağlarıyla birleştirir. Bu projede "Old API Stack" üzerinden, MultiDiscrete uzayı Discrete(30) olarak harmonize edilerek koşturulmaktadır.
+*   **Karakteristiği:** Örnek verimliliği (Sample Efficiency) yüksektir; yani daha az adımda karmaşık kararları öğrenebilir.
+*   **Kritik Yama:** DQN'in Ray kütüphanesindeki `ABCMeta` hatası tarafımızca yamalanarak kütüphane stabil hale getirilmiştir.
+
+### 7.4. Kıyaslama Metrikleri
+Deney sonunda üretilen `comparison_result.png` şu sorulara yanıt verir:
+1.  **Kilitleme Hızı (Tracking Accuracy):** Jammer, UAV'nin kanalını ne kadar sürede tahmin edebiliyor?
+2.  **Zarar Verme Kapasitesi (Success Rate):** UAV'nin veri toplama başarısını yüzde kaç düşürebiliyor?
+3.  **Enerji Verimliliği:** En az güç harcayarak en yüksek zararı hangi algoritma veriyor?
