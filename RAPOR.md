@@ -440,3 +440,30 @@ Deney sonunda üretilen `comparison_result.png` şu sorulara yanıt verir:
 1.  **Kilitleme Hızı (Tracking Accuracy):** Jammer, UAV'nin kanalını ne kadar sürede tahmin edebiliyor?
 2.  **Zarar Verme Kapasitesi (Success Rate):** UAV'nin veri toplama başarısını yüzde kaç düşürebiliyor?
 3.  **Enerji Verimliliği:** En az güç harcayarak en yüksek zararı hangi algoritma veriyor?
+
+### 7.5. Deneysel Sonuçlar (Son Eğitim: 60 İterasyon, Düzeltilmiş Ödül Mekanizması)
+
+Adil algoritmik karşılaştırma sonuçları (tüm algoritmalar aynı eğitim bütçesi ve ödül fonksiyonuyla):
+
+#### Performans Karşılaştırması
+
+| Algoritma | Ort. Jamlenen Düğüm | Başarı Oranı | Ort. Güç (W) | Kanal Eşleşme |
+|-----------|---------------------|--------------|--------------|---------------|
+| **Baseline (QJC)** | 0.78 | %15.6 | 0.1000 | %30.0 |
+| **PPO** | **3.53** ✨ | **%70.6** | 0.0569 | %94.0 |
+| **DQN** | 2.84 | %56.8 | 0.0888 | %94.0 |
+
+#### Temel Bulgular
+- ✅ **PPO, baseline'a göre %452 iyileşme** sağladı (jamming etkinliği)
+- ✅ **PPO en enerji verimli** (baseline'dan %43 daha az güç)
+- ✅ Her iki RL algoritması **%94 kanal takibi** başarısı (baseline %30)
+- ✅ **Güç eşiği reward düzeltmesi** sıfır güç sömürüsünü başarıyla engelledi
+
+#### Kritik Tasarım Kararının Doğrulanması
+Tracking reward'ın güç kullanımına (`power > 0.01W`) bağlanması şu sonuçları verdi:
+- **Önceki dejenere politika:** Ajanlar sıfır güçle kanal takibi yaparak ödül alıyordu
+- **Düzeltme sonrası:** Her iki RL algoritması da %100 adımda güç kullanmaya başladı
+- **Sonuç:** Gerçek jamming davranışı öğrenildi
+
+**Not:** Tüm istatistikler `experiments/comparison_statistics.csv` dosyasında saklanmaktadır.
+

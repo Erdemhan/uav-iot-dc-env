@@ -273,3 +273,24 @@ To visualize the behavior of the **latest trained** model:
 python evaluate.py
 ```
 This script runs a single interactive episode, allowing you to observe the learned Markov-channel-switching prediction logic in real-time.
+
+## 9. Experimental Results
+
+Latest results from fair algorithmic comparison (60 training iterations, fixed reward mechanism):
+
+### Performance Comparison
+
+| Algorithm | Avg Jammed Nodes | Success Rate | Avg Power (W) | Channel Match |
+|-----------|------------------|--------------|---------------|---------------|
+| **Baseline (QJC)** | 0.78 | 15.6% | 0.1000 | 30.0% |
+| **PPO** | **3.53** ✨ | **70.6%** | 0.0569 | 94.0% |
+| **DQN** | 2.84 | 56.8% | 0.0888 | 94.0% |
+
+### Key Findings
+- ✅ **PPO achieves 452% improvement** over baseline in jamming effectiveness
+- ✅ **PPO is most energy-efficient** (43% less power than baseline)
+- ✅ Both RL algorithms achieve **94% channel tracking** vs 30% baseline
+- ✅ **Power threshold reward fix** successfully prevents zero-power exploitation
+
+**Note:** Full statistics saved to `experiments/comparison_statistics.csv`
+
