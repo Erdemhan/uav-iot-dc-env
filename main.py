@@ -9,6 +9,8 @@ import time
 import numpy as np
 from confs.config import UAVConfig
 from confs.env_config import EnvConfig
+from confs.model_config import GlobalConfig
+import torch
 
 import argparse
 
@@ -16,6 +18,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--no-viz", action="store_true", help="Disable visualization")
     args = parser.parse_args()
+
+    # Reproducibility
+    torch.manual_seed(GlobalConfig.RANDOM_SEED)
+    np.random.seed(GlobalConfig.RANDOM_SEED)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(GlobalConfig.RANDOM_SEED)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
     # 1. Start Logger
     full_config = {}
@@ -35,7 +45,7 @@ def main():
         viz = Visualization()
     
     # 4. Simulation Loop
-    observations, infos = env.reset()
+    observations, infos = env.reset(seed=GlobalConfig.RANDOM_SEED)
     uav_controller.reset() # Reset controller state
     
     # LOAD TRAINED BASELINE MODEL (For Evaluation)

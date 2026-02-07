@@ -34,6 +34,11 @@ if __name__ == "__main__":
     import numpy as np
     torch.manual_seed(GlobalConfig.RANDOM_SEED)
     np.random.seed(GlobalConfig.RANDOM_SEED)
+    # CUDA determinism
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(GlobalConfig.RANDOM_SEED)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
     
     register_env("uav_iot_dqn_v1", env_creator)
     
@@ -54,8 +59,9 @@ if __name__ == "__main__":
 
     config = (
         DQNConfig()
-        .environment("uav_iot_dqn_v1")
+        .environment("uav_iot_dqn_v1", env_config={"seed": GlobalConfig.RANDOM_SEED})
         .framework("torch")
+        .debugging(seed=GlobalConfig.RANDOM_SEED)
         # FAIRNESS: Match PPO's worker count for equal sampling
         .env_runners(num_env_runners=DQNHyperparams.NUM_WORKERS) 
         .training(
