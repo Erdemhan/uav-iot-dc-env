@@ -46,7 +46,7 @@ Simülasyon altyapısı, Nesne Yönelimli Programlama (OOP) prensipleri çerçev
 ### 2.2. Simülasyon ve Ortam
 *   **`simulation/pettingzoo_env.py` (PettingZoo Ortamı):** `UAV_IoT_PZ_Env` sınıfı, simülasyonun çoklu ajan (multi-agent) yapısını destekleyen `pettingzoo.utils.ParallelEnv` tabanlı ortamdır. İHA, Saldırgan ve her bir IoT düğümü ayrı birer ajan olarak modellenmiştir.
 *   **`simulation/controllers.py` (Kural Tabanlı Kontrolcüler):** İHA gibi belirli kurallara (örn. navigasyon) dayalı hareket eden ajanların davranış mantığını kapsüller.
-*   **`main.py` (Yürütücü):** Simülasyon döngüsünü PettingZoo API'sine uygun şekilde (sözlük yapılı aksiyon/gözlem) yönetir. `confs/config.py` içerisindeki `SIMULATION_DELAY` parametresi ile simülasyon akış hızı kontrol edilebilir.
+*   **`scripts/main.py` (Yürütücü):** Simülasyon döngüsünü PettingZoo API'sine uygun şekilde (sözlük yapılı aksiyon/gözlem) yönetir. `confs/config.py` içerisindeki `SIMULATION_DELAY` parametresi ile simülasyon akış hızı kontrol edilebilir.
 
 ### 2.3. Veri Yönetimi ve Analiz
 
@@ -310,7 +310,7 @@ Tez çalışmasının simülasyon gereksinimlerini karşılayan, doğrulanmış 
 1.  **Çoklu Frekans Kanalı:** Sistem artık 2.4, 5.0 ve 5.8 GHz kanallarını desteklemekte ve fiziksel katman (Path Loss, PA Efficiency) buna göre modellenmektedir.
 2.  **Akıllı Tehdit Modeli (QJC):** Liao ve ark. (2025) tarafından önerilen Q-Learning tabanlı Jammer Kanal Seçim algoritması (SmartAttacker sınıfına) entegre edildi.
 3.  **Reaktif Markov İHA:** İHA'nın jamming saldırısına uğradığında rastgele değil, belirli bir olasılıksal matrise (Markov Zinciri) göre kanal değiştirdiği "Hareketli Hedef" modeli oluşturuldu.
-4.  **RLLib Entegrasyonu:** `train.py` dosyası ile Ray RLLib (PPO) üzerinde Jammer'ın bu Markov modelini öğrenmesi için eğitim altyapısı kuruldu.
+4.  **RLLib Entegrasyonu:** `scripts/train.py` dosyası ile Ray RLLib (PPO) üzerinde Jammer'ın bu Markov modelini öğrenmesi için eğitim altyapısı kuruldu.
 
 ### [07.02.2026 00:10] - Adillik ve Kıyaslama Paketi (v1.7.0)
 **Yapılan Değişiklikler:**
@@ -318,13 +318,13 @@ Tez çalışmasının simülasyon gereksinimlerini karşılayan, doğrulanmış 
     *   RL Ajanının (Jammer) gözlem uzayından hileli "God View" (Tam Koordinat) verisi çıkarıldı.
     *   Yerine, sadece **Mesafe** (Distance) ve **Sinyal Gücü** (RSSI) gibi gerçek hayatta sensörlerle ölçülebilen veriler eklendi.
 2.  **Adil Kıyaslama (Algorithmic Fairness):**
-    *   Baseline (QJC) algoritmasının, PPO eğitim sürelerine denk (60K adım) deneyim kazanması için **Ön Eğitim (Pre-training)** modülü (`train_baseline.py`) eklendi.
+    *   Baseline (QJC) algoritmasının, PPO eğitim sürelerine denk (60K adım) deneyim kazanması için **Ön Eğitim (Pre-training)** modülü (`scripts/train_baseline.py`) eklendi.
     *   Böylece "Eğitimsiz Baseline vs Eğitilmiş RL" adaletsizliği giderildi.
 3.  **Algoritmik Çeşitlilik:**
     *   **PPO:** Sürekli (Continuous) politika optimizasyonu (New API Stack).
     *   **DQN:** Ayrık (Discrete) aksiyon uzayı optimizasyonu (Old API Stack).
     *   **Baseline:** Tablosal (Tabular) Q-Learning.
-    *   Üç algoritmayı tek komutla yarıştıran `run_experiments.py` otomasyonu geliştirildi.
+    *   Üç algoritmayı tek komutla yarıştıran `scripts/run_experiments.py` otomasyonu geliştirildi.
 4.  **Otomatik Raporlama:** Tüm sonuçları karşılaştırmalı sütun grafiklerine (`comparison_result.png`) döken analiz modülü eklendi.
 ### [07.02.2026 02:00] - RLLib Yama ve Otomasyon Paketi (v1.8.0)
 **Yapılan Değişiklikler:**
@@ -333,7 +333,7 @@ Tez çalışmasının simülasyon gereksinimlerini karşılayan, doğrulanmış 
     *   `rllib/algorithms/algorithm.py` dosyasına `isinstance(..., str)` kontrolü eklenerek yerel kütüphane yamalandı.
     *   Düzeltme, Ray projesine resmi Pull Request olarak gönderildi (DCO imzalı).
 2.  **Tam Otomatik Deney Hattı (Experiment Pipeline):**
-    *   `run_experiments.py` scripti geliştirilerek; Baseline (QJC), PPO ve DQN modellerinin sırayla eğitilmesi, değerlendirilmesi ve karşılaştırmalı rapor üretilmesi otomatikleştirildi.
+    *   `scripts/run_experiments.py` scripti geliştirilerek; Baseline (QJC), PPO ve DQN modellerinin sırayla eğitilmesi, değerlendirilmesi ve karşılaştırmalı rapor üretilmesi otomatikleştirildi.
 3.  **Temizlik ve Optimizasyon:**
     *   Gereksiz geçici dosyalar ve büyük boyutlu fork dosyaları silinerek proje alanı optimize edildi.
 4.  **Dokümantasyon Güncellemesi:**
@@ -420,7 +420,7 @@ Kod kalitesini artırmak, eğitim süresini optimize etmek ve geliştirici deney
 ### 6.3. Eğitim (`train.py`)
 Sistemi eğitmek için:
 ```bash
-python train.py
+python scripts/train.py
 ```
 Bu komut, Jammer'ı PPO algoritması ile eğiterek, İHA'nın kaçış örüntüsünü çözmesini ve enerji verimli saldırı yapmasını sağlar.
 

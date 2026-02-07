@@ -19,14 +19,18 @@ uav-iot-dc-env/
 ├── visualization/      # Visualization
 │   ├── visualization.py # Runtime visualization
 │   └── visualizer.py   # Analysis and reporting
+├── scripts/            # Execution Scripts
+│   ├── main.py         # Launcher
+│   ├── train.py        # PPO Training
+│   ├── train_dqn.py    # DQN Training
+│   └── run_experiments.py # Automation
 ├── logs/               # Simulation outputs
-├── main.py             # Launcher
 ├── README.md           # Workflow documentation
 └── RAPOR.md            # Technical report (Turkish)
 ```
 
 ## 1. Initialization - `main.py`
-When the simulation is started with `python main.py`, the following happens sequentially:
+When the simulation is started with `python scripts/main.py`, the following happens sequentially:
 
 1.  **Logger Setup (`SimulationLogger`)**:
     *   A new folder with the current date/time is created under `logs/` (e.g., `EXP_20260201_200542`).
@@ -259,7 +263,7 @@ Expected output: `CUDA Available: True`
 ## 7. Automated Comparison (`run_experiments.py`)
 To run the full scientific comparison pipeline (Official Baseline vs PPO vs DQN):
 ```bash
-python run_experiments.py
+python scripts/run_experiments.py
 ```
 This script automates:
 1.  **Baseline (QJC) Training**: Pre-trains the Classical Q-Learning model for 200 episodes (~20k steps).
@@ -270,7 +274,7 @@ This script automates:
 ## 8. Evaluation & Visualization (`evaluate.py`)
 To visualize the behavior of the **latest trained** model:
 ```bash
-python evaluate.py
+python scripts/evaluate.py
 ```
 This script runs a single interactive episode, allowing you to observe the learned Markov-channel-switching prediction logic in real-time.
 
