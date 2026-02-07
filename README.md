@@ -8,6 +8,7 @@ uav-iot-dc-env/
 ├── confs/              # Configuration Files
 │   ├── config.py       # System Configuration (Physics, Delay)
 │   ├── env_config.py   # Environment & Scenario Config (Nodes, Power, Speed)
+│   ├── model_config.py # Centralized ML Config (GlobalConfig, PPOConfig, DQNConfig, QJCConfig)
 ├── core/               # Core modules
 │   ├── physics.py      # Physics engine
 │   └── logger.py       # Logging system
@@ -136,3 +137,90 @@ This graph consists of three panels:
 
 #### D. Simulation Dashboard
 A unified window displaying all the above graphs side-by-side matches for a holistic view of the mission status.
+
+### E. RLLib Bug Fix (Critical)
+During development, a `TypeError` was discovered in Ray 2.53.0's DQN implementation. 
+*   **Issue:** `ABCMeta` type was not iterable in `_create_local_replay_buffer_if_necessary`.
+*   **Fix:** A patch was applied to the local library.
+*   **PR:** A Pull Request has been submitted to the `ray-project/ray` repository.
+*   **Documentation:** Detailed the issue and fix in `pr.md`.
+
+## 5. Configuration Management (`confs/model_config.py`)
+
+The project uses a centralized configuration system for reproducibility and easy hyperparameter tuning:
+
+### Configuration Classes:
+
+*   **GlobalConfig**: Shared parameters across all algorithms
+    *   `RANDOM_SEED`: Random seed for reproducibility (42)
+    *   `FLATTEN_ACTIONS`: Action space flattening for DQN compatibility (True)
+    *   `TRAIN_ITERATIONS`: Training iterations for all RL algorithms (20)
+
+*   **QJCConfig**: Baseline Q-Learning parameters
+    *   Learning rate (TAU_0), discount factor (GAMMA), softmax temperature (TEMP_XI)
+    *   Training episodes, save path, max power level
+
+*   **PPOConfig**: PPO training parameters
+    *   Learning rate (LR), gamma, batch size, rollout fragment length
+    *   Model architecture (`FCNET_HIDDENS = [256, 256]`)
+    *   GPU settings (`USE_GPU = True`)
+
+*   **DQNConfig**: DQN training parameters
+    *   Learning rate, gamma, batch size, target network update frequency
+    *   Replay buffer capacity, Double-Q, Dueling settings
+    *   Model architecture and GPU settings
+
+### Benefits:
+*   **Single Source of Truth**: All hyperparameters in one file
+*   **Easy Experimentation**: Change seed or hyperparameters with one edit
+*   **Reproducibility**: Guaranteed consistent random initialization
+*   **No Code Duplication**: Eliminates hardcoded values across scripts
+
+### API Stack Fairness:
+For fair algorithmic comparison, both PPO and DQN use the **Old API Stack**:
+*   **PPO**: Configured with `api_stack(enable_rl_module_and_learner=False)`
+*   **DQN**: Naturally uses Old API Stack
+*   **Benefit**: Identical GPU reporting, resource allocation, and execution behavior
+
+## 6. GPU Setup (CUDA Support)
+
+### Requirements:
+*   NVIDIA GPU (Tested on RTX 3080)
+*   CUDA 12.1+ installed
+
+### Installation:
+If PyTorch doesn't detect your GPU:
+```bash
+# Uninstall CPU-only version
+pip uninstall torch torchvision torchaudio -y
+
+# Install CUDA-enabled PyTorch
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+```
+
+### Verification:
+```bash
+python -c "import torch; print('CUDA Available:', torch.cuda.is_available())"
+```
+
+Expected output: `CUDA Available: True`
+
+**Note**: GPU acceleration provides ~5-10x speedup during training.
+
+## 7. Automated Comparison (`run_experiments.py`)
+To run the full scientific comparison pipeline (Official Baseline vs PPO vs DQN):
+```bash
+python run_experiments.py
+```
+This script automates:
+1.  **Baseline (QJC) Training**: Pre-trains the Classical Q-Learning model for 200 episodes (~20k steps).
+2.  **RL Training (PPO & DQN)**: Trains Ray RLLib agents for a comparable number of samples (20 iterations × 1000 steps).
+3.  **Evaluation**: Runs a test pass for each trained model.
+4.  **Auto-Report**: Generates `comparison_result.png` showing the success rate and energy efficiency comparison.
+
+## 8. Evaluation & Visualization (`evaluate.py`)
+To visualize the behavior of the **latest trained** model:
+```bash
+python evaluate.py
+```
+This script runs a single interactive episode, allowing you to observe the learned Markov-channel-switching prediction logic in real-time.

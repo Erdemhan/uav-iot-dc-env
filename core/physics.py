@@ -8,26 +8,26 @@ from confs.env_config import EnvConfig
 def calculate_path_loss(d: float, fc: float = UAVConfig.FC, eta: float = UAVConfig.ETA) -> float:
     """
     Channel Gain (beta_0) calculation.
-    Thesis Proposal Equation: beta_0 = (1/eta) * ((4 * pi * fc) / c)^(-2) 
-    *Note: In the formula, 'eta' is usually not in the denominator; path loss exponent 'eta' is an exponent of 'd'.
-    However, user input is: Channel Gain (beta_0): (1/eta) * ((4 pi f_c) / c)^-2.
-    Here beta_0 might be the loss constant at reference distance (d0=1m).
-    We will use the general Friis formula scaled by d^eta.
-    
-    Model: P_rx = P_tx * beta_0 / d^2 (Since user input specified d^2, eta=2 is assumed)
-    We calculate beta_0 directly.
+    Depending on frequency (fc).
     """
     c = UAVConfig.C
     # wavelength lambda
     lam = c / fc
-    # Free space path loss at 1m (Friis)
-    # FSPL = (4 * pi * d / lambda)^2
-    # Gain = 1/FSPL
-    # User formula: ((4 * pi * f_c) / c)^(-2) -> (lambda / 4pi)^2 -> This is standard Friis.
-    # The coefficient (1/eta) at the beginning is a user request, adding it as is.
     
+    # Path Loss Coeff (Friis based)
     beta_0 = (1 / eta) * ( (4 * np.pi * fc) / c )**(-2)
     return beta_0
+
+def calculate_jammer_power_consumption(p_jam_out: float, frequency: float) -> float:
+    """
+    Calculates Total Jammer Power Consumption (Cui et al., 2005).
+    P_total = (P_out / eta(f)) + P_circuit
+    """
+    # Get efficiency for this frequency, default to mid-band (0.35) if not found
+    eta_pa = UAVConfig.ETA_PA.get(frequency, 0.35)
+    
+    p_total = (p_jam_out / eta_pa) + UAVConfig.P_CIRCUIT
+    return p_total
 
 def calculate_received_power(p_tx: float, d: float, beta_0: float) -> float:
     """

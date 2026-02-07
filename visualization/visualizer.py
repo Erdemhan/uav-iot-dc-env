@@ -304,11 +304,12 @@ class SimulationVisualizer:
         print(f"Advanced metrics saved: {save_path}")
         plt.close()
 
-    def show_dashboard(self):
+    def show_dashboard(self, show=True):
         """Displays all generated plots in a single window."""
         img_traj_path = os.path.join(self.exp_dir, "trajectory.png")
         img_metrics_path = os.path.join(self.exp_dir, "metrics_analysis.png")
         img_adv_path = os.path.join(self.exp_dir, "advanced_metrics.png")
+        img_ch_path = os.path.join(self.exp_dir, "channel_usage.png")
         
         images = []
         titles = []
@@ -322,6 +323,9 @@ class SimulationVisualizer:
         if os.path.exists(img_adv_path):
             images.append(plt.imread(img_adv_path))
             titles.append("Advanced Communication Stats")
+        if os.path.exists(img_ch_path):
+            images.append(plt.imread(img_ch_path))
+            titles.append("Channel Hopping")
             
         if not images:
             print("No images to display in dashboard.")
@@ -357,7 +361,42 @@ class SimulationVisualizer:
             
         print("Opening Dashboard Window...")
         plt.ioff() # Disable interactive mode to ensure blocking
-        plt.show(block=True)
+        if show:
+            plt.show(block=True)
+
+    def plot_channel_usage(self):
+        """Draws Channel Usage over Time (UAV vs Jammer)."""
+        if "uav_channel" not in self.df.columns or "jammer_channel" not in self.df.columns:
+            print("Channel data not found in logs.")
+            return
+            
+        fig, ax = plt.subplots(figsize=(10, 5))
+        steps = self.df["step"]
+        
+        # Plot UAV Channel
+        ax.plot(steps, self.df["uav_channel"], label="UAV Channel", marker="o", linestyle="-", markersize=4, alpha=0.7)
+        
+        # Plot Jammer Channel
+        ax.plot(steps, self.df["jammer_channel"], label="Jammer Channel", marker="x", linestyle="--", markersize=6, alpha=0.7, color="red")
+        
+        # Highlight Interaction
+        # Mark steps where they match
+        matches = self.df[self.df["uav_channel"] == self.df["jammer_channel"]]
+        if not matches.empty:
+            ax.scatter(matches["step"], matches["uav_channel"], s=100, facecolors='none', edgecolors='black', label="Collision (Potential Jam)")
+        
+        ax.set_yticks([0, 1, 2])
+        ax.set_yticklabels(["2.4 GHz", "5.0 GHz", "5.8 GHz"])
+        ax.set_xlabel("Time Step")
+        ax.set_ylabel("Channel Frequency")
+        ax.set_title("Channel Hopping Dynamics", fontsize=14)
+        ax.legend()
+        ax.grid(True, axis='y')
+        
+        save_path = os.path.join(self.exp_dir, "channel_usage.png")
+        plt.savefig(save_path, dpi=300)
+        print(f"Channel usage plot saved: {save_path}")
+        plt.close()
 
     def generate_report(self):
         """Triggers report generation."""
@@ -365,6 +404,7 @@ class SimulationVisualizer:
         self.plot_trajectory()
         self.plot_metrics()
         self.plot_advanced_metrics()
+        self.plot_channel_usage()
         print("Visualization Completed.")
 
 if __name__ == "__main__":

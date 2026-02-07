@@ -21,6 +21,39 @@ class UAVRuleBasedController:
         self.hover_timer = 0.0
         self.hover_duration = 5.0 # Seconds
         self.is_hovering = False
+        
+        # Markov Channel Hopping State
+        self.num_channels = 3
+        self.transition_matrix = np.array([
+            [0.1, 0.7, 0.2], # From Ch0 -> Prefer Ch1
+            [0.2, 0.1, 0.7], # From Ch1 -> Prefer Ch2
+            [0.7, 0.2, 0.1]  # From Ch2 -> Prefer Ch0
+        ])
+        # We need to track if we already switched for this jamming instance to avoid rapid switching
+        self.last_step_jammed = False
+
+    def update_channel_logic(self):
+        """
+        Markov Decision Process for Channel Selection.
+        Called every step.
+        """
+        uav = self.env.uav
+        target_node = self.env.nodes[self.target_node_index]
+        
+        # Check if current target node is Jammed (Status 2)
+        # We access the entity state directly.
+        is_jammed = (target_node.connection_status == 2)
+        
+        if is_jammed and not self.last_step_jammed:
+            # Trigger Channel Switch
+            current_ch = uav.current_channel
+            probs = self.transition_matrix[current_ch]
+            next_ch = np.random.choice(np.arange(self.num_channels), p=probs)
+            
+            uav.current_channel = next_ch
+            # print(f"DEBUG: UAV Hopped {current_ch} -> {next_ch} due to Jamming.")
+            
+        self.last_step_jammed = is_jammed
 
     def get_action(self, observation=None) -> np.ndarray:
         """
@@ -38,6 +71,8 @@ class UAVRuleBasedController:
             return np.zeros(2, dtype=np.float32)
 
         # Logic
+        self.update_channel_logic()
+
         if self.is_hovering:
             self.hover_timer += self.dt
             if self.hover_timer >= self.hover_duration:
