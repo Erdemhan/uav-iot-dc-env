@@ -281,6 +281,9 @@ Deney sonunda üretilen `comparison_result.png` şu sorulara yanıt verir:
 
 Adil algoritmik karşılaştırma sonuçları (tüm algoritmalar aynı eğitim bütçesi ve ödül fonksiyonuyla):
 
+**Önemli Not (Adil Kıyaslama Prensibi):**
+Eğitim (Training) ve Test (Evaluation) süreçlerinde, İHA'nın kaçınma zekası ve fiziksel ortam parametreleri (Path Loss, SINR eşiği vb.) **birebir aynı** tutulmuştur. Algoritmalar arasındaki performans farkı, tamamen öğrenme yeteneklerinden kaynaklanmaktadır.
+
 #### Performans Karşılaştırması
 
 | Algoritma | Ort. Jamlenen Düğüm | Başarı Oranı | Ort. Güç (W) | Kanal Eşleşme |
@@ -294,6 +297,7 @@ Adil algoritmik karşılaştırma sonuçları (tüm algoritmalar aynı eğitim b
 - ✅ **PPO en enerji verimli** (baseline'dan %43 daha az güç)
 - ✅ Her iki RL algoritması **%94 kanal takibi** başarısı (baseline %30)
 - ✅ **Güç eşiği reward düzeltmesi** sıfır güç sömürüsünü başarıyla engelledi
+- 🔬 **QJC Salınım Bulgusu:** Baseline modelin eğitim grafiğindeki "testere dişi" (sawtooth) salınımı, **Cat & Mouse (Kedi-Fare)** dinamiğinden kaynaklanmaktadır. QJC, jamming yaptığı an İHA kaçmakta, QJC ancak bir sonraki adımda durumu fark edip (ama kör olduğu için yeniden arayarak) tekrar saldırmaktadır. Bu döngü, statik Q-Learning'in dinamik hedeflere karşı yetersizliğinin en somut kanıtıdır.
 
 #### Kritik Tasarım Kararının Doğrulanması
 Tracking reward'ın güç kullanımına (`power > 0.01W`) bağlanması şu sonuçları verdi:
