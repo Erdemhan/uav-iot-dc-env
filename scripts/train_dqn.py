@@ -21,12 +21,21 @@ from simulation.pettingzoo_env import UAV_IoT_PZ_Env
 from confs.model_config import DQNConfig as DQNHyperparams, GlobalConfig
 
 def env_creator(config):
-    # Enable internal UAV controller for training
-    # DQN requires Discrete action space, so we flatten MultiDiscrete([3, 10]) -> Discrete(30)
     env = UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS)
     return ParallelPettingZooEnv(env)
 
+from ray.tune import Callback
+class ProgressCallback(Callback):
+    """Callback to print progress in a format run_experiments.py can parse"""
+    def on_trial_result(self, iteration, trials, trial, result, **info):
+        print(f"Iteration {result['training_iteration']}")
+
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output-dir", type=str, default="ray_results_dqn", help="Output directory for DQN")
+    args = parser.parse_args()
+    
     if ray.is_initialized():
         ray.shutdown()
     ray.init() 
@@ -46,8 +55,8 @@ if __name__ == "__main__":
     
     print("Starting DQN Training (Ray RLLib with Official DQN Patch)...")
     
-    # Clean up previous results
-    storage_path = os.path.abspath("./ray_results_dqn")
+    # Set storage path for DQN results
+    storage_path = os.path.abspath(args.output_dir)
     if os.path.exists(storage_path):
         import shutil
         shutil.rmtree(storage_path, ignore_errors=True)
@@ -109,7 +118,8 @@ if __name__ == "__main__":
         config=config.to_dict(),
         stop={"training_iteration": GlobalConfig.TRAIN_ITERATIONS}, 
         checkpoint_at_end=True,
-        storage_path=storage_path
+        storage_path=storage_path,
+        callbacks=[ProgressCallback()]
     )
     
     print("DQN Training Completed.")

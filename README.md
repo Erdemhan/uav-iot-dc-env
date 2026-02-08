@@ -23,8 +23,11 @@ uav-iot-dc-env/
 │   ├── main.py         # Launcher
 │   ├── train.py        # PPO Training
 │   ├── train_dqn.py    # DQN Training
-│   └── run_experiments.py # Automation
-├── logs/               # Simulation outputs
+│   ├── run_experiments.py # Parallel Automation
+│   └── evaluate.py     # Unified Evaluation
+├── artifacts/          # Experiment Artifacts (Timestamped)
+│   └── 2026-02-08_.../ # Individual Run Results
+├── logs/               # Legacy Simulation outputs
 ├── README.md           # Workflow documentation
 └── RAPOR.md            # Technical report (Turkish)
 ```
@@ -148,50 +151,9 @@ To graph the results after the simulation ends:
 python visualization/visualizer.py 
 # Note: Usually called automatically by main.py
 ```
-This command finds the latest experiment folder and generates the following graphs.
+This command finds the latest experiment folder and generates analysis graphs (Trajectory, Metrics, Communication Stats).
 
-### Interpreting Results (Example)
-
-The following graphs simplify example outputs of a scenario under attack.
-
-#### A. Trajectory and Attack Analysis (`trajectory.png`)
-![Trajectory Plot](logs/EXP_20260206_163802/trajectory.png)
-
-*   **Blue Line**: The path followed by the UAV (Visiting nodes).
-*   **Red "X"**: Position of the fixed attacker (Jammer).
-*   **Colored Dots**: Successful connection points. Each node has a distinct color (e.g., Node 0 is Blue, Node 1 is Orange).
-*   **Red Dot (X)**: Jamming detected (Communication lost due to attack, only shown if ALL connections are lost).
-*   **Gray Dot**: Out of Range (Only shown if ALL connections are lost and no jamming).
-    *   *Comment:* The concentration of red dots as the UAV approaches the attacker (top right corner) confirms that the Jammer effect increases with proximity.
-
-#### B. Metrics Analysis (`metrics_analysis.png`)
-![Metrics Analysis](logs/EXP_20260206_163802/metrics_analysis.png)
-
-This graph consists of three panels:
-
-1.  **Top Panel (SINR & Jamming):**
-    *   **Blue Line (SINR):** Signal quality.
-    *   **Red Dashed Line (Jamming Power):** Attacker's power.
-    *   *Comment:* When the red line rises (attack increases), the blue line (SINR) experiences sudden drops. Points falling below 0 dB (Gray line) indicate connection loss.
-
-2.  **Middle Panel (Age of Information - AoI):**
-    *   **Green Line:** Freshness of information (Lower is better).
-    *   *Comment:* A "sawtooth" pattern is seen. When the line climbs upwards (Linear increase), data is not being received (Jamming or distance). The moment the line drops to zero is the moment of successful data transfer.
-
-3.  **Bottom Panel (Energy):**
-    *   **Orange Line:** Total energy consumption of the UAV.
-    *   *Comment:* Increases cumulatively over time. Changes in slope indicate speed changes (Maneuver).
-
-#### C. Communication Statistics (`advanced_metrics.png`)
-![Advanced Metrics](logs/EXP_20260206_163802/advanced_metrics.png)
-
-1.  **Total Successful Duration:** How long each node maintained instances of valid connection (SINR > Threshold).
-2.  **Max Continuous Streak:** The longest uninterrupted specific connection interval for each node.
-
-#### D. Simulation Dashboard
-A unified window displaying all the above graphs side-by-side matches for a holistic view of the mission status.
-
-### E. RLLib Bug Fix (Critical)
+### RLLib Bug Fix (Critical)
 During development, a `TypeError` was discovered in Ray 2.53.0's DQN implementation. 
 *   **Issue:** `ABCMeta` type was not iterable in `_create_local_replay_buffer_if_necessary`.
 *   **Fix:** A patch was applied to the local library.
@@ -260,16 +222,25 @@ Expected output: `CUDA Available: True`
 
 **Note**: GPU acceleration provides ~5-10x speedup during training.
 
-## 7. Automated Comparison (`run_experiments.py`)
-To run the full scientific comparison pipeline (Official Baseline vs PPO vs DQN):
+## 7. Automated Parallel Comparison (`run_experiments.py`)
+To run the full scientific comparison pipeline (Official Baseline vs PPO vs DQN) in **PARALLEL**:
 ```bash
 python scripts/run_experiments.py
 ```
 This script automates:
-1.  **Baseline (QJC) Training**: Pre-trains the Classical Q-Learning model for 200 episodes (~20k steps).
-2.  **RL Training (PPO & DQN)**: Trains Ray RLLib agents for a comparable number of samples (20 iterations × 1000 steps).
-3.  **Evaluation**: Runs a test pass for each trained model.
-4.  **Auto-Report**: Generates `comparison_result.png` showing the success rate and energy efficiency comparison.
+1.  **Parallel Execution**: Launches Baseline, PPO, and DQN training simultaneously (3x faster).
+2.  **Real-Time Monitoring**: Displays color-coded progress bars and iteration counts in the terminal.
+3.  **Artifact Management**: Creates a timestamped folder in `artifacts/` containing all models, logs, and plots.
+4.  **Auto-Report**: Generates `comparison_result.png` showing success rates and energy efficiency.
+
+### Command-Line Arguments:
+*   `--debug`: Enable verbose output (shows all subprocess logs and errors).
+*   `--ui <seconds>`: Set custom terminal update interval (Default: 3s).
+
+Example:
+```bash
+python scripts/run_experiments.py --debug --ui 1
+```
 
 ## 8. Evaluation & Visualization (`evaluate.py`)
 To visualize the behavior of the **latest trained** model:

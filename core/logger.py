@@ -9,12 +9,15 @@ class SimulationLogger:
     """
     Records simulation data (Telemetry).
     """
-    def __init__(self, config_dict: Dict[str, Any] = None):
+    def __init__(self, config_dict: Dict[str, Any] = None, log_dir: str = None):
 
-        
-        # Create log folder: logs/EXP_YYYYMMDD_HHMMSS
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.log_dir = os.path.join("logs", f"EXP_{timestamp}")
+        # Create log folder: logs/EXP_YYYYMMDD_HHMMSS or use custom directory
+        if log_dir is None:
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            self.log_dir = os.path.join("logs", f"EXP_{timestamp}")
+        else:
+            self.log_dir = log_dir
+            
         os.makedirs(self.log_dir, exist_ok=True)
         
         self.csv_path = os.path.join(self.log_dir, "history.csv")

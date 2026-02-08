@@ -57,9 +57,10 @@ def find_latest_checkpoint(base_dir="./ray_results"):
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate Trained Model")
-    parser.add_argument("--algo", type=str, default="PPO", help="Algorithm (PPO or DQN)")
-    parser.add_argument("--dir", type=str, default="./ray_results", help="Checkpoint Directory")
+    parser.add_argument("--algo", type=str, default="PPO", help="Algorithm (Baseline, PPO, or DQN)")
+    parser.add_argument("--dir", type=str, default="./ray_results", help="Model Directory")
     parser.add_argument("--no-viz", action="store_true", help="Disable visualization")
+    parser.add_argument("--output-dir", type=str, default="logs", help="Output directory for evaluation logs")
     args = parser.parse_args()
 
     # Reproducibility
@@ -73,6 +74,79 @@ def main():
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
+    # === BASELINE EVALUATION ===
+    if args.algo.upper() == "BASELINE":
+        print("="*70)
+        print("Evaluating Baseline (QJC)")
+        print("="*70)
+        
+        from simulation.controllers import UAVRuleBasedController
+        
+        # Setup logger
+        full_config = {}
+        full_config.update(UAVConfig.__dict__)
+        full_config.update(EnvConfig.__dict__)
+        logger = SimulationLogger(config_dict=full_config, log_dir=args.output_dir)
+        
+        # Create environment
+        env = UAV_IoT_PZ_Env(logger=logger)
+        uav_controller = UAVRuleBasedController(env)
+        
+        if not args.no_viz:
+            viz = Visualization()
+        
+        # Reset
+        observations, infos = env.reset(seed=GlobalConfig.RANDOM_SEED)
+        uav_controller.reset()
+        
+        # Load trained Q-table
+        try:
+            env.attacker.load_model(args.dir)
+            print(f"[OK] Loaded Q-table from: {args.dir}")
+            env.attacker.temp_xi = 0  # Greedy policy for evaluation
+        except Exception as e:
+            print(f"[WARNING] Could not load Q-table from {args.dir}: {e}")
+            print("  Running with empty Q-table")
+        
+        print("Starting evaluation episode...")
+        
+        try:
+            for step in range(EnvConfig.MAX_STEPS):
+                actions = {}
+                
+                # UAV Action
+                if 'uav_0' in env.agents:
+                    actions['uav_0'] = uav_controller.get_action()
+                
+                # Jammer Action
+                if 'jammer_0' in env.agents:
+                    from confs.model_config import QJCConfig
+                    jam_channel = env.attacker.select_channel_qjc()
+                    jam_power_level = QJCConfig.MAX_POWER_LEVEL  # Use max power (0-9 scale)
+                    actions['jammer_0'] = np.array([jam_channel, jam_power_level])
+                
+                # Step environment
+                observations, rewards, terminations, truncations, infos = env.step(actions)
+                
+                # Visualize
+                if not args.no_viz:
+                    viz.update(env)
+                
+                # Check if done
+                if all(terminations.values()) or all(truncations.values()):
+                    break
+        
+        except KeyboardInterrupt:
+            print("\nEvaluation interrupted by user.")
+        finally:
+            logger.close()
+            if not args.no_viz:
+                viz.close()
+        
+        print(f"\n[OK] Baseline evaluation complete. Logs saved to: {args.output_dir}")
+        return
+
+    # === PPO/DQN EVALUATION ===
     ray.init() 
     register_env("uav_iot_ppo_v1", env_creator_ppo)
     register_env("uav_iot_dqn_v1", env_creator_dqn)
@@ -97,7 +171,7 @@ def main():
     full_config = {}
     full_config.update(UAVConfig.__dict__)
     full_config.update(EnvConfig.__dict__)
-    logger = SimulationLogger(config_dict=full_config)
+    logger = SimulationLogger(config_dict=full_config, log_dir=args.output_dir)
     
     # Auto UAV mode for compatibility
     # Use GlobalConfig to ensure consistency with training

@@ -6,7 +6,8 @@ class GlobalConfig:
     """
     RANDOM_SEED = 42            # Random seed for reproducibility
     FLATTEN_ACTIONS = True      # Flatten MultiDiscrete to Discrete for DQN compatibility
-    TRAIN_ITERATIONS = 100     # Number of training iterations (shared across all RL algorithms)
+    TRAIN_ITERATIONS = 20      # Number of training iterations
+    TRAIN_BATCH_SIZE = 1000     # Steps collected per iteration (PPO/DQN)
 
 class QJCConfig:
     """

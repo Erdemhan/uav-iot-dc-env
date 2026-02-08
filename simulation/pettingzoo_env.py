@@ -84,6 +84,7 @@ class UAV_IoT_PZ_Env(ParallelEnv):
 
     def reset(self, seed=None, options=None):
         self.agents = self.possible_agents[:]
+
         self.current_step = 0
         
         # Reset Entities
