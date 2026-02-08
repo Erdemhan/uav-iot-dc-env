@@ -1,12 +1,18 @@
-
 import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import glob
+import json
+import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import argparse
 
-def load_data(exp_name):
-    path = os.path.join("experiments", exp_name, "history.csv")
+def load_data_from_run_dir(run_dir, algo_name):
+    """Load evaluation history.csv from run directory structure"""
+    path = os.path.join(run_dir, algo_name, "evaluation", "history.csv")
     if not os.path.exists(path):
         print(f"Warning: {path} not found.")
         return None
@@ -41,6 +47,17 @@ def preprocess_df(df):
     return df
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--run-dir", type=str, required=True, help="Run directory (e.g., artifacts/2026-02-08_22-51-00)")
+    parser.add_argument("--output-dir", type=str, default=None, help="Output directory for comparison results (defaults to run-dir/comparison)")
+    args = parser.parse_args()
+    
+    # Set output directory
+    if args.output_dir is None:
+        args.output_dir = os.path.join(args.run_dir, "comparison")
+    
+    os.makedirs(args.output_dir, exist_ok=True)
+    
     sns.set_style("whitegrid")
     
     experiments = ["baseline", "ppo", "dqn"]
@@ -50,13 +67,13 @@ def main():
     data_map = {}
     
     for exp, label, color in zip(experiments, labels, colors):
-        df = load_data(exp)
+        df = load_data_from_run_dir(args.run_dir, exp)
         if df is not None:
             df = preprocess_df(df)
-            data_map[label] = {"df": df, "color": color}
+            data_map[label] = {"df": df, "color": color, "exp_name": exp}
             
     if not data_map:
-        print("No data found in experiments/ folder. Run experiments first.")
+        print(f"No data found in {args.run_dir}. Run experiments first.")
         return
 
     # Print Statistical Summary
@@ -66,91 +83,121 @@ def main():
     
     for label, data in data_map.items():
         df = data["df"]
-        print(f"{'─'*70}")
+        print(f"{'-'*70}")
         print(f"{label}")
-        print(f"{'─'*70}")
-        
-        # Jamming Performance
+        print(f"{'-'*70}")
+        print("  Jamming Performance:")
         if "jammed_count" in df.columns:
-            print(f"  Jamming Performance:")
-            print(f"    • Avg Jammed Nodes: {df['jammed_count'].mean():.2f}")
-            print(f"    • Total Jammed: {df['jammed_count'].sum()}")
-            print(f"    • Max Jammed (single step): {df['jammed_count'].max()}")
-            print(f"    • Success Rate: {df['jam_success_rate'].mean()*100:.1f}%")
+            print(f"    - Avg Jammed Nodes: {df['jammed_count'].mean():.2f}")
+            print(f"    - Total Jammed: {df['jammed_count'].sum()}")
+            print(f"    - Max Jammed (single step): {df['jammed_count'].max()}")
+        print(f"    - Success Rate: {df['jam_success_rate'].mean()*100:.1f}%")
         
-        # Power Usage
+        print("  Power Usage:")
         if "jammer_power" in df.columns:
-            print(f"  Power Usage:")
-            print(f"    • Avg Power: {df['jammer_power'].mean():.4f} W")
-            print(f"    • Max Power: {df['jammer_power'].max():.4f} W")
-            print(f"    • Power > 0 steps: {(df['jammer_power'] > 0).sum()}/100")
+            print(f"    - Avg Power: {df['jammer_power'].mean():.4f} W")
+            print(f"    - Max Power: {df['jammer_power'].max():.4f} W")
+            print(f"    - Power > 0 steps: {(df['jammer_power'] > 0).sum()}/{len(df)}")
         
-        # Channel Tracking
+        print("  Channel Tracking:")
         if "uav_channel" in df.columns and "jammer_channel" in df.columns:
-            match = (df["uav_channel"] == df["jammer_channel"]).astype(int)
-            print(f"  Channel Tracking:")
-            print(f"    • Match Rate: {match.mean()*100:.1f}%")
-            print(f"    • Matched Steps: {match.sum()}/100")
+            match_rate = (df["uav_channel"] == df["jammer_channel"]).mean() * 100
+            print(f"    - Channel Match Rate: {match_rate:.1f}%")
         
-        # Network Impact
-        if "avg_sinr_db" in df.columns:
-            print(f"  Network Impact:")
-            print(f"    • Avg SINR: {df['avg_sinr_db'].mean():.2f} dB")
-            print(f"    • Min SINR: {df['avg_sinr_db'].min():.2f} dB")
-        
+        print("  Network SINR:")
+        print(f"    - Avg SINR: {df['avg_sinr_db'].mean():.2f} dB")
+        print(f"    - Max SINR: {df['avg_sinr_db'].max():.2f} dB")
+        print(f"    - Min SINR: {df['avg_sinr_db'].min():.2f} dB")
         print()
     
-    print("="*70 + "\n")
-    print("Generating comparison plots...\n")
-
-    # Create Comparison Plot
-    fig, axes = plt.subplots(3, 1, figsize=(10, 15), sharex=True)
+    # Create 2x2 subplot layout
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    axes = axes.flatten()
     
-    # 1. Jamming Success Rate
+    # Plot 1: Jamming Success Rate
     ax1 = axes[0]
     for label, data in data_map.items():
         df = data["df"]
-        # Smooth curve
-        smoothed = df["jam_success_rate"].rolling(window=10, min_periods=1).mean()
-        ax1.plot(df["step"], smoothed, label=label, color=data["color"], linewidth=2)
-        
-    ax1.set_title("Jamming Success Rate (Higher is Better for Attacker)", fontsize=14)
-    ax1.set_ylabel("Success Ratio (0-1)", fontsize=12)
-    ax1.legend()
-    ax1.set_ylim(0, 1.1)
-
-    # 2. Impact on Network SINR
+        color = data["color"]
+        ax1.plot(df.index, df["jam_success_rate"] * 100, label=label, color=color, linewidth=2, alpha=0.8)
+    ax1.set_title("Jamming Success Rate Over Time", fontsize=14, fontweight='bold')
+    ax1.set_ylabel("Success Rate (%)", fontsize=12)
+    ax1.set_xlabel("Time Step", fontsize=12)
+    ax1.legend(loc='best', fontsize=10)
+    ax1.grid(True, alpha=0.3)
+    
+    # Plot 2: Network SINR
     ax2 = axes[1]
     for label, data in data_map.items():
         df = data["df"]
-        smoothed = df["avg_sinr_db"].rolling(window=10, min_periods=1).mean()
-        ax2.plot(df["step"], smoothed, label=label, color=data["color"], linewidth=2)
-        
-    ax2.set_title("Network Signal Quality (Lower is Better for Attacker)", fontsize=14)
-    ax2.set_ylabel("Avg SINR (dB)", fontsize=12)
-    ax2.legend()
+        color = data["color"]
+        ax2.plot(df.index, df["avg_sinr_db"], label=label, color=color, linewidth=2, alpha=0.8)
+    ax2.set_title("Network SINR (Lower = Better Jamming)", fontsize=14, fontweight='bold')
+    ax2.set_ylabel("SINR (dB)", fontsize=12)
+    ax2.set_xlabel("Time Step", fontsize=12)
+    ax2.legend(loc='best', fontsize=10)
+    ax2.grid(True, alpha=0.3)
     
-    # 3. Energy Efficiency (Reward Proxy or Jammer Cost?)
-    # Let's show Channel Matching - Hard to show 3 lines.
-    # Let's show "Tracking Accuracy" -> Fraction of time on same channel as UAV
+    # Plot 3: Channel Tracking Accuracy
     ax3 = axes[2]
-    
     for label, data in data_map.items():
         df = data["df"]
+        color = data["color"]
         if "uav_channel" in df.columns and "jammer_channel" in df.columns:
-            match = (df["uav_channel"] == df["jammer_channel"]).astype(int)
-            # Cumulative Average Match Rate
-            cum_match = match.expanding().mean()
-            ax3.plot(df["step"], cum_match, label=label, color=data["color"], linewidth=2)
-            
-    ax3.set_title("Channel Tracking Accuracy (Lock-on Capability)", fontsize=14)
-    ax3.set_ylabel("Match Rate (Cumulative)", fontsize=12)
-    ax3.set_xlabel("Simulation Step", fontsize=12)
-    ax3.legend()
-    ax3.set_ylim(0, 1.05)
-
-    # Add summary statistics table to figure
-    fig.text(0.5, 0.01, "Performance Summary", ha='center', fontsize=12, fontweight='bold')
+            # Rolling average for smoothness
+            match = (df["uav_channel"] == df["jammer_channel"]).rolling(5, min_periods=1).mean() * 100
+            ax3.plot(df.index, match, label=label, color=color, linewidth=2, alpha=0.8)
+    ax3.set_title("Channel Tracking Accuracy (5-step Rolling Avg)", fontsize=14, fontweight='bold')
+    ax3.set_ylabel("Match Rate (%)", fontsize=12)
+    ax3.set_xlabel("Time Step", fontsize=12)
+    ax3.legend(loc='best', fontsize=10)
+    ax3.grid(True, alpha=0.3)
+    
+    # Plot 4: Training Curves
+    ax4 = axes[3]
+    
+    # Load training data
+    # Baseline
+    baseline_train_path = os.path.join(args.run_dir, "baseline", "training_curve.csv")
+    if os.path.exists(baseline_train_path):
+        from confs.env_config import EnvConfig
+        df_train = pd.read_csv(baseline_train_path)
+        # Calculate total_steps: episode * MAX_STEPS
+        df_train['total_steps'] = df_train['episode'] * EnvConfig.MAX_STEPS
+        ax4.plot(df_train['total_steps'], df_train['total_reward'], 
+                label='Baseline (QJC)', color='gray', linewidth=2, alpha=0.8)
+    
+    # PPO
+    ppo_progress_files = glob.glob(os.path.join(args.run_dir, "ppo", "PPO_*/*/progress.csv"))
+    if ppo_progress_files:
+        latest_ppo_file = max(ppo_progress_files, key=os.path.getmtime)
+        if os.path.exists(latest_ppo_file):
+            df_ppo = pd.read_csv(latest_ppo_file)
+            # Use Ray 2.x column names
+            if 'timesteps_total' in df_ppo.columns and 'env_runners/episode_reward_mean' in df_ppo.columns:
+                ax4.plot(df_ppo['timesteps_total'], df_ppo['env_runners/episode_reward_mean'], 
+                        label='PPO', color='tab:blue', linewidth=2, alpha=0.8)
+    
+    # DQN
+    dqn_progress_files = glob.glob(os.path.join(args.run_dir, "dqn", "DQN_*/*/progress.csv"))
+    if dqn_progress_files:
+        latest_dqn_file = max(dqn_progress_files, key=os.path.getmtime)
+        if os.path.exists(latest_dqn_file):
+            df_dqn = pd.read_csv(latest_dqn_file)
+            # Use Ray 2.x column names
+            if 'timesteps_total' in df_dqn.columns and 'env_runners/episode_reward_mean' in df_dqn.columns:
+                ax4.plot(df_dqn['timesteps_total'], df_dqn['env_runners/episode_reward_mean'], 
+                        label='DQN', color='tab:orange', linewidth=2, alpha=0.8)
+    
+    ax4.set_title("Training Progress: Reward Learning Curves", fontsize=14, fontweight='bold')
+    ax4.set_ylabel("Mean Episode Reward", fontsize=12)
+    ax4.set_xlabel("Total Environment Steps", fontsize=12)
+    ax4.legend(loc='best', fontsize=10)
+    ax4.grid(True, alpha=0.3)
+    ax4.axhline(y=0, color='gray', linestyle='--', alpha=0.5, linewidth=1)
+    
+    plt.suptitle("UAV-IoT Jamming: Algorithm Comparison", fontsize=16, fontweight='bold', y=0.995)
+    plt.tight_layout()
     
     # Create summary table data
     table_data = []
@@ -195,7 +242,7 @@ def main():
     plt.subplots_adjust(bottom=0.12)  # Make room for table
     
     # Save statistics to CSV
-    stats_path = "experiments/comparison_statistics.csv"
+    stats_path = os.path.join(args.output_dir, "comparison_statistics.csv")
     with open(stats_path, 'w') as f:
         f.write("Algorithm,Avg_Jammed_Nodes,Total_Jammed,Max_Jammed,Success_Rate,Avg_Power_W,Max_Power_W,Channel_Match_Rate,Avg_SINR_dB\n")
         for label, data in data_map.items():
@@ -216,7 +263,7 @@ def main():
     
     print(f"Statistics saved to: {stats_path}")
     
-    save_path = "experiments/comparison_result.png"
+    save_path = os.path.join(args.output_dir, "comparison_result.png")
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     print(f"Comparison Plot Saved: {save_path}")
     

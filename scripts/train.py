@@ -21,12 +21,21 @@ from simulation.pettingzoo_env import UAV_IoT_PZ_Env
 
 def env_creator(config):
     from confs.model_config import GlobalConfig
-    # FAIRNESS: Use flattened actions to match DQN's action space representation
-    # Both algorithms now use Discrete(30) instead of MultiDiscrete([3,10])
     # This ensures identical gradient flow and exploration structure
     return ParallelPettingZooEnv(UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS))
 
+from ray.tune import Callback
+class ProgressCallback(Callback):
+    """Callback to print progress in a format run_experiments.py can parse"""
+    def on_trial_result(self, iteration, trials, trial, result, **info):
+        print(f"Iteration {result['training_iteration']}")
+
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output-dir", type=str, default="ray_results", help="Output directory for PPO")
+    args = parser.parse_args()
+    
     ray.init()
     
     # Reproducibility
@@ -88,7 +97,8 @@ if __name__ == "__main__":
         config=config.to_dict(),
         stop={"training_iteration": GlobalConfig.TRAIN_ITERATIONS}, 
         checkpoint_at_end=True,
-        storage_path=os.path.abspath("./ray_results")
+        storage_path=os.path.abspath(args.output_dir),
+        callbacks=[ProgressCallback()]
     )
     
     print("Training Completed.")

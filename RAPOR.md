@@ -29,32 +29,32 @@ QJC (Q-Learning Based Jamming) gibi temel RL yöntemleri, düşük işlem maliye
 
 **Önerilen Yöntem:** Çalışmamızda kullanılan PPO ve DQN algoritmaları, jammerın sinyal gücünü (RSS) ve spektrum doluluğunu algıladığı "Smart Jammer" modeline dayanır. Bu, kör öğrenme yerine **durum-farkında (state-aware)** ve veriye dayalı (data-driven) bir savunma/saldırı mekanizması sağlar.
 
-## 2. SİSTEM MİMARİSİ
+## 3. SİSTEM MİMARİSİ
 
 Simülasyon altyapısı, Nesne Yönelimli Programlama (OOP) prensipleri çerçevesinde, her biri spesifik bir görevi üstlenen gevşek bağlı (loose-coupled) modüllerden oluşmaktadır.
 
-### 2.1. Konfigürasyon Modülleri (`confs/`)
+### 3.1. Konfigürasyon Modülleri (`confs/`)
 
 *   **`confs/config.py` (Sistem Konfigürasyonu):** Sistemin fiziksel bant genişliği, frekans, gürültü seviyesi gibi temel donanım parametrelerini tutar.
 *   **`confs/env_config.py` (Ortam ve Senaryo Konfigürasyonu):** Simülasyonun senaryo parametrelerini (Düğüm sayısı, alan boyutu, adım süresi, saldırgan konumu vb.) barındırır. Bu ayrım sayesinde fiziksel altyapı değiştirilmeden farklı senaryolar test edilebilir.
 
-### 2.2. Çekirdek Modüller (`core/`)
+### 3.2. Çekirdek Modüller (`core/`)
 *   **`core/physics.py` (Fizik Motoru):** Sistemin "stateless" (durumsuz) matematiksel hesaplama çekirdeğidir. Haberleşme kanalı (Path Loss, SINR, Shannon Kapasitesi) ve enerji tüketim modelleri (İHA uçuş gücü, IoT iletim enerjisi) burada saf fonksiyonlar (pure functions) olarak implemente edilmiştir.
 *   **`simulation/entities.py` (Varlık Modellemesi):** Simülasyon dünyasındaki aktörlerin (İHA, IoT Düğümü, Saldırgan) davranışlarını ve durumlarını modelleyen sınıfları içerir.
     *   *Miras Yapısı:* `BaseEntity` -> `MobileEntity` / `TransceiverEntity` -> `UAVAgent` / `IoTNode` şeklinde hiyerarşik bir yapı kurgulanmıştır.
 
-### 2.2. Simülasyon ve Ortam
+### 3.3. Simülasyon ve Ortam
 *   **`simulation/pettingzoo_env.py` (PettingZoo Ortamı):** `UAV_IoT_PZ_Env` sınıfı, simülasyonun çoklu ajan (multi-agent) yapısını destekleyen `pettingzoo.utils.ParallelEnv` tabanlı ortamdır. İHA, Saldırgan ve her bir IoT düğümü ayrı birer ajan olarak modellenmiştir.
 *   **`simulation/controllers.py` (Kural Tabanlı Kontrolcüler):** İHA gibi belirli kurallara (örn. navigasyon) dayalı hareket eden ajanların davranış mantığını kapsüller.
 *   **`scripts/main.py` (Yürütücü):** Simülasyon döngüsünü PettingZoo API'sine uygun şekilde (sözlük yapılı aksiyon/gözlem) yönetir. `confs/config.py` içerisindeki `SIMULATION_DELAY` parametresi ile simülasyon akış hızı kontrol edilebilir.
 
-### 2.3. Veri Yönetimi ve Analiz
+### 3.4. Veri Yönetimi ve Analiz
 
 *   **`core/logger.py` (Telemetri Kaydı):** Simülasyon sırasında üretilen ham verileri (konumlar, SINR değerleri, enerji tüketimleri) periyodik olarak CSV formatında kayıt altına alır.
 
 *   **`visualization/visualizer.py` (Görsel Analiz):** Simülasyon sonrası elde edilen verileri işleyerek akademik kalitede (SCIE standartlarında) grafikler ve yörünge analizleri üretir.
 
-### 2.5. Kullanılan Altyapı ve Teknolojiler
+### 3.5. Kullanılan Altyapı ve Teknolojiler
 
 Projenin geliştirilmesinde, akademik standartlara uygunluk ve yüksek performans gereksinimleri gözetilerek aşağıdaki açık kaynaklı kütüphaneler kullanılmıştır:
 
@@ -65,7 +65,7 @@ Projenin geliştirilmesinde, akademik standartlara uygunluk ve yüksek performan
 *   **Pandas:** Simülasyon loglarının (`history.csv`) işlenmesi, filtrelenmesi ve zaman serisi analizlerinin yapılması amacıyla veri manipülasyonu için tercih edilmiştir.
 *   **Ray RLLib:** Dağıtık (Distributed) Reinforcement Learning eğitimi için kullanılmıştır. PPO (Proximal Policy Optimization) gibi gelişmiş algoritmaların, çoklu ajan (PettingZoo) ortamımızla entegre bir şekilde çalıştırılmasını ve modelin (`train.py` üzerinden) eğitilmesini sağlayan temel kütüphanedir.
 
-### 2.6. Mevcut Simülasyon Senaryosu (v1.7.0 - Akıllı Tehdit Modeli)
+### 3.6. Mevcut Simülasyon Senaryosu (v1.7.0 - Akıllı Tehdit Modeli)
 
 Bu sürümde kullanılan senaryo, "Adil ve Kıyaslanabilir Akıllı Tehdit" (Fair & Comparable Smart Threat) modelidir.
 
@@ -83,14 +83,14 @@ Bu sürümde kullanılan senaryo, "Adil ve Kıyaslanabilir Akıllı Tehdit" (Fai
 
 ---
 
-## 3. MATERYAL VE YÖNTEMLER
+## 4. MATERYAL VE YÖNTEMLER
 
 Bu bölüm, sistemin fiziksel ve matematiksel altyapısını detaylandırmaktadır.
 
-### 3.1. Sistem Modeli
+### 4.1. Sistem Modeli
 Senaryo, $1000 \times 1000$ metrelik bir alana, $N=5$ adet IoT düğümü, 1 adet İHA ve 1 adet Akıllı Jammer içermektedir.
 
-#### 3.1.1. Haberleşme Kanalı (Air-to-Ground)
+#### 4.1.1. Haberleşme Kanalı (Air-to-Ground)
 İHA ile düğümler arasındaki iletişim kalitesi, anlık **SINR (Signal-to-Interference-plus-Noise Ratio)** değeri ile belirlenir:
 
 $$ \text{SINR}_i = \frac{P_{rx,i}}{N_0 B + I_{jam}} $$
@@ -100,12 +100,19 @@ Burada:
 *   $N_0 B$: Termal gürültü gücü.
 *   $I_{jam}$: Jammer'dan kaynaklanan girişim ($P_{jam} \times h_{jam}$).
 
-#### 3.1.2. Enerji Tüketim Modelleri
+**PA Verimliliği (Güç Amplifikatörü):**
+Sistem modelimiz, Cui et al. (2005) tarafından önerilen frekansa bağlı verimlilik modelini kullanır. Yüksek frekanslarda güç amplifikatörü (PA) verimliliği düşer:
+*   **2.4 GHz:** $\eta \approx 0.50$ (Daha verimli)
+*   **5.0 GHz:** $\eta \approx 0.25$
+*   **5.8 GHz:** $\eta \approx 0.19$ (Daha maliyetli)
+Bu fiziksel kısıt, Jammer'ın "sadece yüksek frekansta çalışmak yerine enerji-verimli bandı seçme" stratejisini öğrenmesini zorunlu kılar.
+
+#### 4.1.2. Enerji Tüketim Modelleri
 *   **İHA Uçuş Enerjisi:** Aerodinamik prensiplere dayalı güç tüketimi $P_{UAV}(v)$:
     $$ P_{UAV}(v) = P_0 \left( 1 + \frac{3v^2}{U_{tip}^2} \right) + P_i \left( \sqrt{1 + \frac{v^4}{4v_0^4}} - \frac{v^2}{2v_0^2} \right)^{1/2} + \frac{1}{2} d_0 \rho s A v^3 $$
 *   **IoT Enerjisi:** Veri toplama, şifreleme ve iletim ($E_{tx} = P_{tx} \times L/R$) maliyetlerinin toplamıdır.
 
-### 3.2. Problem Formülasyonu (MDP)
+### 4.2. Problem Formülasyonu (MDP)
 Problem, $\langle \mathcal{S}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma \rangle$ ile tanımlanan bir Markov Karar Sürecidir.
 
 *   **Durum Uzayı ($\mathcal{S}$):** Uzaklık (RSS Proxy), Kanal Durumu, Düğüm Bağlantı Haritası.
@@ -115,11 +122,11 @@ Problem, $\langle \mathcal{S}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma \ra
 
 ---
 
-## 4. ÖDÜL (REWARD) MEKANİZMALARININ DETAYLI AÇIKLAMASI
+## 5. ÖDÜL (REWARD) MEKANİZMALARININ DETAYLI AÇIKLAMASI
 
 Jammer'ın eğitimi, üç farklı algoritma için (Baseline, PPO, DQN) dikkatli tasarlanmış ödül fonksiyonları ile yönlendirilmektedir. Bu ödül yapıları, hem jamming etkinliğini maksimize ederken, hem de enerji verimliliğini koruyan stratejilerin öğrenilmesini teşvik eder.
 
-### 4.1. Baseline (QJC Algoritması) Ödül Yapısı
+### 5.1. Baseline (QJC Algoritması) Ödül Yapısı
 
 Klasik Q-Learning yaklaşımı, ayrık bir durum-aksiyon ödül tablosu kullanır:
 
@@ -132,7 +139,7 @@ Klasik Q-Learning yaklaşımı, ayrık bir durum-aksiyon ödül tablosu kullanı
 
 Bu basit linear yapı, tablosal Q-Learning için yeterli geri bildirim sağlar.
 
-### 4.2. PPO & DQN (Derin Takviyeli Öğrenme) Ödül Yapısı
+### 5.2. PPO & DQN (Derin Takviyeli Öğrenme) Ödül Yapısı
 
 Her iki derin öğrenme algoritması da **aynı üç bileşenli** ödül yapısını paylaşır:
 
@@ -169,7 +176,7 @@ else:
 toplam_ödül = ödül_başarı + ödül_takip - ödül_enerji
 ```
 
-### 4.3. Ödül Tasarımının Teorik Temelleri
+### 5.3. Ödül Tasarımının Teorik Temelleri
 
 1.  **Güç Eşik Kontrolü:**
     *   **Problem:** İlk versiyonda takip ödülü (`+0.5`) güçten bağımsızdı.
@@ -185,7 +192,7 @@ toplam_ödül = ödül_başarı + ödül_takip - ödül_enerji
     *   **Yoğun (Takip):** Gradient akışını stabilize eder ve erken aşamada keşfi hızlandırır.
     *   **Birlikte:** İki ödül tipi sinerjik çalışarak hem exploration hem de exploitation'ı dengeştirir.
 
-### 4.4. Algoritma Karşılaştırması - Ödül Kullanımı
+### 5.4. Algoritma Karşılaştırması - Ödül Kullanımı
 
 | Metrik                  | Baseline (QJC) | PPO           | DQN           |
 |-------------------------|----------------|---------------|---------------|
@@ -196,11 +203,11 @@ toplam_ödül = ödül_başarı + ödül_takip - ödül_enerji
 
 ---
 
-## 5. ANALİZ VE GÖRSELLEŞTİRME YÖNTEMLERİ
+## 6. ANALİZ VE GÖRSELLEŞTİRME YÖNTEMLERİ
 
 Sistem performansını değerlendirmek ve senaryo çıktılarını yorumlamak için `visualizer.py` modülü tarafından üretilen, SCIE makale formatına uygun iki temel grafik seti kullanılmaktadır.
 
-### 4.1. Yörünge ve Olay Analizi (`trajectory.png`)
+### 6.1. Yörünge ve Olay Analizi (`trajectory.png`)
 Bu grafik, simülasyonun mekansal (spatial) analizini ve ağ topolojisini gösterir.
 
 *   **İçerik:**
@@ -215,7 +222,7 @@ Bu grafik, simülasyonun mekansal (spatial) analizini ve ağ topolojisini göste
     *   Renkli noktaların yoğunluğu, İHA'nın hangi düğümle iletişimde olduğunu netleştirir.
     *   Kırmızı çarpıların sadece "tam kesinti" anlarında çıkması, görsel analizi sadeleştirir.
 
-### 4.2. Metrik Analizi (`metrics_analysis.png`)
+### 6.2. Metrik Analizi (`metrics_analysis.png`)
 Bu grafik, sistemin zamansal (temporal) performansını üç alt panelde inceler.
 
 1.  **Sinyal Kalitesi ve Saldırı Gücü (Üst Panel):**
@@ -229,7 +236,7 @@ Bu grafik, sistemin zamansal (temporal) performansını üç alt panelde inceler
     *   İHA'nın toplam kümülatif enerji tüketimini gösterir.
     *   *Yorum:* Eğimin (slope) artması, İHA'nın daha fazla güç tükettiği manevraları veya yüksek hızları işaret eder.
 
-### 4.3. İletişim İstatistikleri (`advanced_metrics.png`)
+### 6.3. İletişim İstatistikleri (`advanced_metrics.png`)
 Bu grafik seti, her bir IoT düğümünün operasyonel performansını detaylandırır.
 
 1.  **Toplam Başarılı İletişim Süresi (Üst Panel):**
@@ -239,13 +246,66 @@ Bu grafik seti, her bir IoT düğümünün operasyonel performansını detayland
     *   Her bir düğümün bağlantı kopmadan (AoI resetlenmeden) sürdürebildiği en uzun iletişim süresini (Streak) gösterir.
     *   Bu metrik, sistemin kararlılığını ve jamming'in iletişim sürekliliği üzerindeki etkisini ölçmek için kritiktir.
 
-### 4.4. Dashboard Analizi
+### 6.4. Dashboard Analizi
 Simülasyon tamamlandığında, yukarıdaki tüm analizler (`Trajectory`, `Metrics`, `Advanced Stats`) tek bir **"Dashboard"** penceresinde operatöre sunulur. Bu sayede simülasyon sonuçlarına bütüncül (holistic) bir bakış açısı sağlanır.
 
 
 ---
 
-## 6. GELİŞİM GÜNLÜĞÜ (CHANGE LOG)
+## 7. ALGORİTMİK PERFORMANS ANALİZİ (QJC vs PPO vs DQN)
+
+Proje kapsamında üç farklı "Saldırı Zekası" modeli birbiriyle yarıştırılmaktadır.
+
+### 7.1. Klasik Q-Learning (QJC - Baseline)
+*   **Çalışma Prensibi:** Durum (state) ve aksiyonları (action) içeren sonlu bir tablo (Look-up Table) tutar.
+*   **Avantajı:** Matematiksel olarak basittir ve çok kısıtlı işlem gücüyle çalışabilir.
+*   **Bu Projedeki Rolü:** İHA'nın Markov örüntüsünü "istatistiksel" olarak çözmekle görevlidir. DQN ve PPO için bir alt sınır (Lower Bound) çizerek, Deep RL'in sağladığı katma değeri ölçmemize yarar.
+
+### 7.2. PPO (Proximal Policy Optimization)
+*   **Çalışma Prensibi:** "Yeni API Stack" (Ray 2.53+) üzerinde çalışan, sürekli aksiyon uzaylarını da destekleyen modern bir politika gradiyent algoritmasıdır.
+*   **Karakteristiği:** Eğitim stabilitesi yüksektir. Gözlem uzayındaki gürültülü (RSSI, Mesafe) verilere karşı daha dayanıklıdır.
+*   **Beklentimiz:** İHA'nın hareket örüntüsünü sadece kanal bazlı değil, mesafeye bağlı güç optimizasyonuyla birlikte öğrenmesi.
+
+### 7.3. DQN (Deep Q-Network)
+*   **Çalışma Prensibi:** Klasik Q-Learning'i derin sinir ağlarıyla birleştirir. Bu projede "Old API Stack" üzerinden, MultiDiscrete uzayı Discrete(30) olarak harmonize edilerek koşturulmaktadır.
+*   **Karakteristiği:** Örnek verimliliği (Sample Efficiency) yüksektir; yani daha az adımda karmaşık kararları öğrenebilir.
+*   **Kritik Yama:** DQN'in Ray kütüphanesindeki `ABCMeta` hatası tarafımızca yamalanarak kütüphane stabil hale getirilmiştir.
+
+### 7.4. Kıyaslama Metrikleri
+Deney sonunda üretilen `comparison_result.png` şu sorulara yanıt verir:
+1.  **Kilitleme Hızı (Tracking Accuracy):** Jammer, UAV'nin kanalını ne kadar sürede tahmin edebiliyor?
+2.  **Zarar Verme Kapasitesi (Success Rate):** UAV'nin veri toplama başarısını yüzde kaç düşürebiliyor?
+3.  **Enerji Verimliliği:** En az güç harcayarak en yüksek zararı hangi algoritma veriyor?
+
+### 7.5. Deneysel Sonuçlar (Son Eğitim: 60 İterasyon, Düzeltilmiş Ödül Mekanizması)
+
+Adil algoritmik karşılaştırma sonuçları (tüm algoritmalar aynı eğitim bütçesi ve ödül fonksiyonuyla):
+
+#### Performans Karşılaştırması
+
+| Algoritma | Ort. Jamlenen Düğüm | Başarı Oranı | Ort. Güç (W) | Kanal Eşleşme |
+|-----------|---------------------|--------------|--------------|---------------|
+| **Baseline (QJC)** | 0.78 | %15.6 | 0.1000 | %30.0 |
+| **PPO** | **3.53** ✨ | **%70.6** | 0.0569 | %94.0 |
+| **DQN** | 2.84 | %56.8 | 0.0888 | %94.0 |
+
+#### Temel Bulgular
+- ✅ **PPO, baseline'a göre %452 iyileşme** sağladı (jamming etkinliği)
+- ✅ **PPO en enerji verimli** (baseline'dan %43 daha az güç)
+- ✅ Her iki RL algoritması **%94 kanal takibi** başarısı (baseline %30)
+- ✅ **Güç eşiği reward düzeltmesi** sıfır güç sömürüsünü başarıyla engelledi
+
+#### Kritik Tasarım Kararının Doğrulanması
+Tracking reward'ın güç kullanımına (`power > 0.01W`) bağlanması şu sonuçları verdi:
+- **Önceki dejenere politika:** Ajanlar sıfır güçle kanal takibi yaparak ödül alıyordu
+- **Düzeltme sonrası:** Her iki RL algoritması da %100 adımda güç kullanmaya başladı
+- **Sonuç:** Gerçek jamming davranışı öğrenildi
+
+**Not:** Tüm istatistikler `experiments/comparison_statistics.csv` dosyasında saklanmaktadır.
+
+---
+
+## 8. GELİŞİM GÜNLÜĞÜ (CHANGE LOG)
 
 ### [02.02.2026 01:07] - Başlangıç Sürümü (v1.0.0)
 **Yapılan Değişiklikler:**
@@ -326,6 +386,7 @@ Tez çalışmasının simülasyon gereksinimlerini karşılayan, doğrulanmış 
     *   **Baseline:** Tablosal (Tabular) Q-Learning.
     *   Üç algoritmayı tek komutla yarıştıran `scripts/run_experiments.py` otomasyonu geliştirildi.
 4.  **Otomatik Raporlama:** Tüm sonuçları karşılaştırmalı sütun grafiklerine (`comparison_result.png`) döken analiz modülü eklendi.
+
 ### [07.02.2026 02:00] - RLLib Yama ve Otomasyon Paketi (v1.8.0)
 **Yapılan Değişiklikler:**
 1.  **Ray RLLib Hata Düzeltmesi (Bug Fix):**
@@ -403,99 +464,25 @@ Bu sürüm ile proje, "Fair Algorithmic Comparison" standartlarına tam uyumlu h
 **Amaç:**
 Kod kalitesini artırmak, eğitim süresini optimize etmek ve geliştirici deneyimini iyileştirmek.
 
-### 6.1. Fiziksel Katman Güncellemeleri
-*   **Kanallar:** 2.4 GHz, 5.0 GHz ve 5.8 GHz.
-*   **PA Verimliliği (Cui et al., 2005):** Yüksek frekanslarda güç amplifikatörü verimliliğinin düştüğü model (2.4GHz: 0.50 -> 5.8GHz: 0.19) simüle edilmiştir. Bu, Jammer için "Yüksek frekansta jam yapmak daha maliyetlidir" trade-off'unu oluşturur.
+### [08.02.2026 23:30] - Paralel Eğitim ve UI Paketi (v2.0.0)
+**Yapılan Değişiklikler:**
+1.  **Paralel Eğitim (Parallel Execution):**
+    *   `subprocess` ve `threading` kütüphaneleri kullanılarak Baseline (QJC), PPO ve DQN algoritmaları artık **eş zamanlı** olarak eğitilmektedir.
+    *   Bu sayede toplam deney süresi yaklaşık **3 kat** kısalmıştır (Örn: 1 saat -> 20 dakika).
+    *   Otomasyon scripti (`run_experiments.py`) tüm kaynak yönetimini (GPU/CPU) otomatik yapar.
 
-### 6.2. Zeka ve Strateji
-1.  **Akıllı Jammer (QJC):**
-    *   **Algoritma:** Q-Learning tabanlı kanal takibi.
-    *   **Hedef:** İHA'nın hangi kanala kaçacağını tahmin edip o kanalı bloke etmek.
-    *   **Referans:** Liao et al. (2025).
+2.  **Gelişmiş Kullanıcı Deneyimi (UI/UX):**
+    *   **Anlık Progress Bar:** Terminal üzerinden her algoritmanın ilerleme durumu (Adım/Toplam) ve yüzdesi canlı olarak takip edilebilmektedir. 
+    *   **Renkli Çıktılar:** Durumlar (OK=Yeşil, Running=Sarı, Fail=Kırmızı) ANSI renk kodlarıyla görselleştirilmiştir.
+    *   **Ray RLLib Entegrasyonu:** `ProgressCallback` sınıfı sayesinde Ray'in karmaşık logları filtrelenerek temiz bir ilerleme çubuğuna dönüştürülmüştür.
 
-2.  **Reaktif Kurban (İHA):**
-    *   **Davranış:** Bağlantı koptuğunda (SINR < Eşik) kanal değiştirir.
-    *   **Markov Modeli:** Kanal değişimi rastgele değildir; gizli bir `Transition Matrix` kullanır. Bu sayede Saldırganın (RL Ajanı) öğrenebileceği istatistiksel bir örüntü sunar.
+3.  **Esnek Konfigürasyon ve Argümanlar:**
+    *   `--debug`: Detaylı hata ayıklama modu. Tüm subprocess çıktılarını (stdout/stderr) ekrana basar.
+    *   `--ui <saniye>`: Terminal güncelleme sıklığını ayarlar (Varsayılan: 3s).
 
-### 6.3. Eğitim (`train.py`)
-Sistemi eğitmek için:
-```bash
-python scripts/train.py
-```
-Bu komut, Jammer'ı PPO algoritması ile eğiterek, İHA'nın kaçış örüntüsünü çözmesini ve enerji verimli saldırı yapmasını sağlar.
+4.  **Artifact Yönetimi:**
+    *   Her deney çalıştırması için `artifacts/YYYY-MM-DD_HH-MM-SS/` formatında izole bir klasör oluşturulur.
+    *   Bu klasör içinde eğitim modelleri, loglar ve karşılaştırma grafikleri düzenli bir hiyerarşide saklanır. Eski `logs/` yapısından daha temiz bir yapıya geçilmiştir.
 
-### 6.4. Operasyonel Senaryo Akışı ve Algoritmik Kıyaslama
-Simülasyon döngüsü, farklı zeka seviyelerindeki saldırganların (Baseline vs RL) başarısını kıyaslamak üzere şu adımları izler:
-
-1.  **Başlangıç ve Kalibrasyon (Initialization):**
-    *   İHA ve IoT düğümleri varsayılan kanal üzerinden iletişime başlar.
-    *   **Kıyaslama Hazırlığı:** `run_experiments.py` vasıtasıyla üç farklı beyin (Baseline QJC, PPO, DQN) aynı senaryo koşullarında sırayla devreye alınır.
-
-2.  **Saldırı Kararı ve Politika Uygulama (Jammer Action):**
-    *   **Baseline (QJC):** Sabit bir Q-Tablosu üzerinden en yüksek olasılıklı kanalı seçer.
-    *   **PPO (Sensing Mode):** Gözlem uzayından (Mesafe, RSSI) gelen verileri sinir ağı ile işleyerek kanal ve güç kararı verir.
-    *   **DQN:** Ayrık aksiyon uzayında en iyi "Q-değerini" tahmin ederek saldırı gerçekleştirir.
-
-3.  **Kanal Etkileşimi ve Girişim (Interference):**
-    *   Fizik motoru (`physics.py`), İHA ve Saldırganın kanallarını kontrol eder. Kanal çakışması durumunda SINR düşürülür.
-
-4.  **Reaktif Tepki ve Hareketli Hedef (Target Reaction):**
-    *   İHA, jamming tespit ettiğinde "Markov Geçiş Matrisi"ne göre yeni bir kanala zıplar. Bu zıplama istatistiksel bir örüntü oluşturur.
-
-5.  **Performans Ölçümü ve Kıyaslama (Evaluation):**
-    *   Saldırganın başarısı; İHA'nın toplam veri toplama süresini ne kadar kısalttığı (Attacker Success Rate) ve harcanan enerji birimi başına verilen zarar (Efficiency) üzerinden ölçülür.
-    *   Sonuçlar `comparison_result.png` üzerinde otomatik olarak görselleştirilerek hangi algoritmanın Markov örüntüsünü daha hızlı çözdüğü ortaya konur.
-
----
-
-## 7. ALGORİTMİK PERFORMANS ANALİZİ (QJC vs PPO vs DQN)
-
-Proje kapsamında üç farklı "Saldırı Zekası" modeli birbiriyle yarıştırılmaktadır.
-
-### 7.1. Klasik Q-Learning (QJC - Baseline)
-*   **Çalışma Prensibi:** Durum (state) ve aksiyonları (action) içeren sonlu bir tablo (Look-up Table) tutar.
-*   **Avantajı:** Matematiksel olarak basittir ve çok kısıtlı işlem gücüyle çalışabilir.
-*   **Bu Projedeki Rolü:** İHA'nın Markov örüntüsünü "istatistiksel" olarak çözmekle görevlidir. DQN ve PPO için bir alt sınır (Lower Bound) çizerek, Deep RL'in sağladığı katma değeri ölçmemize yarar.
-
-### 7.2. PPO (Proximal Policy Optimization)
-*   **Çalışma Prensibi:** "Yeni API Stack" (Ray 2.53+) üzerinde çalışan, sürekli aksiyon uzaylarını da destekleyen modern bir politika gradiyent algoritmasıdır.
-*   **Karakteristiği:** Eğitim stabilitesi yüksektir. Gözlem uzayındaki gürültülü (RSSI, Mesafe) verilere karşı daha dayanıklıdır.
-*   **Beklentimiz:** İHA'nın hareket örüntüsünü sadece kanal bazlı değil, mesafeye bağlı güç optimizasyonuyla birlikte öğrenmesi.
-
-### 7.3. DQN (Deep Q-Network)
-*   **Çalışma Prensibi:** Klasik Q-Learning'i derin sinir ağlarıyla birleştirir. Bu projede "Old API Stack" üzerinden, MultiDiscrete uzayı Discrete(30) olarak harmonize edilerek koşturulmaktadır.
-*   **Karakteristiği:** Örnek verimliliği (Sample Efficiency) yüksektir; yani daha az adımda karmaşık kararları öğrenebilir.
-*   **Kritik Yama:** DQN'in Ray kütüphanesindeki `ABCMeta` hatası tarafımızca yamalanarak kütüphane stabil hale getirilmiştir.
-
-### 7.4. Kıyaslama Metrikleri
-Deney sonunda üretilen `comparison_result.png` şu sorulara yanıt verir:
-1.  **Kilitleme Hızı (Tracking Accuracy):** Jammer, UAV'nin kanalını ne kadar sürede tahmin edebiliyor?
-2.  **Zarar Verme Kapasitesi (Success Rate):** UAV'nin veri toplama başarısını yüzde kaç düşürebiliyor?
-3.  **Enerji Verimliliği:** En az güç harcayarak en yüksek zararı hangi algoritma veriyor?
-
-### 7.5. Deneysel Sonuçlar (Son Eğitim: 60 İterasyon, Düzeltilmiş Ödül Mekanizması)
-
-Adil algoritmik karşılaştırma sonuçları (tüm algoritmalar aynı eğitim bütçesi ve ödül fonksiyonuyla):
-
-#### Performans Karşılaştırması
-
-| Algoritma | Ort. Jamlenen Düğüm | Başarı Oranı | Ort. Güç (W) | Kanal Eşleşme |
-|-----------|---------------------|--------------|--------------|---------------|
-| **Baseline (QJC)** | 0.78 | %15.6 | 0.1000 | %30.0 |
-| **PPO** | **3.53** ✨ | **%70.6** | 0.0569 | %94.0 |
-| **DQN** | 2.84 | %56.8 | 0.0888 | %94.0 |
-
-#### Temel Bulgular
-- ✅ **PPO, baseline'a göre %452 iyileşme** sağladı (jamming etkinliği)
-- ✅ **PPO en enerji verimli** (baseline'dan %43 daha az güç)
-- ✅ Her iki RL algoritması **%94 kanal takibi** başarısı (baseline %30)
-- ✅ **Güç eşiği reward düzeltmesi** sıfır güç sömürüsünü başarıyla engelledi
-
-#### Kritik Tasarım Kararının Doğrulanması
-Tracking reward'ın güç kullanımına (`power > 0.01W`) bağlanması şu sonuçları verdi:
-- **Önceki dejenere politika:** Ajanlar sıfır güçle kanal takibi yaparak ödül alıyordu
-- **Düzeltme sonrası:** Her iki RL algoritması da %100 adımda güç kullanmaya başladı
-- **Sonuç:** Gerçek jamming davranışı öğrenildi
-
-**Not:** Tüm istatistikler `experiments/comparison_statistics.csv` dosyasında saklanmaktadır.
-
+**Amaç:**
+Simülasyonun kullanılabilirliğini artırmak, deney sürelerini kısaltarak iterasyon hızını maksimize etmek ve profesyonel bir CLI (Komut Satırı Arayüzü) deneyimi sunmak.

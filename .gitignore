@@ -214,6 +214,9 @@ liaovd(2025).pdf
 ray_results/
 ray_results_dqn/
 
+# Artifacts (New Structure)
+artifacts/
+
 # Experiment Outputs
 experiments/
 comparison_result.png

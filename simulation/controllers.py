@@ -48,14 +48,13 @@ class UAVRuleBasedController:
         # We access the entity state directly.
         is_jammed = (target_node.connection_status == 2)
         
-        if is_jammed and not self.last_step_jammed:
+        if is_jammed:
             # Trigger Channel Switch
             current_ch = uav.current_channel
             probs = self.transition_matrix[current_ch]
             next_ch = np.random.choice(np.arange(self.num_channels), p=probs)
             
             uav.current_channel = next_ch
-            # print(f"DEBUG: UAV Hopped {current_ch} -> {next_ch} due to Jamming.")
             
         self.last_step_jammed = is_jammed
 

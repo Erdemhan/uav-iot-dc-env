@@ -11,21 +11,28 @@ from confs.config import UAVConfig
 from confs.env_config import EnvConfig
 from confs.model_config import QJCConfig
 import os
+import argparse
 
 def main():
-    print("--- Starting Baseline (QJC) Training ---")
+    # Parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output-dir", type=str, default="baseline_q_table", 
+                       help="Directory to save baseline outputs")
+    args = parser.parse_args()
+    
+    print(f"--- Starting Baseline (QJC) Training ---")
+    print(f"Output Directory: {args.output_dir}\n")
     
     # Reproducibility
     from confs.model_config import GlobalConfig
     np.random.seed(GlobalConfig.RANDOM_SEED)
     
     # Configuration
-    # PPO trains for TRAIN_ITERATIONS * TRAIN_BATCH_SIZE steps.
-    # Ex: 20 * 1000 = 20,000 steps.
-    # Baseline Episode = 100 steps.
-    # To match samples: 20,000 / 100 = 200 Episodes.
+    # Training episodes automatically calculated to match PPO/DQN total steps:
+    # Formula: (TRAIN_ITERATIONS × TRAIN_BATCH_SIZE) / MAX_STEPS
+    # This is defined in QJCConfig and auto-adjusts with config changes
     TRAIN_EPISODES = QJCConfig.TRAIN_EPISODES
-    SAVE_PATH = QJCConfig.SAVE_PATH
+    SAVE_PATH = args.output_dir
     
     # Disable Logger for training speed (Optional, or keep minimal)
     # We use a dummy logger or None
@@ -36,12 +43,20 @@ def main():
     learned_counts = None
     
     # Check if we want to continue training or start fresh
-    # For fairness, let's start fresh or load if exists? 
-    # Let's start fresh to ensure exactly N episodes of training.
+    # For fairness, let's start fresh to ensure exactly N episodes of training.
     if os.path.exists(SAVE_PATH):
         import shutil
         shutil.rmtree(SAVE_PATH)
         print("Cleared previous Q-Table for fair fresh training.")
+    
+    os.makedirs(SAVE_PATH, exist_ok=True)
+    
+    # Create CSV for training curve
+    import csv
+    training_log_path = os.path.join(SAVE_PATH, "training_curve.csv")
+    training_log = open(training_log_path, 'w', newline='')
+    csv_writer = csv.writer(training_log)
+    csv_writer.writerow(['episode', 'total_reward', 'mean_reward'])
 
     for episode in range(TRAIN_EPISODES):
         obs, infos = env.reset()
@@ -92,13 +107,21 @@ def main():
         learned_q_table = env.attacker.q_table.copy()
         learned_counts = env.attacker.channel_counts.copy()
         
+        # Log to CSV
+        mean_reward = total_reward / step_count if step_count > 0 else 0
+        csv_writer.writerow([episode + 1, total_reward, mean_reward])
+        
         if (episode + 1) % 50 == 0:
             print(f"Episode {episode+1}/{TRAIN_EPISODES} - Total Reward: {total_reward:.2f} - Q-Table: {np.round(learned_q_table, 2)}")
 
+    # Close training log
+    training_log.close()
+    
     # Save Final Model
     # Since env.attacker has the latest state
     env.attacker.save_model(SAVE_PATH)
     print(f"Baseline Training Completed. Q-Table saved to {SAVE_PATH}")
+    print(f"Training curve saved to {training_log_path}")
 
 if __name__ == "__main__":
     main()

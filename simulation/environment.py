@@ -163,6 +163,8 @@ class UAV_IoT_Env(gym.Env):
         # 3. Physics Calculations (For each node)
         total_sinr = 0
         jammed_count = 0
+        reachable_count = 0 # Count of nodes that could theoretically connect (Status 0 or 2)
+        
         step_log = {
             "step": self.current_step,
             "uav_x": self.uav.x,
@@ -204,12 +206,14 @@ class UAV_IoT_Env(gym.Env):
             status = 0 # Connected
             if connected_now:
                 status = 0
+                reachable_count += 1
             else:
                 if not connected_theoretical:
                     status = 1 # Out of Range (Even without jammer, it would fail)
                 else:
                     status = 2 # Jammed (Ideally connected, but jammer broke it)
                     jammed_count += 1
+                    reachable_count += 1 # It was reachable, but got jammed
             
             # Update Node Status
             node.connection_status = status
@@ -224,8 +228,39 @@ class UAV_IoT_Env(gym.Env):
             step_log[f"node_{i}_energy"] = node.total_energy_consumed
             step_log[f"node_{i}_status"] = status
 
-        # 4. Reward: Attacker's goal is to cut communication (+1 per jammed node)
-        reward = jammed_count
+        # 4. Reward: Hybrid Normalized Reward (Sum weights = 1.0)
+        # Weights
+        w_jam = 0.6
+        w_track = 0.3
+        w_cost = 0.1
+        
+        # 1. Jamming Impact (Normalized by Reachable Nodes)
+        # Scientific Metric: Success Rate on Reachable Targets
+        if reachable_count > 0:
+            r_jam = jammed_count / float(reachable_count)
+        else:
+            r_jam = 0.0 # No targets available, neutral
+        
+        # 2. Tracking (Alignment)
+        # Check if Jammer channel matches UAV channel
+        # We need to access UAV's current channel. 
+        # Assuming UAV logic sets uav.current_channel or we infer it (UAV doesn't explicitly store it in base class, let's fix that conceptually or usage)
+        # In entities.py UAVAgent has self.current_channel = 0. 
+        # But step() logic for UAV doesn't explicitly change channel yet in this Env Scope (it was mentioned in Paper as Markov).
+        # We will assume for now UAV is on channel 0 or we need to implement the Markov logic here?
+        # For this step, let's assume we implement the reward structure using the attribute.
+        
+        # Checking P_jam > threshold (e.g., 0.01 W) to prevent empty tracking
+        p_th = 0.001
+        is_tracking = (self.attacker.current_channel == self.uav.current_channel) and (jam_power > p_th)
+        r_track = 1.0 if is_tracking else 0.0
+        
+        # 3. Cost (Normalized)
+        # Max Power is say 0.1W. We normalize by MAX_JAMMING_POWER
+        r_cost = jam_power / EnvConfig.MAX_JAMMING_POWER
+        
+        # Total Reward
+        reward = (w_jam * r_jam) + (w_track * r_track) - (w_cost * r_cost)
         
         # 5. Logging
         step_log["reward"] = reward
