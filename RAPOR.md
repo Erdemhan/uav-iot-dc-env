@@ -271,39 +271,35 @@ Proje kapsamında üç farklı "Saldırı Zekası" modeli birbiriyle yarıştır
 *   **Karakteristiği:** Örnek verimliliği (Sample Efficiency) yüksektir; yani daha az adımda karmaşık kararları öğrenebilir.
 *   **Kritik Yama:** DQN'in Ray kütüphanesindeki `ABCMeta` hatası tarafımızca yamalanarak kütüphane stabil hale getirilmiştir.
 
-### 7.4. Kıyaslama Metrikleri
+### 7.4. PPO-LSTM (Recurrent PPO)
+*   **Çalışma Prensibi:** PPO mimarisine LSTM (Long Short-Term Memory) katmanı eklenerek ajana "hafıza" yeteneği kazandırılmıştır.
+*   **Karakteristiği:** Zamansal bağımlılıkları (temporal dependencies) öğrenebilir. İHA'nın sadece anlık değil, geçmiş hareketlerine de bakarak geleceği tahmin etmeye çalışır.
+*   **Bu Projedeki Rolü:** "Hafızalı Ajan" hipotezini test etmek. (Ancak sonuçlar, bu senaryo için Markov özniteliğinin yeterli olduğunu, ekstra hafızanın karmaşıklık yarattığını göstermiştir).
+
+### 7.5. Kıyaslama Metrikleri
 Deney sonunda üretilen `comparison_result.png` şu sorulara yanıt verir:
 1.  **Kilitleme Hızı (Tracking Accuracy):** Jammer, UAV'nin kanalını ne kadar sürede tahmin edebiliyor?
 2.  **Zarar Verme Kapasitesi (Success Rate):** UAV'nin veri toplama başarısını yüzde kaç düşürebiliyor?
 3.  **Enerji Verimliliği:** En az güç harcayarak en yüksek zararı hangi algoritma veriyor?
 
-### 7.5. Deneysel Sonuçlar (Son Eğitim: 60 İterasyon, Düzeltilmiş Ödül Mekanizması)
+### 7.6. Deneysel Sonuçlar (Son Eğitim: 500 İterasyon - 09.02.2026)
 
 Adil algoritmik karşılaştırma sonuçları (tüm algoritmalar aynı eğitim bütçesi ve ödül fonksiyonuyla):
 
-**Önemli Not (Adil Kıyaslama Prensibi):**
-Eğitim (Training) ve Test (Evaluation) süreçlerinde, İHA'nın kaçınma zekası ve fiziksel ortam parametreleri (Path Loss, SINR eşiği vb.) **birebir aynı** tutulmuştur. Algoritmalar arasındaki performans farkı, tamamen öğrenme yeteneklerinden kaynaklanmaktadır.
-
 #### Performans Karşılaştırması
 
-| Algoritma | Ort. Jamlenen Düğüm | Başarı Oranı | Ort. Güç (W) | Kanal Eşleşme |
-|-----------|---------------------|--------------|--------------|---------------|
-| **Baseline (QJC)** | 0.78 | %15.6 | 0.1000 | %30.0 |
-| **PPO** | **3.53** ✨ | **%70.6** | 0.0569 | %94.0 |
-| **DQN** | 2.84 | %56.8 | 0.0888 | %94.0 |
+| Algoritma | Ort. Jamlenen Düğüm | Başarı Oranı | Ort. Güç (W) | Kanal Eşleşme | SINR Etkisi (dB) |
+|-----------|---------------------|--------------|--------------|---------------|------------------|
+| **Baseline (QJC)** | 0.10 | %2.0 | 0.1000 | %2.0 | 3.00 |
+| **PPO** | **2.12** ✨ | **%42.4** | 0.0599 | **%74.0** | **-5.92** |
+| **PPO-LSTM** | 1.41 | %28.2 | 0.0503 | %42.0 | -1.76 |
+| **DQN** | 1.11 | %22.2 | **0.0269** | %31.0 | 1.41 |
 
 #### Temel Bulgular
-- ✅ **PPO, baseline'a göre %452 iyileşme** sağladı (jamming etkinliği)
-- ✅ **PPO en enerji verimli** (baseline'dan %43 daha az güç)
-- ✅ Her iki RL algoritması **%94 kanal takibi** başarısı (baseline %30)
-- ✅ **Güç eşiği reward düzeltmesi** sıfır güç sömürüsünü başarıyla engelledi
-- 🔬 **QJC Salınım Bulgusu:** Baseline modelin eğitim grafiğindeki "testere dişi" (sawtooth) salınımı, **Cat & Mouse (Kedi-Fare)** dinamiğinden kaynaklanmaktadır. QJC, jamming yaptığı an İHA kaçmakta, QJC ancak bir sonraki adımda durumu fark edip (ama kör olduğu için yeniden arayarak) tekrar saldırmaktadır. Bu döngü, statik Q-Learning'in dinamik hedeflere karşı yetersizliğinin en somut kanıtıdır.
-
-#### Kritik Tasarım Kararının Doğrulanması
-Tracking reward'ın güç kullanımına (`power > 0.01W`) bağlanması şu sonuçları verdi:
-- **Önceki dejenere politika:** Ajanlar sıfır güçle kanal takibi yaparak ödül alıyordu
-- **Düzeltme sonrası:** Her iki RL algoritması da %100 adımda güç kullanmaya başladı
-- **Sonuç:** Gerçek jamming davranışı öğrenildi
+- ✅ **PPO Şampiyon:** Baseline'a göre 20 kat, diğer Deep RL modellerine göre 1.5-2 kat daha başarılıdır.
+- ✅ **DQN'in Cimriliği:** En düşük güç tüketimine sahiptir ancak bu "garantici" yaklaşım başarı oranını düşürmüştür.
+- ✅ **LSTM Etkisi:** Hafıza katmanı eklemek, bu spesifik (Markovian) problemde performansı artırmamış, aksine öğrenme sürecini yavaşlatmıştır.
+- 🔬 **Grafik Analizi:** Görselleştirmede PPO eğrisinin diğerlerinin üzerinde seyretmesi, kararlılığını kanıtlamaktadır. "Testere dişi" yapısı, İHA'nın kaçış manevralarını gösterir.
 
 **Not:** Tüm istatistikler `experiments/comparison_statistics.csv` dosyasında saklanmaktadır.
 
@@ -489,4 +485,20 @@ Kod kalitesini artırmak, eğitim süresini optimize etmek ve geliştirici deney
     *   Bu klasör içinde eğitim modelleri, loglar ve karşılaştırma grafikleri düzenli bir hiyerarşide saklanır. Eski `logs/` yapısından daha temiz bir yapıya geçilmiştir.
 
 **Amaç:**
-Simülasyonun kullanılabilirliğini artırmak, deney sürelerini kısaltarak iterasyon hızını maksimize etmek ve profesyonel bir CLI (Komut Satırı Arayüzü) deneyimi sunmak.
+### [09.02.2026 23:00] - LSTM ve Görselleştirme Paketi (v2.1.0)
+**Yapılan Değişiklikler:**
+1.  **PPO-LSTM Entegrasyonu:**
+    *   Ray RLLib'in Recurrent Network (LSTM) desteği projeye eklendi (`train_ppo_lstm.py`).
+    *   `PPOLSTMConfig` yapılandırma sınıfı oluşturuldu.
+    *   Değerlendirme (`evaluate.py`) scripti, gizli durumları (hidden states - h, c) yönetecek şekilde güncellendi.
+    
+2.  **Karşılaştırma Görselleştirmesi (Refined Visualization):**
+    *   **Adil Başlangıç:** Tüm Deep RL algoritmalarının grafikleri, veri toplama fazını yansıtacak şekilde 1000. adımdan başlatıldı.
+    *   **Baseline Hizalaması:** Baseline verisi, Deep RL batch size'ına (1000) uygun şekilde yeniden örneklenerek (resampling) grafiklerin x-ekseninde tam hizalanması sağlandı.
+    *   **(0,0) Noktası:** Yanıltıcı olmaması için yapay (0,0) noktası kaldırıldı, doğal öğrenme süreçleri yansıtıldı.
+    
+3.  **DQN Hata Yönetimi:**
+    *   Paralel çalışmada DQN'in bazen zaman aşımına uğraması (timeout) sorunu analiz edildi ve result.json varlığı kontrol edilerek "False Negative" durumları engellendi.
+
+**Amaç:**
+Hafızalı (Recurrent) modellerin etkisini ölçmek ve grafik okumayı bilimsel standartlara (elmalarla elmalar) taşımak.
