@@ -150,6 +150,7 @@ def main():
     ray.init() 
     register_env("uav_iot_ppo_v1", env_creator_ppo)
     register_env("uav_iot_dqn_v1", env_creator_dqn)
+    register_env("uav_iot_ppo_lstm_v1", env_creator_ppo) # Same creator works
     
     checkpoint_path = find_latest_checkpoint(base_dir=args.dir)
     
@@ -184,6 +185,17 @@ def main():
     obs_dict, infos = env.reset(seed=GlobalConfig.RANDOM_SEED)
     env.uav_controller = env.uav_controller # Ensure controller exists (set in reset)
     
+    # Initialize LSTM State if needed
+    lstm_state = []
+    if args.algo == "PPO-LSTM":
+        from confs.model_config import PPOLSTMConfig
+        cell_size = PPOLSTMConfig.LSTM_CELL_SIZE
+        # Initial state: [num_layers * [h, c]] -> simplified for 1 layer
+        lstm_state = [
+            np.zeros(cell_size, dtype=np.float32), 
+            np.zeros(cell_size, dtype=np.float32)
+        ]
+    
     print("Starting Evaluation Episode...")
     
     try:
@@ -191,40 +203,46 @@ def main():
             actions = {}
             
             # Jammer Action from RLLib Policy
-            # Env is PettingZoo, but we have raw obs dict
-            # We need to compute action for 'jammer_0'
-            if 'jammer_0' in obs_dict: # If not done
+            if 'jammer_0' in obs_dict:
                 jam_obs = obs_dict['jammer_0']
-                # Hybrid Inference (Supports both New API Stack and Old API Stack)
+                
+                # Use compute_single_action directly (safest for both MLP and LSTM)
+                # It handles state management automatically if we pass it correctly
                 try:
-                    # 1. Try New API Stack (RLModule)
-                    module = algo.get_module("jammer_policy")
-                    # jam_obs is (obs_dim,). We need batch (1, obs_dim) and Tensor.
-                    obs_tensor = torch.from_numpy(jam_obs).float().unsqueeze(0)
+                    display_state = lstm_state if args.algo == "PPO-LSTM" else []
                     
-                    with torch.no_grad():
-                        # forward_inference returns dict with "action_dist_inputs"
-                        fwd_out = module.forward_inference({"obs": obs_tensor})
-                        logits = fwd_out["action_dist_inputs"] # Shape [1, 13] (3+10)
-                        
-                        # Split logits for MultiDiscrete([3, 10])
-                        logits_ch = logits[:, :3]
-                        logits_pow = logits[:, 3:]
-                        
-                        # Deterministic Action (Argmax) for Evaluation
-                        ch_idx = torch.argmax(logits_ch, dim=1).item()
-                        pow_idx = torch.argmax(logits_pow, dim=1).item()
-                        
-                        jam_action = np.array([ch_idx, pow_idx])
-                        
-                except Exception:
-                    # 2. Fallback to Old API Stack (compute_single_action)
-                    # This works for DQN Old Stack
-                    jam_action = algo.compute_single_action(
+                    # Returns: action, state_out, info
+                    result = algo.compute_single_action(
                         observation=jam_obs,
+                        state=display_state,
                         policy_id="jammer_policy",
                         explore=False
                     )
+                    
+                    if isinstance(result, tuple) and len(result) >= 1:
+                         # Unpack based on return signature
+                         # For LSTM: action, state_out, info
+                         # For MLP: action (sometimes just action?) -> verification needed
+                         # RLLib compute_single_action returns (action, state_out, info) IF state is provided or full_fetch=True
+                         # If state is [], it might just return action.
+                         
+                         if args.algo == "PPO-LSTM":
+                             jam_action = result[0]
+                             lstm_state = result[1]
+                         else:
+                             # For MLP, it usually returns just action unless full_fetch=True
+                             # But let's handle the tuple case if it returns (action, [], {})
+                             if isinstance(result, tuple):
+                                 jam_action = result[0]
+                             else:
+                                 jam_action = result
+                    else:
+                        jam_action = result
+
+                except Exception as e:
+                    print(f"Error in inference: {e}")
+                    # Fallback
+                    jam_action = 0 
             
             # CRITICAL FIX: Add jammer action to actions dict!
             actions['jammer_0'] = jam_action

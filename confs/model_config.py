@@ -67,3 +67,26 @@ class DQNConfig:
     # Resources
     NUM_WORKERS = 1      # Number of parallel rollout workers
     USE_GPU = True       # GTX 3080 detected with CUDA 12.1
+
+class PPOLSTMConfig:
+    """
+    Parameters for PPO with LSTM (Recurrent Policy).
+    Used in train_ppo_lstm.py
+    """
+    # Inherit basic PPO params (could also subclass, but explicit is safer for now)
+    LR = 1e-4
+    GAMMA = 0.9
+    TRAIN_BATCH_SIZE = 1000
+    ROLLOUT_FRAGMENT_LENGTH = 100
+    
+    # LSTM Specifics
+    USE_LSTM = True
+    LSTM_CELL_SIZE = 256
+    MAX_SEQ_LEN = 20
+    
+    # Model Architecture
+    FCNET_HIDDENS = [256, 256]
+    
+    # Resources
+    NUM_WORKERS = 1
+    USE_GPU = True

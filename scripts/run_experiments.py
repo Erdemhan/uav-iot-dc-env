@@ -132,7 +132,7 @@ class ParallelTrainer:
             print("=" * 80 + f"{Colors.ENDC}")
             print()
             
-            for name in ["Baseline", "PPO", "DQN"]:
+            for name in ["Baseline", "PPO", "DQN", "PPO-LSTM"]:
                 status = self.status.get(name, "PENDING")
                 progress = self.progress.get(name, 0)
                 current_iter = self.iterations.get(name, 0)
@@ -174,7 +174,7 @@ class ParallelTrainer:
         print("=" * 80 + f"{Colors.ENDC}")
         print()
         
-        for name in ["Baseline", "PPO", "DQN"]:
+        for name in ["Baseline", "PPO", "DQN", "PPO-LSTM"]:
             status = self.status[name]
             current_iter = self.iterations.get(name, 0)
             total_iter = self.total_iterations.get(name, 0)
@@ -212,6 +212,7 @@ def main():
     os.makedirs(os.path.join(run_dir, "baseline", "evaluation"), exist_ok=True)
     os.makedirs(os.path.join(run_dir, "ppo", "evaluation"), exist_ok=True)
     os.makedirs(os.path.join(run_dir, "dqn", "evaluation"), exist_ok=True)
+    os.makedirs(os.path.join(run_dir, "ppo_lstm", "evaluation"), exist_ok=True)
     os.makedirs(os.path.join(run_dir, "comparison"), exist_ok=True)
     
     print("="*80)
@@ -247,6 +248,7 @@ def main():
     baseline_dir = os.path.join(run_dir, "baseline")
     ppo_dir = os.path.join(run_dir, "ppo")
     dqn_dir = os.path.join(run_dir, "dqn")
+    ppo_lstm_dir = os.path.join(run_dir, "ppo_lstm")
     
     # Start all training processes in parallel
     trainer.start_training(
@@ -265,6 +267,12 @@ def main():
         "DQN",
         f"python -u scripts/train_dqn.py --output-dir {dqn_dir}",
         dqn_dir
+    )
+
+    trainer.start_training(
+        "PPO-LSTM",
+        f"python -u scripts/train_ppo_lstm.py --output-dir {ppo_lstm_dir}",
+        ppo_lstm_dir
     )
     
     # Display progress
@@ -303,6 +311,12 @@ def main():
         "DQN",
         f"python -u scripts/evaluate.py --algo DQN --dir {dqn_dir} --no-viz --output-dir {os.path.join(dqn_dir, 'evaluation')}",
         dqn_dir
+    )
+    
+    eval_trainer.start_training(
+        "PPO-LSTM",
+        f"python -u scripts/evaluate.py --algo PPO-LSTM --dir {ppo_lstm_dir} --no-viz --output-dir {os.path.join(ppo_lstm_dir, 'evaluation')}",
+        ppo_lstm_dir
     )
     
     eval_trainer.display_progress()
