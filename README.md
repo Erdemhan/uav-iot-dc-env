@@ -100,7 +100,7 @@ The Q-Learning approach uses a discrete action-reward table:
 *   **Action**: Power level (0-9)
 *   **Reward**: Number of jammed nodes × 10 - energy cost × 0.1
 
-### B. PPO & DQN (Deep RL)
+### B. PPO, PPO-LSTM & DQN (Deep RL)
 Both algorithms share the same reward structure with three components:
 
 #### 1. Jamming Success Reward (Sparse, High)
@@ -180,6 +180,10 @@ The project uses a centralized configuration system for reproducibility and easy
     *   Model architecture (`FCNET_HIDDENS = [256, 256]`)
     *   GPU settings (`USE_GPU = True`)
 
+*   **PPOLSTMConfig**: PPO with LSTM parameters (Recurrent Policy)
+    *   LSTM specifics: `USE_LSTM = True`, `LSTM_CELL_SIZE = 256`, `MAX_SEQ_LEN = 20`
+    *   Optimized for learning temporal dependencies and memory-based strategies.
+
 *   **DQNConfig**: DQN training parameters
     *   Learning rate, gamma, batch size, target network update frequency
     *   Replay buffer capacity, Double-Q, Dueling settings
@@ -228,7 +232,7 @@ To run the full scientific comparison pipeline (Official Baseline vs PPO vs DQN)
 python scripts/run_experiments.py
 ```
 This script automates:
-1.  **Parallel Execution**: Launches Baseline, PPO, and DQN training simultaneously (3x faster).
+1.  **Parallel Execution**: Launches Baseline, PPO, DQN, and PPO-LSTM training simultaneously (4x faster).
 2.  **Real-Time Monitoring**: Displays color-coded progress bars and iteration counts in the terminal.
 3.  **Artifact Management**: Creates a timestamped folder in `artifacts/` containing all models, logs, and plots.
 4.  **Auto-Report**: Generates `comparison_result.png` showing success rates and energy efficiency.
@@ -257,14 +261,16 @@ Latest results from fair algorithmic comparison (60 training iterations, fixed r
 
 | Algorithm | Avg Jammed Nodes | Success Rate | Avg Power (W) | Channel Match |
 |-----------|------------------|--------------|---------------|---------------|
-| **Baseline (QJC)** | 0.78 | 15.6% | 0.1000 | 30.0% |
-| **PPO** | **3.53** ✨ | **70.6%** | 0.0569 | 94.0% |
-| **DQN** | 2.84 | 56.8% | 0.0888 | 94.0% |
+| **Baseline (QJC)** | 0.10 | 2.0% | 0.1000 | 2.0% |
+| **PPO** | **2.12** ✨ | **42.4%** | 0.0599 | **74.0%** |
+| **PPO-LSTM** | 1.41 | 28.2% | 0.0503 | 42.0% |
+| **DQN** | 1.11 | 22.2% | **0.0269** | 31.0% |
 
 ### Key Findings
-- ✅ **PPO achieves 452% improvement** over baseline in jamming effectiveness
-- ✅ **PPO is most energy-efficient** (43% less power than baseline)
-- ✅ Both RL algorithms achieve **94% channel tracking** vs 30% baseline
+- ✅ **PPO achieves 20x improvement** over baseline in jamming effectiveness
+- ✅ **PPO provides best balance** of success rate and power consumption
+- ✅ **DQN is most power-efficient** but less effective in jamming
+- ✅ **LSTM adds complexity** without immediate benefit in this specific scenario (Markovian state is sufficient)
 - ✅ **Power threshold reward fix** successfully prevents zero-power exploitation
 
 **Note:** Full statistics saved to `experiments/comparison_statistics.csv`

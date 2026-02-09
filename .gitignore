@@ -208,7 +208,6 @@ __marimo__/
 
 # Simulation Logs
 logs/
-liaovd(2025).pdf
 
 # Ray Results
 ray_results/
@@ -228,3 +227,5 @@ checkpoints/
 check_fairness.py
 baseline_q_table
 
+#Scientific Paper
+paper/
