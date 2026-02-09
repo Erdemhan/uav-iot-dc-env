@@ -2,7 +2,7 @@
 
 **Proje Başlığı:** Nesnelerin İnterneti Tabanlı İHA Uygulamalarında Güvenlik Hassasiyetli Akıllı Yöntemlerin Geliştirilmesi
 **Rapor Tarihi:** 02.02.2026 01:07
-**Versiyon:** 1.0.0 (Başlangıç Sürümü)
+**Versiyon:** 2.2.0 (Robustness Sürümü)
 
 ---
 
@@ -10,7 +10,7 @@
 
 Bu proje, Doktora Tezi kapsamında İnsansız Hava Araçları (İHA) ve Nesnelerin İnterneti (IoT) ağlarının entegre çalıştığı senaryolarda, siber güvenlik tehditlerinin (özellikle Jamming saldırıları) etkilerini analiz etmek ve bunlara karşı dayanıklı akıllı yöntemler geliştirmek amacıyla tasarlanmıştır.
 
-Geliştirilen simülasyon ortamı, literatürdeki standartlara uygun olarak Python tabanlı, modüler, genişletilebilir ve bilimsel geçerliliği olan matematiksel modellere dayalı bir altyapıya sahiptir. OpenAI Gymnasium arayüzü benimsenerek, ileride Derin Pekiştirmeli Öğrenme (Deep Reinforcement Learning - DRL) algoritmalarının entegrasyonuna hazır hale getirilmiştir.
+Geliştirilen simülasyon ortamı, literatürdeki standartlara uygun olarak Python tabanlı, modüler, genişletilebilir ve bilimsel geçerliliği olan matematiksel modellere dayalı bir altyapıya sahiptir. OpenAI Gymnasium arayüzü benimsenerek, Baseline (QJC), DRL (PPO, DQN) ve Bellek Tabanlı (PPO-LSTM) algoritmaların entegre çalışabildiği kapsamlı bir test yatağı (testbed) oluşturulmuştur.
 
 ---
 
@@ -67,7 +67,7 @@ Projenin geliştirilmesinde, akademik standartlara uygunluk ve yüksek performan
 
 ### 3.6. Mevcut Simülasyon Senaryosu (v1.7.0 - Akıllı Tehdit Modeli)
 
-Bu sürümde kullanılan senaryo, "Adil ve Kıyaslanabilir Akıllı Tehdit" (Fair & Comparable Smart Threat) modelidir.
+Bu sürümde (v2.2.0) kullanılan senaryo, "Adil, Kıyaslanabilir ve Robust Akıllı Tehdit" modelidir.
 
 *   **Operasyonel Alan:** 1000m x 1000m boyutlarında 2 boyutlu düzlem.
 *   **Frekans Spektrumu:** Sistem 3 farklı frekans kanalında (2.4, 5.0, 5.8 GHz) çalışabilmektedir.
@@ -111,6 +111,9 @@ Bu fiziksel kısıt, Jammer'ın "sadece yüksek frekansta çalışmak yerine ene
 *   **İHA Uçuş Enerjisi:** Aerodinamik prensiplere dayalı güç tüketimi $P_{UAV}(v)$:
     $$ P_{UAV}(v) = P_0 \left( 1 + \frac{3v^2}{U_{tip}^2} \right) + P_i \left( \sqrt{1 + \frac{v^4}{4v_0^4}} - \frac{v^2}{2v_0^2} \right)^{1/2} + \frac{1}{2} d_0 \rho s A v^3 $$
 *   **IoT Enerjisi:** Veri toplama, şifreleme ve iletim ($E_{tx} = P_{tx} \times L/R$) maliyetlerinin toplamıdır.
+*   **Jammer Enerjisi:** Seçilen güç seviyesinin PA verimliliğine bölünmesiyle elde edilen toplam sistem gücüdür:
+    $$ P_{sys} = \frac{P_{jam}}{\eta_{PA}(f)} + P_{circuit} $$
+    Burada $\eta_{PA}(f)$, frekansa bağlı verimlilik (%50 @ 2.4GHz, %19 @ 5.8GHz) faktörüdür. Bu model, "Energy Efficiency" analizlerinin temelini oluşturur.
 
 ### 4.2. Problem Formülasyonu (MDP)
 Problem, $\langle \mathcal{S}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma \rangle$ ile tanımlanan bir Markov Karar Sürecidir.
@@ -249,6 +252,25 @@ Bu grafik seti, her bir IoT düğümünün operasyonel performansını detayland
 ### 6.4. Dashboard Analizi
 Simülasyon tamamlandığında, yukarıdaki tüm analizler (`Trajectory`, `Metrics`, `Advanced Stats`) tek bir **"Dashboard"** penceresinde operatöre sunulur. Bu sayede simülasyon sonuçlarına bütüncül (holistic) bir bakış açısı sağlanır.
 
+### 6.5. İstatistiksel Güvenilirlik Analizi (Robustness)
+Bilimsel sonuçların güvenilirliğini sağlamak için tekil koşular (Single Run) yerine istatistiksel dağılım analizi benimsenmiştir:
+*   **Çoklu Çekirdek (Multi-Seed):** Her bir algoritma, **100-130 aralığında seçilen 30 farklı rastgele tohum** ile test edilerek sonuçların varyansı ölçülmüştür.
+*   **Hata Çubukları (Error Bars):** Performans grafikleri, ortalama değerin yanı sıra standart sapmayı (Standard Deviation) da içerecek şekilde üretilmiştir.
+*   **Adil Kıyaslama:** Tüm algoritmalar tamamen aynı başlangıç koşullarında ve aynı rastgele sayı üreteci (RNG) durumlarında yarıştırılmıştır.
+
+
+### 6.6. Algoritmik Karşılaştırma Grafiği (`comparison_robustness.png`)
+Bu grafik, farklı algoritmaların performansını dört temel metrik üzerinden (Başarı, Takip, Güç, SINR) yan yana (side-by-side) ve istatistiksel hata paylarıyla karşılaştırır.
+*   **Bar Çubukları:** 30 farklı denemenin ortalama değerini gösterir.
+*   **Hata Çizgileri (Error Bars):** Sonuçların standart sapmasını (varyansını) göstererek algoritmanın kararlılığını görselleştirir.
+*   **Kullanım Amacı:** Baseline ve Önerilen Yöntemler (PPO, LSTM) arasındaki farkın "şans eseri" olmadığını, istatistiksel olarak anlamlı (statistically significant) olduğunu kanıtlar.
+
+---
+
+### 6.7. Otomatik Eğitim Sonuç Grafiği (`comparison_result.png`)
+Bu grafik, `run_experiments.py` otomasyonu tarafından her eğitim döngüsünün sonunda üretilen "anlık durum" raporudur.
+*   **İçerik:** Algoritmaların son eğitim iterasyonundaki (örn. 500. iterasyon) performansını (Jammed Node Count, Success Rate, Power) gösterir.
+*   **Farkı:** `comparison_robustness.png` 30 tekrarlı bir doğrulama iken, bu grafik tek bir eğitimin (Single Run) sonucunu yansıtır. Eğitim sürecinin hızlı takibi (Quick Monitoring) için kullanılır.
 
 ---
 
