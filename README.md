@@ -16,15 +16,18 @@ uav-iot-dc-env/
 │   ├── pettingzoo_env.py # PettingZoo ParallelEnv
 │   ├── controllers.py    # Rule-based controllers (UAV)
 │   └── entities.py       # Entity classes
-├── visualization/      # Visualization
-│   ├── visualization.py # Runtime visualization
-│   └── visualizer.py   # Analysis and reporting
 ├── scripts/            # Execution Scripts
-│   ├── main.py         # Launcher
+│   ├── main.py         # Single-Run Visualizer
 │   ├── train.py        # PPO Training
 │   ├── train_dqn.py    # DQN Training
-│   ├── run_experiments.py # Parallel Automation
-│   └── evaluate.py     # Unified Evaluation
+│   ├── train_ppo_lstm.py # PPO-LSTM Training (Recurrent)
+│   ├── run_experiments.py # Parallel Automation (Main Entry)
+│   ├── evaluate.py     # Unified Evaluation
+│   └── evaluate_paper_robustness.py # 30-Seed Robustness Test
+├── visualization/      # Visualization
+│   ├── visualization.py # Runtime visualization
+│   ├── visualizer.py   # Analysis and reporting
+│   └── compare.py      # Multi-Algo Comparison Plotter
 ├── artifacts/          # Experiment Artifacts (Timestamped)
 │   └── 2026-02-08_.../ # Individual Run Results
 ├── logs/               # Legacy Simulation outputs
@@ -77,6 +80,9 @@ The simulation runs for a specified number of steps (Default: 100). In each step
 3.  **Energy Consumption**:
     *   **UAV**: Aerodynamic power consumption based on flight speed is calculated.
     *   **IoT Node**: Costs for data sending and encryption are calculated.
+    *   **Jammer**: Power is calculated using the PA Efficiency model:
+        $$ P_{sys} = \frac{P_{jam}}{\eta_{PA}(f)} + P_{circuit} $$
+        (Efficiency: %50 @ 2.4GHz, %19 @ 5.8GHz). This rewards the agent for using efficient frequencies.
 
 ### D. Logging (`core/logger.py`)
 At the end of each step, all critical data is buffered:
@@ -181,8 +187,9 @@ The project uses a centralized configuration system for reproducibility and easy
     *   GPU settings (`USE_GPU = True`)
 
 *   **PPOLSTMConfig**: PPO with LSTM parameters (Recurrent Policy)
-    *   LSTM specifics: `USE_LSTM = True`, `LSTM_CELL_SIZE = 256`, `MAX_SEQ_LEN = 20`
-    *   Optimized for learning temporal dependencies and memory-based strategies.
+    *   **Architecture**: Adds an LSTM cell (size 256) before the Action Head.
+    *   **Purpose**: Solves "Partial Observability" (POMDP). The agent remembers past observations (e.g., UAV's last known frequency) to predict future states even when the UAV is efficient hopping.
+    *   **Config**: `USE_LSTM = True`, `MAX_SEQ_LEN = 20`.
 
 *   **DQNConfig**: DQN training parameters
     *   Learning rate, gamma, batch size, target network update frequency
@@ -253,27 +260,18 @@ python scripts/evaluate.py
 ```
 This script runs a single interactive episode, allowing you to observe the learned Markov-channel-switching prediction logic in real-time.
 
-## 9. Experimental Results
+## 9. Reproducing Paper Results (Robustness Analysis)
 
-## 9. Experimental Results
+To generate the specific robust statistics (30-Seed Analysis) used in the paper:
+```bash
+python scripts/evaluate_paper_robustness.py
+```
+This script automates the full scientific validation process:
+1.  **Iterative Evaluation**: Runs the trained models over 30 distinct random seeds (Range: 100-129).
+2.  **Data Collection**: Aggregates JSR, Tracking Accuracy, Power, and SINR metrics.
+3.  **Statistical Output**: Saves mean/std statistics.
+4.  **Plot Generation**: Creates graph (Bar Chart with Error Bars).
 
-Latest results from **Robustness Analysis** (30 Random Seeds, Range 100-129):
+**Note:** This process ensures the findings are statistically significant and not result of a lucky seed.
 
-### Performance Comparison (Mean ± Std Dev)
-
-| Algorithm | Success Rate (JSR) | Tracking Accuracy | Avg Power (W) | SINR (dB) |
-|-----------|--------------------|-------------------|---------------|-----------|
-| **PPO (Proposed)** | **57.4% ± 10.9** 🏆 | **60.1%** | 0.429 | **3.94** |
-| **PPO-LSTM** | 53.6% ± 8.6 | 56.0% | **0.305** 🍃 | 3.91 |
-| **DQN** | 29.4% ± 11.8 | 33.3% | **0.241** | 5.10 |
-| **Baseline (QJC)** | 1.9% ± 0.8 | 1.1% | 0.400 | 3.78 |
-
-### Key Findings
-- ✅ **PPO achieves ~30x improvement** over baseline (1.9% -> 57.4%) due to continuous action space and clipped objective stability.
-- ✅ **PPO-LSTM is the most energy-efficient viable solution**, consuming **24% less power** (~0.30W vs 0.40W) than Baseline while maintaining high success.
-- ✅ **Baseline fails (Structural Blindness):** Without distance/spectrum sensing, Q-Learning cannot overcome the $d^2$ path loss physics.
-- ✅ **SINR Paradox:** PPO and Baseline have similar average SINR (~3.9dB), but PPO causes deep fades (effective jamming) while Baseline creates ineffective background noise.
-- ✅ **DQN struggles** with the dynamic 3D state space, often falling into a "Sparsity Trap" (staying silent to avoid penalty).
-
-**Note:** Full robust statistics saved to `paper/robustness_results_30seeds.json`.
 
