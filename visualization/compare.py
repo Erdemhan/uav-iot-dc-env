@@ -60,9 +60,9 @@ def main():
     
     sns.set_style("whitegrid")
     
-    experiments = ["baseline", "ppo", "dqn"]
-    labels = ["Baseline (QJC)", "Deep RL (PPO)", "Deep RL (DQN)"]
-    colors = ["gray", "tab:blue", "tab:orange"]
+    experiments = ["baseline", "ppo", "dqn", "ppo_lstm"]
+    labels = ["Baseline (QJC)", "Deep RL (PPO)", "Deep RL (DQN)", "Deep RL (PPO-LSTM)"]
+    colors = ["gray", "tab:blue", "tab:orange", "tab:purple"]
     
     data_map = {}
     
@@ -157,16 +157,28 @@ def main():
     ax4 = axes[3]
     
     # Load training data
+    # Load Config to get TRAIN_BATCH_SIZE
+    from confs.model_config import GlobalConfig
+    BATCH_SIZE = GlobalConfig.TRAIN_BATCH_SIZE
+
     # Baseline
     baseline_train_path = os.path.join(args.run_dir, "baseline", "training_curve.csv")
     if os.path.exists(baseline_train_path):
         from confs.env_config import EnvConfig
         df_train = pd.read_csv(baseline_train_path)
-        # Calculate total_steps: episode * MAX_STEPS
+        # Calculate total_steps: episode * MAX_STEPS (100)
         df_train['total_steps'] = df_train['episode'] * EnvConfig.MAX_STEPS
-        ax4.plot(df_train['total_steps'], df_train['total_reward'], 
-                label='Baseline (QJC)', color='gray', linewidth=2, alpha=0.8)
-    
+        
+        # Resample to align with Deep RL (average over BATCH_SIZE steps)
+        # We want steps 1-1000 to be plotted at X=1000.
+        df_train['step_bin'] = ((df_train['total_steps'] - 1) // BATCH_SIZE) * BATCH_SIZE + BATCH_SIZE
+        
+        # Group by bin and take mean of 'total_reward'
+        df_resampled = df_train.groupby('step_bin')['total_reward'].mean().reset_index()
+        
+        ax4.plot(df_resampled['step_bin'], df_resampled['total_reward'], 
+                label='Baseline (QJC)', color='gray', linewidth=2, alpha=0.8, marker='o', markersize=4)
+
     # PPO
     ppo_progress_files = glob.glob(os.path.join(args.run_dir, "ppo", "PPO_*/*/progress.csv"))
     if ppo_progress_files:
@@ -176,7 +188,7 @@ def main():
             # Use Ray 2.x column names
             if 'timesteps_total' in df_ppo.columns and 'env_runners/episode_reward_mean' in df_ppo.columns:
                 ax4.plot(df_ppo['timesteps_total'], df_ppo['env_runners/episode_reward_mean'], 
-                        label='PPO', color='tab:blue', linewidth=2, alpha=0.8)
+                        label='PPO', color='tab:blue', linewidth=2, alpha=0.8, marker='o', markersize=4)
     
     # DQN
     dqn_progress_files = glob.glob(os.path.join(args.run_dir, "dqn", "DQN_*/*/progress.csv"))
@@ -187,7 +199,17 @@ def main():
             # Use Ray 2.x column names
             if 'timesteps_total' in df_dqn.columns and 'env_runners/episode_reward_mean' in df_dqn.columns:
                 ax4.plot(df_dqn['timesteps_total'], df_dqn['env_runners/episode_reward_mean'], 
-                        label='DQN', color='tab:orange', linewidth=2, alpha=0.8)
+                        label='DQN', color='tab:orange', linewidth=2, alpha=0.8, marker='o', markersize=4)
+
+    # PPO-LSTM
+    ppo_lstm_progress_files = glob.glob(os.path.join(args.run_dir, "ppo_lstm", "PPO_*/*/progress.csv"))
+    if ppo_lstm_progress_files:
+        latest_ppo_lstm_file = max(ppo_lstm_progress_files, key=os.path.getmtime)
+        if os.path.exists(latest_ppo_lstm_file):
+            df_ppo_lstm = pd.read_csv(latest_ppo_lstm_file)
+            if 'timesteps_total' in df_ppo_lstm.columns and 'env_runners/episode_reward_mean' in df_ppo_lstm.columns:
+                ax4.plot(df_ppo_lstm['timesteps_total'], df_ppo_lstm['env_runners/episode_reward_mean'], 
+                        label='PPO-LSTM', color='tab:purple', linewidth=2, alpha=0.8, marker='o', markersize=4)
     
     ax4.set_title("Training Progress: Reward Learning Curves", fontsize=14, fontweight='bold')
     ax4.set_ylabel("Mean Episode Reward", fontsize=12)
@@ -232,7 +254,7 @@ def main():
         table[(0, i)].set_text_props(weight='bold', color='white')
     
     # Style rows
-    colors_map = {'Baseline (QJC)': 'gray', '(PPO)': 'tab:blue', '(DQN)': 'tab:orange'}
+    colors_map = {'Baseline (QJC)': 'gray', '(PPO)': 'tab:blue', '(DQN)': 'tab:orange', '(PPO-LSTM)': 'tab:purple'}
     for i, row in enumerate(table_data):
         for color_key, color in colors_map.items():
             if color_key in row[0]:
