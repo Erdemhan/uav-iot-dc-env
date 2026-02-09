@@ -255,23 +255,25 @@ This script runs a single interactive episode, allowing you to observe the learn
 
 ## 9. Experimental Results
 
-Latest results from fair algorithmic comparison (60 training iterations, fixed reward mechanism):
+## 9. Experimental Results
 
-### Performance Comparison
+Latest results from **Robustness Analysis** (30 Random Seeds, Range 100-129):
 
-| Algorithm | Avg Jammed Nodes | Success Rate | Avg Power (W) | Channel Match |
-|-----------|------------------|--------------|---------------|---------------|
-| **Baseline (QJC)** | 0.10 | 2.0% | 0.1000 | 2.0% |
-| **PPO** | **2.12** ✨ | **42.4%** | 0.0599 | **74.0%** |
-| **PPO-LSTM** | 1.41 | 28.2% | 0.0503 | 42.0% |
-| **DQN** | 1.11 | 22.2% | **0.0269** | 31.0% |
+### Performance Comparison (Mean ± Std Dev)
+
+| Algorithm | Success Rate (JSR) | Tracking Accuracy | Avg Power (W) | SINR (dB) |
+|-----------|--------------------|-------------------|---------------|-----------|
+| **PPO (Proposed)** | **57.4% ± 10.9** 🏆 | **60.1%** | 0.429 | **3.94** |
+| **PPO-LSTM** | 53.6% ± 8.6 | 56.0% | **0.305** 🍃 | 3.91 |
+| **DQN** | 29.4% ± 11.8 | 33.3% | **0.241** | 5.10 |
+| **Baseline (QJC)** | 1.9% ± 0.8 | 1.1% | 0.400 | 3.78 |
 
 ### Key Findings
-- ✅ **PPO achieves 20x improvement** over baseline in jamming effectiveness
-- ✅ **PPO provides best balance** of success rate and power consumption
-- ✅ **DQN is most power-efficient** but less effective in jamming
-- ✅ **LSTM adds complexity** without immediate benefit in this specific scenario (Markovian state is sufficient)
-- ✅ **Power threshold reward fix** successfully prevents zero-power exploitation
+- ✅ **PPO achieves ~30x improvement** over baseline (1.9% -> 57.4%) due to continuous action space and clipped objective stability.
+- ✅ **PPO-LSTM is the most energy-efficient viable solution**, consuming **24% less power** (~0.30W vs 0.40W) than Baseline while maintaining high success.
+- ✅ **Baseline fails (Structural Blindness):** Without distance/spectrum sensing, Q-Learning cannot overcome the $d^2$ path loss physics.
+- ✅ **SINR Paradox:** PPO and Baseline have similar average SINR (~3.9dB), but PPO causes deep fades (effective jamming) while Baseline creates ineffective background noise.
+- ✅ **DQN struggles** with the dynamic 3D state space, often falling into a "Sparsity Trap" (staying silent to avoid penalty).
 
-**Note:** Full statistics saved to `experiments/comparison_statistics.csv`
+**Note:** Full robust statistics saved to `paper/robustness_results_30seeds.json`.
 

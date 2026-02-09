@@ -282,26 +282,27 @@ Deney sonunda üretilen `comparison_result.png` şu sorulara yanıt verir:
 2.  **Zarar Verme Kapasitesi (Success Rate):** UAV'nin veri toplama başarısını yüzde kaç düşürebiliyor?
 3.  **Enerji Verimliliği:** En az güç harcayarak en yüksek zararı hangi algoritma veriyor?
 
-### 7.6. Deneysel Sonuçlar (Son Eğitim: 500 İterasyon - 09.02.2026)
+### 7.6. Deneysel Sonuçlar (Robustness Analizi - 30 Seed)
 
-Adil algoritmik karşılaştırma sonuçları (tüm algoritmalar aynı eğitim bütçesi ve ödül fonksiyonuyla):
+Adil ve kapsamlı bir değerlendirme için her algoritma **100-130 aralığında seçilen 30 farklı başlangıç tohumu (seed)** ile test edilmiştir.
 
-#### Performans Karşılaştırması
+#### Performans Karşılaştırması (Ortalama ± Standart Sapma)
 
-| Algoritma | Ort. Jamlenen Düğüm | Başarı Oranı | Ort. Güç (W) | Kanal Eşleşme | SINR Etkisi (dB) |
-|-----------|---------------------|--------------|--------------|---------------|------------------|
-| **Baseline (QJC)** | 0.10 | %2.0 | 0.1000 | %2.0 | 3.00 |
-| **PPO** | **2.12** ✨ | **%42.4** | 0.0599 | **%74.0** | **-5.92** |
-| **PPO-LSTM** | 1.41 | %28.2 | 0.0503 | %42.0 | -1.76 |
-| **DQN** | 1.11 | %22.2 | **0.0269** | %31.0 | 1.41 |
+| Algoritma | Başarı (JSR) | Kanal Eşleşme (Tracking) | Ort. Güç (W) | SINR (dB) |
+|-----------|--------------|--------------------------|--------------|-----------|
+| **PPO (Önerilen)** | **%57.4 ± 10.9** 🏆 | **%60.1** | 0.429 | **3.94** |
+| **PPO-LSTM** | %53.6 ± 8.6 | %56.0 | **0.305** 🍃 | 3.91 |
+| **DQN** | %29.4 ± 11.8 | %33.3 | **0.241** | 5.10 |
+| **Baseline (QJC)** | %1.9 ± 0.8 | %1.1 | 0.400 | 3.78 |
 
 #### Temel Bulgular
-- ✅ **PPO Şampiyon:** Baseline'a göre 20 kat, diğer Deep RL modellerine göre 1.5-2 kat daha başarılıdır.
-- ✅ **DQN'in Cimriliği:** En düşük güç tüketimine sahiptir ancak bu "garantici" yaklaşım başarı oranını düşürmüştür.
-- ✅ **LSTM Etkisi:** Hafıza katmanı eklemek, bu spesifik (Markovian) problemde performansı artırmamış, aksine öğrenme sürecini yavaşlatmıştır.
-- 🔬 **Grafik Analizi:** Görselleştirmede PPO eğrisinin diğerlerinin üzerinde seyretmesi, kararlılığını kanıtlamaktadır. "Testere dişi" yapısı, İHA'nın kaçış manevralarını gösterir.
+- ✅ **PPO Şampiyon:** Baseline'a göre **~30 kat** (%1.9 -> %57.4) performans artışı sağlamıştır. Sürekli aksiyon uzayı ve kararlı öğrenme yapısı (Clipped Objective) bu başarının anahtarıdır.
+- ✅ **LSTM Verimliliği:** PPO-LSTM, Baseline'a göre **%24 daha az enerji** harcayarak (%0.30W vs 0.40W) çok yüksek başarı (%53.6) elde etmiştir. Gereksiz saldırıları filtreleyerek "Sessiz ve Derinden" bir strateji izlemiştir.
+- ✅ **Baseline Başarısızlığı:** "Yapısal Körlük" nedeniyle (mesafe/spektrum algısı yok), $d^2$ yol kaybı fiziği karşısında çaresiz kalmıştır.
+- ✅ **SINR Paradoksu:** PPO ve Baseline benzer ortalama SINR üretmiştir. PPO "etkili" darbelerle iletişimi tamamen keserken (Deep Fade), Baseline sadece "etkisiz" arka plan gürültüsü yaratmıştır. PPO'nun ortalamasının yüksek kalması, İHA'nın bu darbelerden kaçıp temiz kanallara sığınmasındandır.
+- ✅ **DQN'in Sessizliği:** Dinamik 3D uzayda (Konum+Frekans+Güç) kaybolmuş ve ceza almamak için pasif kalmayı (Sparsity Trap) seçmiştir.
 
-**Not:** Tüm istatistikler `experiments/comparison_statistics.csv` dosyasında saklanmaktadır.
+**Not:** Tüm istatistikler `paper/robustness_results_30seeds.json` dosyasında saklanmaktadır.
 
 ---
 
@@ -502,3 +503,21 @@ Kod kalitesini artırmak, eğitim süresini optimize etmek ve geliştirici deney
 
 **Amaç:**
 Hafızalı (Recurrent) modellerin etkisini ölçmek ve grafik okumayı bilimsel standartlara (elmalarla elmalar) taşımak.
+
+### [10.02.2026 00:00] - Robustness ve İstatistik Paketi (v2.2.0)
+**Yapılan Değişiklikler:**
+1.  **30-Seed Robust Evaluation:**
+    *   Bilimsel geçerliliği artırmak için tüm algoritmalar **30 farklı random seed** (Range: 100-129) ile test edildi.
+    *   `scripts/evaluate_paper_robustness.py` scripti geliştirildi.
+    *   Sonuçlar ortalama ve standart sapma (Mean ± Std) olarak raporlandı.
+
+2.  **Teorik Analiz Derinleştirme:**
+    *   Baseline başarısızlığının sebebi "Yapısal Körlük" (Structural Blindness) ve $d^2$ fiziksel kısıtı olarak tanımlandı.
+    *   SINR Paradoksu (PPO ve Baseline'ın benzer ortalama vermesi), "Etkili Güç" (Effective Power) ve "İHA Adaptasyonu" (UAV Adaptation) kavramları ile açıklandı.
+
+3.  **Deneysel Bulgular:**
+    *   PPO'nun başarısı istatistiksel olarak kanıtlandı (%57.4 ± 10.9).
+    *   PPO-LSTM'in enerji verimliliği (%24 tasarruf) ve kararlılığı (düşük varyans) ortaya kondu.
+
+**Amaç:**
+Makale (Paper) için gerekli olan güvenilir, tekrarlanabilir ve istatistiksel olarak anlamlı veri setini oluşturmak.
