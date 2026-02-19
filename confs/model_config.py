@@ -6,7 +6,7 @@ class GlobalConfig:
     """
     RANDOM_SEED = 42            # Random seed for reproducibility
     FLATTEN_ACTIONS = True      # Flatten MultiDiscrete to Discrete for DQN compatibility
-    TRAIN_ITERATIONS = 500      # Number of training iterations
+    TRAIN_ITERATIONS = 20      # Number of training iterations
     TRAIN_BATCH_SIZE = 1000     # Steps collected per iteration (PPO/DQN)
 
 class QJCConfig:
@@ -39,7 +39,7 @@ class PPOConfig:
     
     # Resources
     NUM_WORKERS = 1      # Number of parallel rollout workers
-    USE_GPU = True       # GTX 3080 detected with CUDA 12.1
+    USE_GPU = False       # GTX 3080 detected with CUDA 12.1
 
 class DQNConfig:
     """
@@ -66,7 +66,8 @@ class DQNConfig:
     
     # Resources
     NUM_WORKERS = 1      # Number of parallel rollout workers
-    USE_GPU = True       # GTX 3080 detected with CUDA 12.1
+    
+    USE_GPU = False       # GTX 3080 detected with CUDA 12.1
 
 class PPOLSTMConfig:
     """
@@ -89,4 +90,4 @@ class PPOLSTMConfig:
     
     # Resources
     NUM_WORKERS = 1
-    USE_GPU = True
+    USE_GPU = False
