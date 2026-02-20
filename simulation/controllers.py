@@ -30,8 +30,11 @@ class UAVRuleBasedController:
             [0.2, 0.1, 0.7], # From Ch1 -> Prefer Ch2
             [0.7, 0.2, 0.1]  # From Ch2 -> Prefer Ch0
         ])
-        # We need to track if we already switched for this jamming instance to avoid rapid switching
+        
+        # SINR/Jamming Response Logic
         self.last_step_jammed = False
+        self.jammed_step_counter = 0
+        self.persistence_threshold = 5 # Steps to wait before switching (Updated: 5 steps)
 
     def update_channel_logic(self):
         """
@@ -49,12 +52,21 @@ class UAVRuleBasedController:
         is_jammed = (target_node.connection_status == 2)
         
         if is_jammed:
+            self.jammed_step_counter += 1
+        else:
+            self.jammed_step_counter = 0
+            
+        # Only switch if jammed for N consecutive steps
+        if is_jammed and self.jammed_step_counter >= self.persistence_threshold:
             # Trigger Channel Switch
             current_ch = uav.current_channel
             probs = self.transition_matrix[current_ch]
             next_ch = np.random.choice(np.arange(self.num_channels), p=probs)
             
             uav.current_channel = next_ch
+            
+            # Reset counter after switch to avoid immediate double switch or allow new stabilization
+            self.jammed_step_counter = 0
             
         self.last_step_jammed = is_jammed
 
