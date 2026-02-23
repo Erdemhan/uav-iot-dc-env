@@ -253,25 +253,25 @@ def main():
     # Start all training processes in parallel
     trainer.start_training(
         "Baseline",
-        f"python -u scripts/train_baseline.py --output-dir {baseline_dir}",
+        f"{sys.executable} -u scripts/train_baseline.py --output-dir {baseline_dir}",
         baseline_dir
     )
     
     trainer.start_training(
         "PPO",
-        f"python -u scripts/train.py --output-dir {ppo_dir}",
+        f"{sys.executable} -u scripts/train.py --output-dir {ppo_dir}",
         ppo_dir
     )
     
     trainer.start_training(
         "DQN",
-        f"python -u scripts/train_dqn.py --output-dir {dqn_dir}",
+        f"{sys.executable} -u scripts/train_dqn.py --output-dir {dqn_dir}",
         dqn_dir
     )
 
     trainer.start_training(
         "PPO-LSTM",
-        f"python -u scripts/train_ppo_lstm.py --output-dir {ppo_lstm_dir}",
+        f"{sys.executable} -u scripts/train_ppo_lstm.py --output-dir {ppo_lstm_dir}",
         ppo_lstm_dir
     )
     
@@ -297,25 +297,25 @@ def main():
     
     eval_trainer.start_training(
         "Baseline",
-        f"python -u scripts/evaluate.py --algo Baseline --dir {baseline_dir} --no-viz --output-dir {os.path.join(baseline_dir, 'evaluation')}",
+        f"{sys.executable} -u scripts/evaluate.py --algo Baseline --dir {baseline_dir} --no-viz --output-dir {os.path.join(baseline_dir, 'evaluation')}",
         baseline_dir
     )
     
     eval_trainer.start_training(
         "PPO",
-        f"python -u scripts/evaluate.py --algo PPO --dir {ppo_dir} --no-viz --output-dir {os.path.join(ppo_dir, 'evaluation')}",
+        f"{sys.executable} -u scripts/evaluate.py --algo PPO --dir {ppo_dir} --no-viz --output-dir {os.path.join(ppo_dir, 'evaluation')}",
         ppo_dir
     )
     
     eval_trainer.start_training(
         "DQN",
-        f"python -u scripts/evaluate.py --algo DQN --dir {dqn_dir} --no-viz --output-dir {os.path.join(dqn_dir, 'evaluation')}",
+        f"{sys.executable} -u scripts/evaluate.py --algo DQN --dir {dqn_dir} --no-viz --output-dir {os.path.join(dqn_dir, 'evaluation')}",
         dqn_dir
     )
     
     eval_trainer.start_training(
         "PPO-LSTM",
-        f"python -u scripts/evaluate.py --algo PPO-LSTM --dir {ppo_lstm_dir} --no-viz --output-dir {os.path.join(ppo_lstm_dir, 'evaluation')}",
+        f"{sys.executable} -u scripts/evaluate.py --algo PPO-LSTM --dir {ppo_lstm_dir} --no-viz --output-dir {os.path.join(ppo_lstm_dir, 'evaluation')}",
         ppo_lstm_dir
     )
     
@@ -334,7 +334,7 @@ def main():
     print("Generating Comparison Plots...")
     print("="*70 + "\n")
     
-    ret = subprocess.call(f"python visualization/compare.py --run-dir {run_dir}", shell=True)
+    ret = subprocess.call(f"{sys.executable} visualization/compare.py --run-dir {run_dir}", shell=True)
     
     if ret == 0:
         print(f"\n✓ Experiment Complete! Results in: {run_dir}\n")
