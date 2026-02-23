@@ -34,7 +34,7 @@ class UAVRuleBasedController:
         # SINR/Jamming Response Logic
         self.last_step_jammed = False
         self.jammed_step_counter = 0
-        self.persistence_threshold = 5 # Steps to wait before switching (Updated: 5 steps)
+        self.persistence_threshold = UAVConfig.PERSISTENCE_THRESHOLD # Steps to wait before channel-switching
 
     def update_channel_logic(self):
         """

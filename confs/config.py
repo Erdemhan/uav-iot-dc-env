@@ -61,6 +61,7 @@ class UAVConfig:
     # Jammer Power Model (Cui et al.)
     P_CIRCUIT = 0.1 # W (Assumed base circuit power if not specified)
     SINR_THRESHOLD = 1.0 # 0 dB
+    PERSISTENCE_THRESHOLD = 5 # Steps to wait before channel-switching (rule-based controller)
 
     
     
