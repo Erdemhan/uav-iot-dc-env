@@ -39,7 +39,7 @@ class PPOConfig:
     
     # Resources
     NUM_WORKERS = 1      # Number of parallel rollout workers
-    USE_GPU = True       # GTX 3080 detected with CUDA 12.1
+    USE_GPU = False       # GTX 3080 detected with CUDA 12.1
 
 class DQNConfig:
     """
@@ -66,7 +66,8 @@ class DQNConfig:
     
     # Resources
     NUM_WORKERS = 1      # Number of parallel rollout workers
-    USE_GPU = True       # GTX 3080 detected with CUDA 12.1
+    
+    USE_GPU = False       # GTX 3080 detected with CUDA 12.1
 
 class PPOLSTMConfig:
     """
@@ -89,4 +90,4 @@ class PPOLSTMConfig:
     
     # Resources
     NUM_WORKERS = 1
-    USE_GPU = True
+    USE_GPU = False
