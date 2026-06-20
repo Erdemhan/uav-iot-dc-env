@@ -6,8 +6,25 @@ class GlobalConfig:
     """
     RANDOM_SEED = 42            # Random seed for reproducibility
     FLATTEN_ACTIONS = True      # Flatten MultiDiscrete to Discrete for DQN compatibility
-    TRAIN_ITERATIONS = 2000     # Number of training iterations
+    TRAIN_ITERATIONS = 750     # Number of training iterations
     TRAIN_BATCH_SIZE = 1000     # Steps collected per iteration (PPO/DQN)
+    
+    # Early Stopping Parameters
+    # EARLY_STOPPING_PATIENCE: Tüm zamanların en iyi (maksimum) ödülünden sonra 
+    # kaç eğitim iterasyonu boyunca artış olmazsa eğitimin duracağını belirtir.
+    # Not: 1 iterasyon = 1000 adım (10 epizot) -> 100 iterasyon = 100,000 adım (1000 epizot)
+    EARLY_STOPPING_PATIENCE = 100
+    
+    # EARLY_STOPPING_MIN_REWARD: Sabır sayacının devreye girmesi için ajanın ulaşması gereken 
+    # minimum ortalama ödül barajıdır (Bu baraj aşılana kadar erken durdurma tetiklenmez).
+    EARLY_STOPPING_MIN_REWARD = 15.0
+    
+    # Checkpointing Parameters
+    CHECKPOINT_FREQ = 10                                     # Her N iterasyonda bir model yedekleme sıklığı
+    KEEP_CHECKPOINTS_NUM = 3                                 # Disk üzerinde tutulacak en yüksek performanslı en iyi model sayısı
+    CHECKPOINT_SCORE_ATTR = "env_runners/episode_reward_mean" # Checkpoint'leri sıralamak için kullanılan performans metriği
+
+    
 
 class QJCConfig:
     """
@@ -39,7 +56,7 @@ class PPOConfig:
     
     # Resources
     NUM_WORKERS = 1      # Number of parallel rollout workers
-    USE_GPU = False       # GTX 3080 detected with CUDA 12.1
+    USE_GPU = True        # GTX 3080 detected with CUDA 12.1
 
 class DQNConfig:
     """
@@ -67,7 +84,7 @@ class DQNConfig:
     # Resources
     NUM_WORKERS = 1      # Number of parallel rollout workers
     
-    USE_GPU = False       # GTX 3080 detected with CUDA 12.1
+    USE_GPU = True        # GTX 3080 detected with CUDA 12.1
 
 class PPOLSTMConfig:
     """
@@ -90,4 +107,4 @@ class PPOLSTMConfig:
     
     # Resources
     NUM_WORKERS = 1
-    USE_GPU = False
+    USE_GPU = True

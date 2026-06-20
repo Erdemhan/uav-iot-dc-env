@@ -24,12 +24,33 @@ class UAVRuleBasedController:
         self.is_hovering = False
         
         # Markov Channel Hopping State
-        self.num_channels = 3
-        self.transition_matrix = np.array([
-            [0.1, 0.7, 0.2], # From Ch0 -> Prefer Ch1
-            [0.2, 0.1, 0.7], # From Ch1 -> Prefer Ch2
-            [0.7, 0.2, 0.1]  # From Ch2 -> Prefer Ch0
-        ])
+        from confs.config import UAVConfig
+        self.num_channels = len(UAVConfig.CHANNELS)
+        
+        # Determine transition matrix dynamically or use preset for C=3
+        if self.num_channels == 3:
+            self.transition_matrix = np.array([
+                [0.1, 0.7, 0.2], # From Ch0 -> Prefer Ch1
+                [0.2, 0.1, 0.7], # From Ch1 -> Prefer Ch2
+                [0.7, 0.2, 0.1]  # From Ch2 -> Prefer Ch0
+            ])
+        else:
+            # Dynamic C x C Markov transition matrix:
+            # Stay probability = 0.1, next channel = 0.6, others = remaining / (C-2)
+            self.transition_matrix = np.zeros((self.num_channels, self.num_channels))
+            for i in range(self.num_channels):
+                self.transition_matrix[i, i] = 0.1
+                next_ch = (i + 1) % self.num_channels
+                self.transition_matrix[i, next_ch] = 0.6
+                remaining_prob = 0.3
+                remaining_channels = [ch for ch in range(self.num_channels) if ch != i and ch != next_ch]
+                if remaining_channels:
+                    prob_per_channel = remaining_prob / len(remaining_channels)
+                    for r_ch in remaining_channels:
+                        self.transition_matrix[i, r_ch] = prob_per_channel
+                else:
+                    self.transition_matrix[i, next_ch] += remaining_prob
+
         
         # SINR/Jamming Response Logic
         self.last_step_jammed = False
