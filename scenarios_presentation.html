@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İHA-IoT Akıllı Jammer Simülasyon Senaryoları</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-card: rgba(30, 41, 59, 0.7);
+            --bg-card-hover: rgba(30, 41, 59, 0.9);
+            --border-glow: rgba(56, 189, 248, 0.3);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --cyan-neon: #38bdf8;
+            --purple-neon: #a855f7;
+            --emerald-neon: #10b981;
+            --red-neon: #ef4444;
+            --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow-x: hidden;
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.1) 0px, transparent 50%);
+        }
+
+        /* Single descriptive H1 per page as per SEO guidelines */
+        #main-title-header {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        /* Top Navigation Bar */
+        .top-navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 3rem;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            background-color: rgba(15, 23, 42, 0.6);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-section svg {
+            width: 32px;
+            height: 32px;
+            fill: var(--cyan-neon);
+            filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.6));
+        }
+
+        .logo-text {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            background: linear-gradient(to right, var(--cyan-neon), var(--purple-neon));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .mode-toggle {
+            display: flex;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.25rem;
+            border-radius: 9999px;
+            gap: 0.25rem;
+        }
+
+        .mode-btn {
+            background: transparent;
+            border: none;
+            padding: 0.5rem 1.25rem;
+            border-radius: 9999px;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, var(--cyan-neon), rgba(168, 85, 247, 0.4));
+            color: var(--text-main);
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+        }
+
+        /* App Layout Container */
+        .app-container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            min-height: calc(100vh - 180px);
+        }
+
+        /* TABS (DASHBOARD MODE) */
+        .tabs-header {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 1rem;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            background: rgba(30, 41, 59, 0.8);
+            border-color: var(--border-glow);
+            color: var(--text-main);
+        }
+
+        .tab-btn.active {
+            background: rgba(30, 41, 59, 0.9);
+            border-color: var(--cyan-neon);
+            color: var(--cyan-neon);
+            box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.1);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* PRESENTATION MODE SLIDER */
+        .slider-wrapper {
+            display: none;
+            position: relative;
+            min-height: 650px;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 24px;
+            padding: 3rem;
+            box-shadow: var(--card-shadow);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .slider-wrapper.active {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .slide-item {
+            display: none;
+            animation: slideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            height: 100%;
+        }
+
+        .slide-item.active {
+            display: block;
+        }
+
+        .slider-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 1.5rem;
+        }
+
+        .slide-nav-btn {
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .slide-nav-btn:hover:not(:disabled) {
+            border-color: var(--cyan-neon);
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+        }
+
+        .slide-nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .slide-indicator {
+            font-family: 'Outfit', sans-serif;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .slide-indicator span {
+            color: var(--cyan-neon);
+            font-weight: bold;
+        }
+
+        /* GRID LAYOUTS */
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 968px) {
+            .grid-2col {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* CARDS & PANELS */
+        .glass-panel {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: var(--card-shadow);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .glass-panel:hover {
+            border-color: rgba(56, 189, 248, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .section-header {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(to right, #ffffff, var(--cyan-neon));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .text-block p {
+            color: var(--text-muted);
+            line-height: 1.7;
+            margin-bottom: 1rem;
+            font-size: 1.05rem;
+        }
+
+        .text-block strong {
+            color: var(--text-main);
+        }
+
+        /* LIT TABLE & FILTERS */
+        .table-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            padding: 0.75rem 1.25rem;
+            border-radius: 12px;
+            width: 300px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--cyan-neon);
+        }
+
+        .filter-select {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            padding: 0.75rem 1.25rem;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.95rem;
+        }
+
+        th {
+            background-color: rgba(30, 41, 59, 0.9);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            padding: 1.25rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        td {
+            padding: 1.25rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(30, 41, 59, 0.3);
+            color: var(--text-main);
+        }
+
+        .row-highlight td {
+            background: rgba(56, 189, 248, 0.05) !important;
+            border-left: 4px solid var(--cyan-neon);
+            color: var(--text-main) !important;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .tag-uav { background: rgba(56, 189, 248, 0.15); color: var(--cyan-neon); border: 1px solid rgba(56, 189, 248, 0.3); }
+        .tag-jammer { background: rgba(239, 68, 68, 0.15); color: var(--red-neon); border: 1px solid rgba(239, 68, 68, 0.3); }
+        .tag-ris { background: rgba(168, 85, 247, 0.15); color: var(--purple-neon); border: 1px solid rgba(168, 85, 247, 0.3); }
+        .tag-iot { background: rgba(16, 185, 129, 0.15); color: var(--emerald-neon); border: 1px solid rgba(16, 185, 129, 0.3); }
+
+        /* EQUATION & CODE BLOCK BOX */
+        .math-box {
+            background: rgba(15, 23, 42, 0.8);
+            border-left: 4px solid var(--purple-neon);
+            padding: 1.5rem;
+            border-radius: 0 16px 16px 0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.1rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .math-expr {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 1.3rem;
+            color: var(--cyan-neon);
+        }
+
+        /* COMPARE CARDS */
+        .compare-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .compare-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .compare-card {
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .compare-card.baseline {
+            background: rgba(15, 23, 42, 0.5);
+            border-top: 4px solid var(--text-muted);
+        }
+
+        .compare-card.ours {
+            background: rgba(56, 189, 248, 0.03);
+            border-top: 4px solid var(--cyan-neon);
+            box-shadow: inset 0 0 20px rgba(56, 189, 248, 0.05);
+        }
+
+        .card-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .card-badge.baseline-badge {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+        }
+
+        .card-badge.ours-badge {
+            background: rgba(56, 189, 248, 0.2);
+            color: var(--cyan-neon);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+        }
+
+        .compare-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .list-items {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .list-items li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .list-items li svg {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .list-items.baseline-list li svg {
+            fill: var(--red-neon);
+        }
+
+        .list-items.ours-list li svg {
+            fill: var(--emerald-neon);
+        }
+
+        /* LIVE PROBABILISTIC CALCULATOR */
+        .calculator-panel {
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-top: 1.5rem;
+        }
+
+        .calc-header {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--cyan-neon);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .slider-control {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+
+        .slider-label span:last-child {
+            color: var(--cyan-neon);
+            font-weight: bold;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .custom-range {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 9999px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+        }
+
+        .custom-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--cyan-neon);
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--cyan-neon);
+            transition: transform 0.1s ease;
+        }
+
+        .custom-range::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .results-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 576px) {
+            .results-box {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .metric-card {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .metric-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+        }
+
+        .metric-value {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--purple-neon);
+        }
+
+        .metric-value.cyan {
+            color: var(--cyan-neon);
+        }
+
+        .metric-value.red {
+            color: var(--red-neon);
+        }
+
+        .metric-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        /* SYSTEM CONFIG PARAMETER CARDS */
+        .param-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .param-card {
+            background: rgba(30, 41, 59, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .param-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .param-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .param-value {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--cyan-neon);
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+        }
+
+        .param-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .param-list li {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+            padding-bottom: 0.25rem;
+        }
+
+        .param-list li span:last-child {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        /* RESULTS BAR CHART */
+        .results-chart-container {
+            margin-top: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .bar-row {
+            display: grid;
+            grid-template-columns: 160px 1fr 80px;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .bar-label {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            color: var(--text-main);
+            font-size: 1rem;
+        }
+
+        .bar-track {
+            background: rgba(255, 255, 255, 0.05);
+            height: 24px;
+            border-radius: 9999px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 9999px;
+            background: linear-gradient(90deg, var(--purple-neon), var(--cyan-neon));
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 0; /* Animated dynamically */
+        }
+
+        .bar-fill.lstm {
+            background: linear-gradient(90deg, #8b5cf6, var(--emerald-neon));
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+        }
+
+        .bar-fill.dqn {
+            background: linear-gradient(90deg, #ec4899, #f59e0b);
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+        }
+
+        .bar-fill.baseline {
+            background: linear-gradient(90deg, #64748b, #94a3b8);
+            box-shadow: none;
+        }
+
+        .bar-value {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            color: var(--cyan-neon);
+            text-align: right;
+            font-size: 1.1rem;
+        }
+
+        /* ANIMATIONS */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* SVG ICONS */
+        .icon-svg {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SEO target hidden H1 -->
+    <h1 id="main-title-header">İHA-IoT Haberleşmesinde Akıllı Anti-Jamming Simülasyon Senaryoları ve Literatür Kıyaslamaları Sunumu</h1>
+
+    <!-- Nav Bar -->
+    <div class="top-navbar">
+        <div class="logo-section">
+            <svg viewBox="0 0 24 24">
+                <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L14 19v-5.5l8 2.5z"/>
+            </svg>
+            <div class="logo-text">İHA-IoT DESTEKLİ ANTİ-JAMMING</div>
+        </div>
+        <div class="mode-toggle">
+            <button class="mode-btn active" id="btn-presentation" onclick="switchMode('presentation')">Sunum Modu</button>
+            <button class="mode-btn" id="btn-dashboard" onclick="switchMode('dashboard')">Panel Modu</button>
+        </div>
+    </div>
+
+    <div class="app-container">
+        
+        <!-- DASHBOARD MODE LAYOUT -->
+        <div id="dashboard-layout" style="display: none;">
+            <div class="tabs-header">
+                <button class="tab-btn active" id="tab-0" onclick="showTab(0)">
+                    Giriş & Genel Bakış
+                </button>
+                <button class="tab-btn" id="tab-1" onclick="showTab(1)">
+                    Literatür Karşılaştırma Matrisi
+                </button>
+                <button class="tab-btn" id="tab-2" onclick="showTab(2)">
+                    Metodolojik Gerekçelendirme
+                </button>
+                <button class="tab-btn" id="tab-3" onclick="showTab(3)">
+                    Olasılıksal Kaplama Simülatörü
+                </button>
+                <button class="tab-btn" id="tab-4" onclick="showTab(4)">
+                    Sistem Konfigürasyonu
+                </button>
+                <button class="tab-btn" id="tab-5" onclick="showTab(5)">
+                    Deneysel Sonuçlar
+                </button>
+            </div>
+
+            <!-- Dashboard Contents will be populated dynamically from Slider Content to prevent code duplication -->
+            <div id="dashboard-panes"></div>
+        </div>
+
+        <!-- PRESENTATION MODE LAYOUT -->
+        <div id="presentation-layout" class="slider-wrapper active">
+            
+            <!-- Slide 1: Giriş -->
+            <div class="slide-item active" id="slide-0">
+                <div class="section-header">
+                    <svg class="icon-svg" style="fill: var(--cyan-neon)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                    Giriş ve Proje Genel Bakışı
+                </div>
+                <div class="grid-2col" style="margin-top: 1.5rem;">
+                    <div class="text-block">
+                        <p>Bu çalışma, Doktora Tezi kapsamında İnsansız Hava Araçları (İHA) ve Nesnelerin İnterneti (IoT) ağlarının entegre çalıştığı senaryolarda, siber güvenlik tehditlerinin (özellikle <strong>Akıllı Spektral Karıştırma / Smart Jamming</strong> saldırıları) etkilerini analiz etmek ve bunlara karşı dayanıklı savunma yöntemleri geliştirmek amacıyla tasarlanmıştır.</p>
+                        <p>Geliştirilen simülasyon ortamı, OpenAI Gymnasium / PettingZoo standardında çoklu ajanlı (Multi-Agent) bir yapı sunar. Ajanların durum-aksiyon uzayları, fiziksel kanal sönümlenmeleri ve PA verimlilikleri gerçekçi matematiksel modellere dayanmaktadır.</p>
+                        <p><strong>Önerilen Yenilik:</strong> Literatürdeki "durumsuz / kör" saldırganların aksine, çevresel gözlemlere göre İHA'nın frekans atlama (Markovian) örüntüsünü tahmin edip takip edebilen <strong>Durum-Farkında Akıllı Saldırgan (State-Aware Jammer)</strong> modelleri eğitilmiş ve doğrulanmıştır.</p>
+                    </div>
+                    <div class="glass-panel" style="display: flex; flex-direction: column; justify-content: center; gap: 1rem; background: rgba(56, 189, 248, 0.02);">
+                        <div style="font-family: 'Outfit', sans-serif; font-size: 1.2rem; font-weight: bold; color: var(--cyan-neon);">Tez Araştırma Ekseni</div>
+                        <ul class="list-items ours-list">
+                            <li>
+                                <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                                <strong>Adil Kıyaslama Altyapısı:</strong> PPO, DQN, PPO-LSTM ve tablosal Q-Learning (QJC) modellerinin tamamen eşit şartlarda yarıştırılması.
+                            </li>
+                            <li>
+                                <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                                <strong>Gerçekçi Çevresel Kısıtlar:</strong> Mesafe sönümlenmesi (Path Loss) ve frekansa bağlı PA verimlilik modelleri.
+                            </li>
+                            <li>
+                                <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                                <strong>İzolasyon Yaklaşımı:</strong> Girişim gürültüsünden ve olasılıksal maskelemeden arındırılmış zeka testi ortamı.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 2: Literatür Karşılaştırması -->
+            <div class="slide-item" id="slide-1">
+                <div class="section-header">
+                    <svg class="icon-svg" style="fill: var(--cyan-neon)" viewBox="0 0 24 24"><path d="M4 14h6v-4H4v4zm0 5h6v-4H4v4zM4 9h6V5H4v4zm7 5h10v-4H11v4zm0 5h10v-4H11v4zm0-14v4h10V5H11z"/></svg>
+                    Literatürdeki Simülasyon Senaryoları Karşılaştırma Matrisi
+                </div>
+                <div class="table-controls" style="margin-top: 1rem;">
+                    <input type="text" class="search-input" id="table-search" placeholder="Tabloda ara..." onkeyup="filterTable()">
+                    <select class="filter-select" id="table-filter" onchange="filterTable()">
+                        <option value="all">Tüm Varlıklar</option>
+                        <option value="uav">İHA Barındıranlar</option>
+                        <option value="jammer">Jammer Barındıranlar</option>
+                        <option value="ris">RIS/IRS Barındıranlar</option>
+                    </select>
+                </div>
+                <div class="table-wrapper">
+                    <table id="lit-table">
+                        <thead>
+                            <tr>
+                                <th>Kaynak Çalışma / Senaryo</th>
+                                <th>Simülasyon Alanı / Uçuş</th>
+                                <th>Varlıklar</th>
+                                <th>Ana Odak / Karşılaştırılan Algoritmalar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Proposed Scenario Highlighted -->
+                            <tr class="row-highlight">
+                                <td><strong>Bu Çalışma (Önerilen Senaryo)</strong></td>
+                                <td>1000m x 1000m<br>Engelsiz (Obstacle-Free)<br>İrtifa: 100m</td>
+                                <td>
+                                    <span class="tag tag-uav">1 İHA</span>
+                                    <span class="tag tag-jammer">1 Zeki Jammer</span>
+                                    <span class="tag tag-iot">5 Düğüm</span>
+                                </td>
+                                <td><strong>PPO, DQN, PPO-LSTM vs. QJC (Baseline).</strong> Girişim gürültüsü ve kaplama maskelemesinden izole edilmiş spektrumda, durum-farkında saldırganın reaktif Markov atlama örüntüsü takibi ve enerji verimliliği.</td>
+                            </tr>
+                            <tr>
+                                <td>Liao et al. (2025) (Baseline Makale)</td>
+                                <td>1000m x 1000m<br>Izgara (Grid) tabanlı</td>
+                                <td>
+                                    <span class="tag tag-uav">11 İHA Sürüsü</span>
+                                    <span class="tag tag-jammer">2 Jammer</span>
+                                </td>
+                                <td>Congestion Game (UAV yerleşimi) ve Stackelberg Carrier Selection (Q-learning tabanlı karıştırıcılar vs. FLAC tabanlı İHA).</td>
+                            </tr>
+                            <tr>
+                                <td>RIS & Landing Platforms WSN</td>
+                                <td>1500m x 1500m<br>Başlangıç (0,0,0) - Bitiş (1500,1500,0)</td>
+                                <td>
+                                    <span class="tag tag-uav">1 İHA</span>
+                                    <span class="tag tag-jammer">1 Jammer</span>
+                                    <span class="tag tag-ris">1 RIS</span>
+                                    <span class="tag tag-iot">20-80 Sensör</span>
+                                </td>
+                                <td>Ant Kolonisi tabanlı AC-JRC vs. K-means ve standart ACS. İHA rotası, veri toplama ve kümeleme optimizasyonu.</td>
+                            </tr>
+                            <tr>
+                                <td>Intelligent Optimization Trajectory WSN</td>
+                                <td>Kare Bölge<br>Max Hız: 50 m/s</td>
+                                <td>
+                                    <span class="tag tag-uav">1 İHA</span>
+                                    <span class="tag tag-jammer">3 Yer Jammerı</span>
+                                    <span class="tag tag-iot">4 Sensör</span>
+                                </td>
+                                <td>Ağaç Tohumu Optimizasyonu Algoritması (TSA) vs. Rastgele İteratif Algoritma. Bozucudan kaçıp sensöre yaklaşarak veri toplama.</td>
+                            </tr>
+                            <tr>
+                                <td>Diffusion Secure UAV Network</td>
+                                <td>300m x 300m<br>İrtifa: 150m ve 200m</td>
+                                <td>
+                                    <span class="tag tag-uav">2 İHA (1 Veri, 1 Jammer)</span>
+                                    <span class="tag tag-iot">7 Düğüm</span>
+                                    <span class="tag tag-jammer">2 Dinleyici (Eve)</span>
+                                </td>
+                                <td>Difüzyon destekli DDPM-TD3 vs. TD3, DDPG, PPO. Bilgi Yaşı (AoI) ve enerji optimizasyonu ile dinleyicilere saldırma.</td>
+                            </tr>
+                            <tr>
+                                <td>IRS-Assisted WSN Under Jamming</td>
+                                <td>1000m x 1000m</td>
+                                <td>
+                                    <span class="tag tag-uav">1 İHA</span>
+                                    <span class="tag tag-ris">1 RIS</span>
+                                    <span class="tag tag-jammer">1 Jammer</span>
+                                    <span class="tag tag-iot">30-50 Sensör</span>
+                                </td>
+                                <td>VPPSA algoritması vs. PSO, GWO. Akıllı yansıtıcı yüzey yardımıyla AoI ve İHA enerjisi optimizasyonu.</td>
+                            </tr>
+                            <tr>
+                                <td>FL Covert Communications</td>
+                                <td>1000m x 1000m</td>
+                                <td>
+                                    <span class="tag tag-uav">1 HAP (Yüksek İrtifa)</span>
+                                    <span class="tag tag-jammer">1 Dost Jammer</span>
+                                    <span class="tag tag-iot">100 Sensör</span>
+                                </td>
+                                <td>OPUM&LA federatif öğrenme entegreli yerel doğruluk ve güç optimizasyonu. Dinleyicileri dost jammer ile köreltme.</td>
+                            </tr>
+                            <tr>
+                                <td>ABS and JAM Multi-UAV IIoT</td>
+                                <td>1000m x 1000m<br>İrtifa: 50m - 140m</td>
+                                <td>
+                                    <span class="tag tag-uav">3 Toplayıcı İHA</span>
+                                    <span class="tag tag-jammer">2 Jammer İHA</span>
+                                    <span class="tag tag-iot">20 IoT</span>
+                                <td>Confidence-Weighted RL (CTD3) vs. TD3, PPO. Çoklu İHA ağlarında çarpışma engelleme, AoI minimizasyonu ve rol paylaşımı.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Slide 3: Metodolojik Gerekçelendirme -->
+            <div class="slide-item" id="slide-2">
+                <div class="section-header">
+                    <svg class="icon-svg" style="fill: var(--cyan-neon)" viewBox="0 0 24 24"><path d="M12 22C6.49 22 2 17.51 2 12S6.49 2 12 2s10 4.49 10 10-4.49 10-10 10zm0-18c-4.41 0-8 3.59-8 8s3.59 8 8 8 8-3.59 8-8-3.59-8-8-8zm.5 11h-1v1h1v-1zm0-7h-1v5h1V7z"/></svg>
+                    Metodolojik Gerekçe ve "Sürü Yoğunluğu" ile "Olasılıksal Maskeleme" Paradoksu
+                </div>
+                <div class="text-block">
+                    <p>Referans aldığımız baseline çalışmada (Liao vd., 2025) kullanılan Q-öğrenme tabanlı jammer (QJC), İHA sürüsünün SINR veya veri toplama metriklerini algılamayan <strong>durumsuz (stateless / yapısal kör)</strong> bir yapıda olmasına rağmen kalabalık sürü (swarm) senaryolarında görünürde yüksek bir başarı sergilemektedir. Ancak bu durum, aslında İHA sürüsünün kendi iç spektral tıkanıklığı ve kalabalık sürü boyutunun yarattığı **olasılıksal hedef bulma kolaylığı (probabilistic target hit masking)** yanılsamasıdır.</p>
+                    <p style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-muted);">
+                        *Not: Jammer spektral kaplama oranı baseline çalışmaya paralel olarak **%14.3** seviyesine düşürülmüştür. Ancak İHA yoğunluğu azaldığı için <strong>rastgele vurma olasılığı %84.6'dan %14.3'e düşmüş</strong> ve İHA'nın <strong>kaçış yedekliliği %0'dan %500'e çıkarılarak</strong> saldırganın tahmin zekasını test edecek yüksek başarı eşikli zorlu bir ortam kurgulanmıştır.
+                    </p>
+                </div>
+                <div class="math-box">
+                    <span>Jammer Ödül Formülü (Eq. 16):</span>
+                    <span class="math-expr">L_j(k_j) = &sum;<sub>i &in; Ja, i &ne; j</sub> [1 - f(k_j, k_i)] P_j</span>
+                </div>
+                <div class="compare-container">
+                    <div class="compare-card baseline">
+                        <div class="card-badge baseline-badge">Liao et al. (2025) Kurgusu</div>
+                        <div class="compare-title" style="color: var(--text-muted);">
+                            Çoklu İHA & Spektral Tıkanıklık
+                        </div>
+                        <ul class="list-items baseline-list">
+                            <li>
+                                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                                <span><strong>Spektral Bloke Oranı:</strong> 2 / 13 kanal (~%15.4).</span>
+                            </li>
+                            <li>
+                                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                                <span><strong>Kaçış Yedekliliği (0%):</strong> 11 İHA, kalan 11 temiz kanala sığmak zorundadır. Boş yedek kanal yoktur.</span>
+                            </li>
+                            <li>
+                                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                                <span><strong>Rastgele Vurma Olasılığı:</strong> Jammer'ların rastgele bir kanalda İHA vurma olasılığı <strong>%84.6</strong>, en az birini vurma olasılığı ise <strong>%98.7</strong>'dir. Başarı zekadan bağımsızdır.</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="compare-card ours">
+                        <div class="card-badge ours-badge">Önerilen Tezin Yaklaşımı</div>
+                        <div class="compare-title" style="color: var(--cyan-neon);">
+                            İzole Edilmiş Tahmin Zekası
+                        </div>
+                        <ul class="list-items ours-list">
+                            <li>
+                                <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                                <span><strong>Spektral Bloke Oranı:</strong> 1 / 7 kanal (~%14.3) (Tasarım 7-kanallı zeki test yatağıdır).</span>
+                            </li>
+                            <li>
+                                <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                                <span><strong>Kaçış Yedekliliği (500%):</strong> 1 İHA kalan 6 temiz kanalı kullanır. 5 adet boş yedek kanal ile maksimum kaçış esnekliği sağlanmıştır.</span>
+                            </li>
+                            <li>
+                                <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                                <span><strong>Rastgele Vurma Olasılığı:</strong> Jammer'ın rastgele bir kanalda İHA'yı vurma olasılığı sadece <strong>%14.3</strong>'tür. Jammer'ın kurbanın Markov örüntüsünü aktif öğrenmesi ve tahmin etmesi zorunludur.</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 4: Olasılıksal Kaplama Simülatörü -->
+            <div class="slide-item" id="slide-3">
+                <div class="section-header">
+                    <svg class="icon-svg" style="fill: var(--cyan-neon)" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+                    Spektral Kaplama Yoğunluğu & Olasılık Simülatörü
+                </div>
+                <div class="text-block">
+                    <p>Aşağıdaki interaktif panelden toplam kanal sayısı ($N$), jammer sayısı ($J$) ve İHA sayısını ($M$) değiştirerek, jammer'ların hiçbir örüntü öğrenme zekası sergilemeden, İHA'ları sadece **istatistiksel olasılıkla** engelleme oranını hesaplayabilirsiniz.</p>
+                </div>
+                <div class="calculator-panel">
+                    <div class="grid-2col">
+                        <div class="control-group">
+                            <div class="slider-control">
+                                <div class="slider-label">
+                                    <span>Toplam Kanal Sayısı (N)</span>
+                                    <span id="val-n">13</span>
+                                </div>
+                                <input type="range" class="custom-range" id="input-n" min="3" max="20" value="13" oninput="calculateProbabilities()">
+                            </div>
+                            <div class="slider-control">
+                                <div class="slider-label">
+                                    <span>Jammer Sayısı (J)</span>
+                                    <span id="val-j">2</span>
+                                </div>
+                                <input type="range" class="custom-range" id="input-j" min="1" max="10" value="2" oninput="calculateProbabilities()">
+                            </div>
+                            <div class="slider-control">
+                                <div class="slider-label">
+                                    <span>UAV Swarm Boyutu (M)</span>
+                                    <span id="val-m">11</span>
+                                </div>
+                                <input type="range" class="custom-range" id="input-m" min="1" max="25" value="11" oninput="calculateProbabilities()">
+                            </div>
+                        </div>
+                        <div class="results-box">
+                            <div class="metric-card">
+                                <span class="metric-title">Spektral Kaplama Oranı</span>
+                                <span class="metric-value cyan" id="result-coverage">15.4%</span>
+                                <span class="metric-desc">Bozucuların spektrumda bloke ettiği alan yüzdesi.</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-title">Rastgele Hedef Vurma Olasılığı</span>
+                                <span class="metric-value red" id="result-drop">84.6%</span>
+                                <span class="metric-desc">İHA'lar kanallara yayıldığında jammer'ın rastgele bir kanalda İHA vurma olasılığı.</span>
+                            </div>
+                            <div class="metric-card" style="grid-column: span 2; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+                                <span class="metric-title">Kanal Başına Düşen İHA Yoğunluğu</span>
+                                <span class="metric-value" id="result-congestion" style="color: var(--purple-neon);">1.00 İHA</span>
+                                <span class="metric-desc" id="result-explanation">11 İHA kalan 11 temiz kanala sığmaktadır. En ufak bir taşma kendi aralarında çakışma (co-frequency interference) doğurur.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 5: Sistem Konfigürasyonu -->
+            <div class="slide-item" id="slide-4">
+                <div class="section-header">
+                    <svg class="icon-svg" style="fill: var(--cyan-neon)" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                    Önerilen Özgün Senaryo Parametreleri
+                </div>
+                <div class="text-block">
+                    <p>Zeki Spektral Karıştırıcının durum-farkında (state-aware) öğrenmesini izole eden ve doğrulanabilir kılan simülasyon ortamı parametreleri aşağıdaki gibidir:</p>
+                </div>
+                <div class="param-grid">
+                    <div class="param-card">
+                        <div class="param-header">
+                            <span class="param-title">Çevresel Boyutlar</span>
+                            <span class="param-value">1000m</span>
+                        </div>
+                        <ul class="param-list">
+                            <li><span>Operasyon Alanı</span> <span>1000m x 1000m</span></li>
+                            <li><span>İHA Uçuş İrtifası (H)</span> <span>100m (Sabit)</span></li>
+                            <li><span>Toplam IoT Düğümü</span> <span>5 adet (Sabit)</span></li>
+                        </ul>
+                    </div>
+                    <div class="param-card">
+                        <div class="param-header">
+                            <span class="param-title">Spektrum Kısıtları</span>
+                            <span class="param-value">7 Kanal</span>
+                        </div>
+                        <ul class="param-list">
+                            <li><span>Frekans Yelpazesi</span> <span>0.9 - 6.0 GHz</span></li>
+                            <li><span>İletişim Bant Genişliği</span> <span>2 MHz</span></li>
+                            <li><span>Jammer Maks. Gücü</span> <span>1.0 Watt (30 dBm)</span></li>
+                        </ul>
+                    </div>
+                    <div class="param-card">
+                        <div class="param-header">
+                            <span class="param-title">PA Verimlilikleri (&eta;<sub>PA</sub>)</span>
+                            <span class="param-value">%60 - %18</span>
+                        </div>
+                        <ul class="param-list">
+                            <li><span>0.9 GHz / 1.2 GHz</span> <span>%60 / %55</span></li>
+                            <li><span>2.4 GHz / 3.5 GHz</span> <span>%50 / %40</span></li>
+                            <li><span>5.0 GHz / 5.8 GHz</span> <span>%30 / %22</span></li>
+                            <li><span>6.0 GHz Verimlilik</span> <span>%18</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 6: Deneysel Bulgular -->
+            <div class="slide-item" id="slide-5">
+                <div class="section-header">
+                    <svg class="icon-svg" style="fill: var(--cyan-neon)" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                    Deneysel Bulgular ve Karşılaştırma Sonuçları
+                </div>
+                <div class="text-block">
+                    <p>Tasarımını yaptığımız izole anti-jamming ortamında 30 farklı başlangıç tohumu (seed) ile yapılan bilimsel testler sonucunda elde edilen <strong>Jamming Success Rate (JSR - Başarı Oranı)</strong> değerleri aşağıda sunulmuştur:</p>
+                </div>
+                <div class="results-chart-container">
+                    <div class="bar-row">
+                        <span class="bar-label">PPO (Önerilen)</span>
+                        <div class="bar-track">
+                            <div class="bar-fill" id="bar-ppo"></div>
+                        </div>
+                        <span class="bar-value">%57.4</span>
+                    </div>
+                    <div class="bar-row">
+                        <span class="bar-label">PPO-LSTM</span>
+                        <div class="bar-track">
+                            <div class="bar-fill lstm" id="bar-lstm"></div>
+                        </div>
+                        <span class="bar-value">%53.6</span>
+                    </div>
+                    <div class="bar-row">
+                        <span class="bar-label">DQN</span>
+                        <div class="bar-track">
+                            <div class="bar-fill dqn" id="bar-dqn"></div>
+                        </div>
+                        <span class="bar-value">%29.4</span>
+                    </div>
+                    <div class="bar-row">
+                        <span class="bar-label">Baseline (QJC)</span>
+                        <div class="bar-track">
+                            <div class="bar-fill baseline" id="bar-baseline"></div>
+                        </div>
+                        <span class="bar-value">%1.9</span>
+                    </div>
+                </div>
+                <div class="text-block" style="margin-top: 1.5rem; font-size: 0.95rem;">
+                    <p>🏆 <strong>Temel Bulgular:</strong> PPO, durum bilgisine sahip olmayan Baseline QJC'ye kıyasla <strong>~30 kat</strong> daha yüksek bir başarı sergilemiştir. <strong>PPO-LSTM</strong> ise, Baseline'a kıyasla <strong>%24 daha az enerji</strong> tüketerek en yüksek verimliliğe ulaşmış, kurbanı sessizce takip etmiştir.</p>
+                </div>
+            </div>
+
+            <!-- Slider Controls Footer -->
+            <div class="slider-controls">
+                <button class="slide-nav-btn" id="prev-btn" onclick="changeSlide(-1)">
+                    &larr; Önceki
+                </button>
+                <div class="slide-indicator" id="slide-indicator">Slayt <span>1</span> / 6</div>
+                <button class="slide-nav-btn" id="next-btn" onclick="changeSlide(1)">
+                    Sonraki &rarr;
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const totalSlides = 6;
+        let isPresentationMode = true;
+
+        // Switch between Slideshow and Full Dashboard View
+        function switchMode(mode) {
+            isPresentationMode = (mode === 'presentation');
+            
+            document.getElementById('btn-presentation').classList.toggle('active', isPresentationMode);
+            document.getElementById('btn-dashboard').classList.toggle('active', !isPresentationMode);
+            
+            document.getElementById('presentation-layout').classList.toggle('active', isPresentationMode);
+            document.getElementById('dashboard-layout').style.display = isPresentationMode ? 'none' : 'block';
+
+            if (!isPresentationMode) {
+                buildDashboardView();
+            }
+        }
+
+        // Slideshow Navigation
+        function changeSlide(direction) {
+            const nextSlide = currentSlide + direction;
+            if (nextSlide >= 0 && nextSlide < totalSlides) {
+                // Deactivate current slide
+                document.getElementById(`slide-${currentSlide}`).classList.remove('active');
+                
+                // Update indicator
+                currentSlide = nextSlide;
+                document.getElementById(`slide-${currentSlide}`).classList.add('active');
+                document.querySelector('#slide-indicator span').textContent = currentSlide + 1;
+                
+                // Handle button states
+                document.getElementById('prev-btn').disabled = (currentSlide === 0);
+                document.getElementById('next-btn').disabled = (currentSlide === totalSlides - 1);
+                
+                // Trigger charts animation when landing on results slide
+                if (currentSlide === 5) {
+                    animateChartBars();
+                } else {
+                    resetChartBars();
+                }
+            }
+        }
+
+        function animateChartBars() {
+            setTimeout(() => {
+                document.getElementById('bar-ppo').style.width = '57.4%';
+                document.getElementById('bar-lstm').style.width = '53.6%';
+                document.getElementById('bar-dqn').style.width = '29.4%';
+                document.getElementById('bar-baseline').style.width = '1.9%';
+            }, 100);
+        }
+
+        function resetChartBars() {
+            document.getElementById('bar-ppo').style.width = '0';
+            document.getElementById('bar-lstm').style.width = '0';
+            document.getElementById('bar-dqn').style.width = '0';
+            document.getElementById('bar-baseline').style.width = '0';
+        }
+
+        // Build Dashboard View (Copies slides contents to tabs to maintain single source of truth)
+        function buildDashboardView() {
+            const panesContainer = document.getElementById('dashboard-panes');
+            panesContainer.innerHTML = ''; // Clear
+
+            for (let i = 0; i < totalSlides; i++) {
+                const slideHTML = document.getElementById(`slide-${i}`).innerHTML;
+                const pane = document.createElement('div');
+                pane.id = `pane-${i}`;
+                pane.className = `tab-content glass-panel ${i === 0 ? 'active' : ''}`;
+                // Strip the navigation controls from slide HTML representation
+                pane.innerHTML = slideHTML.replace(/<div class="slider-controls">[\s\S]*?<\/div>/g, '');
+                panesContainer.appendChild(pane);
+            }
+            
+            // Re-apply calculated fields to calculator inputs inside dashboard panes
+            calculateProbabilities();
+            
+            // Trigger results chart animation immediately if tab 5 is selected
+            showTab(0);
+        }
+
+        // Tab Navigation inside Dashboard
+        function showTab(index) {
+            // Deactivate all tab buttons and panes
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(pane => pane.classList.remove('active'));
+            
+            // Activate selected
+            document.getElementById(`tab-${index}`).classList.add('active');
+            const targetPane = document.getElementById(`pane-${index}`);
+            if (targetPane) {
+                targetPane.classList.add('active');
+            }
+
+            if (index === 5) {
+                // Animate bars in the dashboard panel
+                setTimeout(() => {
+                    const ppoBar = document.querySelector('#pane-5 #bar-ppo');
+                    const lstmBar = document.querySelector('#pane-5 #bar-lstm');
+                    const dqnBar = document.querySelector('#pane-5 #bar-dqn');
+                    const baselineBar = document.querySelector('#pane-5 #bar-baseline');
+                    
+                    if (ppoBar) ppoBar.style.width = '57.4%';
+                    if (lstmBar) lstmBar.style.width = '53.6%';
+                    if (dqnBar) dqnBar.style.width = '29.4%';
+                    if (baselineBar) baselineBar.style.width = '1.9%';
+                }, 100);
+            }
+        }
+
+        // Search & Filter in Scenario Table
+        function filterTable() {
+            const query = document.getElementById('table-search').value.toLowerCase();
+            const filter = document.getElementById('table-filter').value;
+            const rows = document.querySelectorAll('#lit-table tbody tr');
+
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                const tags = Array.from(row.querySelectorAll('.tag')).map(t => t.textContent.toLowerCase());
+                
+                let matchesSearch = text.includes(query);
+                let matchesFilter = true;
+
+                if (filter !== 'all') {
+                    matchesFilter = tags.some(tag => tag.includes(filter));
+                }
+
+                if (matchesSearch && matchesFilter) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // Probabilistic Calculator
+        function calculateProbabilities() {
+            // Read inputs
+            const n = parseInt(document.getElementById('input-n').value);
+            const j = parseInt(document.getElementById('input-j').value);
+            const m = parseInt(document.getElementById('input-m').value);
+
+            // Bounds constraints
+            const boundedJ = Math.min(j, n); 
+            document.getElementById('input-j').max = n; // Jammer count cannot exceed channel count in UI
+
+            // Update Labels
+            document.getElementById('val-n').textContent = n;
+            document.getElementById('val-j').textContent = boundedJ;
+            document.getElementById('val-m').textContent = m;
+
+            // Coverage calculation (assuming coordinated jammers)
+            const coverageRate = (boundedJ / n) * 100;
+            
+            // Target Hit Probability (UAVs spread out across N channels)
+            const dropRate = Math.min(100.0, (m / n) * 100.0);
+
+            // UAV Density (M / (N - J))
+            const cleanChannels = n - boundedJ;
+            let densityText = '';
+            let densityVal = 0;
+
+            if (cleanChannels > 0) {
+                densityVal = m / cleanChannels;
+                densityText = `${densityVal.toFixed(2)} İHA/Kanal`;
+            } else {
+                densityText = '∞ (Sonsuz - Tüm Spektrum Bloke!)';
+            }
+
+            // Generate analytical explanation
+            let explanation = '';
+            if (cleanChannels <= 0) {
+                explanation = `🚨 Tüm kanallar bloke edildi! İletişim tamamen felç olmuştur.`;
+            } else if (densityVal <= 1.0) {
+                explanation = `✅ Temiz kanallar ($N-J = ${cleanChannels}$), $M = ${m}$ İHA için yeterlidir. Her İHA ayrı bir kanala yerleşerek eş-frekans girişimini tamamen sıfırlayabilir.`;
+            } else {
+                explanation = `⚠️ Kanal başına İHA yoğunluğu (${densityVal.toFixed(2)}) 1.0'den büyüktür. Bu durumda İHA'lar temiz kanalları paylaşmak zorundadır, bu da kendi aralarında haberleşme çakışmasına (co-frequency interference) neden olur.`;
+            }
+
+            // Update display metrics
+            const setValues = (suffix) => {
+                const covEl = document.querySelector(suffix + ' #result-coverage');
+                const dropEl = document.querySelector(suffix + ' #result-drop');
+                const conEl = document.querySelector(suffix + ' #result-congestion');
+                const expEl = document.querySelector(suffix + ' #result-explanation');
+
+                if (covEl) covEl.textContent = `${coverageRate.toFixed(1)}%`;
+                if (dropEl) dropEl.textContent = `${dropRate.toFixed(1)}%`;
+                if (conEl) conEl.textContent = densityText;
+                if (expEl) expEl.textContent = explanation;
+            };
+
+            // Apply to slider layout
+            setValues('#presentation-layout');
+
+            // Apply to dashboard pane layout if rendered
+            setValues('#pane-3');
+        }
+
+        // Keyboard Navigation (Left / Right Arrows)
+        document.addEventListener('keydown', (e) => {
+            if (isPresentationMode) {
+                if (e.key === 'ArrowRight') {
+                    changeSlide(1);
+                } else if (e.key === 'ArrowLeft') {
+                    changeSlide(-1);
+                }
+            }
+        });
+
+        // Initialize Slider
+        document.getElementById('prev-btn').disabled = true;
+        calculateProbabilities();
+
+    </script>
+</body>
+</html>

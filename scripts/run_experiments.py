@@ -9,10 +9,11 @@ import time
 import re
 import argparse
 from datetime import datetime
-from confs.model_config import GlobalConfig
+from confs.model_config import GlobalConfig, QJCConfig, PPOConfig, DQNConfig, PPOLSTMConfig
 from confs.env_config import EnvConfig
 
 # ANSI Colors for terminal output
+# ... (keep existing codes) ...
 class Colors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -229,14 +230,20 @@ def main():
     print("="*80 + "\n")
     
     # Save metadata
+    def get_config_dict(cls):
+        return {k: v for k, v in cls.__dict__.items() if not k.startswith('__') and not isinstance(v, classmethod) and not callable(v)}
+        
     metadata = {
         "timestamp": timestamp,
-        "train_iterations": GlobalConfig.TRAIN_ITERATIONS,
-        "train_batch_size": GlobalConfig.TRAIN_BATCH_SIZE,
         "max_steps_per_episode": EnvConfig.MAX_STEPS,
         "episodes_per_iteration": GlobalConfig.TRAIN_BATCH_SIZE // EnvConfig.MAX_STEPS,
         "total_episodes": (GlobalConfig.TRAIN_ITERATIONS * GlobalConfig.TRAIN_BATCH_SIZE) // EnvConfig.MAX_STEPS,
-        "total_steps_per_algo": GlobalConfig.TRAIN_ITERATIONS * GlobalConfig.TRAIN_BATCH_SIZE
+        "total_steps_per_algo": GlobalConfig.TRAIN_ITERATIONS * GlobalConfig.TRAIN_BATCH_SIZE,
+        "global_config": get_config_dict(GlobalConfig),
+        "qjc_config": get_config_dict(QJCConfig),
+        "ppo_config": get_config_dict(PPOConfig),
+        "dqn_config": get_config_dict(DQNConfig),
+        "ppo_lstm_config": get_config_dict(PPOLSTMConfig)
     }
     with open(os.path.join(run_dir, "metadata.json"), 'w') as f:
         json.dump(metadata, f, indent=2)

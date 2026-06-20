@@ -62,11 +62,12 @@ class UAV_IoT_PZ_Env(ParallelEnv):
                 self.action_spaces[agent] = spaces.Box(low=-max_speed, high=max_speed, shape=(2,), dtype=np.float32)
             
             elif agent == "jammer_0":
-                # Action: [Channel (3), Power Level (10)]
+                # Action: [Channel (C), Power Level (10)]
+                num_ch = len(UAVConfig.CHANNELS)
                 if self.flatten_actions:
-                    self.action_spaces[agent] = spaces.Discrete(30)
+                    self.action_spaces[agent] = spaces.Discrete(num_ch * 10)
                 else:
-                    self.action_spaces[agent] = spaces.MultiDiscrete([3, 10])
+                    self.action_spaces[agent] = spaces.MultiDiscrete([num_ch, 10])
             
             else: # Nodes
                 # Action: No-Op (Discrete(1))
@@ -235,12 +236,6 @@ class UAV_IoT_PZ_Env(ParallelEnv):
             step_log[f"node_{i}_x"] = node.x
             step_log[f"node_{i}_y"] = node.y
 
-        # 3. Rewards
-        # Jammer Reward: Success - Cost
-        # Scaling: +10 per jammed node, -0.1 per Watt cost (Example)
-        reward_jam_success = float(jammed_count) * 10
-        reward_energy_cost = jam_total_power_cost * 0.1
-        
         # 3. Rewards
         # Jammer Reward: Success - Cost
         

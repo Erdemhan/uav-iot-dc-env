@@ -238,17 +238,19 @@ def main():
     ray.shutdown()
     
     # Save JSON
-    out_file = os.path.join("paper", "robustness_results_30seeds.json")
-    os.makedirs("paper", exist_ok=True)
+    comparison_dir = os.path.join(run_dir_abs, "comparison")
+    os.makedirs(comparison_dir, exist_ok=True)
+    out_file = os.path.join(comparison_dir, "robustness_results_30seeds.json")
+    
     with open(out_file, "w") as f:
         json.dump(final_results, f, indent=4)
         
     print(f"\nSaved results to {out_file}")
     
     # Plotting
-    plot_comparison(final_results)
+    plot_comparison(final_results, comparison_dir)
 
-def plot_comparison(results):
+def plot_comparison(results, output_dir):
     import seaborn as sns
     sns.set_style("whitegrid")
     
@@ -307,8 +309,9 @@ def plot_comparison(results):
     plot_bar(axes[1, 1], "SINR", "Average Network SINR", "SINR (dB)", threshold=0)
     
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.savefig("paper/comparison_robustness.png", dpi=300, bbox_inches='tight')
-    print("Saved plot to paper/comparison_robustness.png")
+    out_plot = os.path.join(output_dir, "comparison_robustness.png")
+    plt.savefig(out_plot, dpi=300, bbox_inches='tight')
+    print(f"Saved plot to {out_plot}")
 
 
 if __name__ == "__main__":

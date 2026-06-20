@@ -23,6 +23,42 @@ def env_creator(config):
     from confs.model_config import GlobalConfig
     return ParallelPettingZooEnv(UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS))
 
+from ray.tune.stopper import Stopper
+
+class EarlyStoppingStopper(Stopper):
+    """Custom stopper to stop training when average reward stops improving"""
+    def __init__(self, patience=None, min_reward=None):
+        from confs.model_config import GlobalConfig
+        self.patience = patience if patience is not None else GlobalConfig.EARLY_STOPPING_PATIENCE
+        self.min_reward = min_reward if min_reward is not None else GlobalConfig.EARLY_STOPPING_MIN_REWARD
+        self.best_reward = -float('inf')
+        self.no_improvement_count = 0
+
+    def __call__(self, trial_id, result):
+        # Stop if reached max iterations
+        from confs.model_config import GlobalConfig
+        iteration = result.get("training_iteration", 0)
+        if iteration >= GlobalConfig.TRAIN_ITERATIONS:
+            return True
+            
+        reward = result.get("env_runners/episode_reward_mean") or result.get("episode_reward_mean")
+        if reward is None:
+            return False
+            
+        if reward > self.best_reward:
+            self.best_reward = reward
+            self.no_improvement_count = 0
+        else:
+            self.no_improvement_count += 1
+            
+        if self.no_improvement_count >= self.patience and reward >= self.min_reward:
+            print(f"\n[Early Stopping] No improvement in reward for {self.patience} iterations. Stopping trial.")
+            return True
+        return False
+
+    def stop_all(self):
+        return False
+
 class ProgressCallback(tune.Callback):
     """Callback to print progress in a format run_experiments.py can parse"""
     def on_trial_result(self, iteration, trials, trial, result, **info):
@@ -34,7 +70,7 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir", type=str, default="ray_results", help="Output directory for PPO-LSTM")
     args = parser.parse_args()
     
-    ray.init()
+    ray.init(num_gpus=1)
     
     # Reproducibility
     import torch
@@ -93,12 +129,17 @@ if __name__ == "__main__":
         .debugging(log_level="WARN")
     )
     
+    stopper = EarlyStoppingStopper()
+    
     analysis = tune.run(
         "PPO", # Still PPO algo, just configured with LSTM
         name="PPO_LSTM",
         config=config.to_dict(),
-        stop={"training_iteration": GlobalConfig.TRAIN_ITERATIONS}, 
+        stop=stopper, 
         checkpoint_at_end=True,
+        checkpoint_freq=GlobalConfig.CHECKPOINT_FREQ,
+        keep_checkpoints_num=GlobalConfig.KEEP_CHECKPOINTS_NUM,
+        checkpoint_score_attr=GlobalConfig.CHECKPOINT_SCORE_ATTR,
         storage_path=os.path.abspath(args.output_dir),
         callbacks=[ProgressCallback()]
     )

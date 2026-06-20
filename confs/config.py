@@ -28,22 +28,28 @@ class UAVConfig:
     # Communication Parameters
     B = 2e6       # Bandwidth (Hz) -> 2 MHz
     
-    # Multi-Channel Support (Liao et al. / ELECO 2023)
+    # Multi-Channel Support (7 Channels representing realistic IoT/UAV bands)
     # Channels (Hz)
     CHANNELS = {
-        0: 2.4e9,
-        1: 5.0e9,
-        2: 5.8e9
+        0: 0.9e9,  # 900 MHz (IoT/LoRa Telemetry)
+        1: 1.2e9,  # 1.2 GHz (GPS/L-band communication)
+        2: 2.4e9,  # 2.4 GHz (Wi-Fi / Standard IoT)
+        3: 3.5e9,  # 3.5 GHz (CBRS / Private 5G)
+        4: 5.0e9,  # 5.0 GHz (Wi-Fi / 5G)
+        5: 5.8e9,  # 5.8 GHz (High-band Wi-Fi / FPV video)
+        6: 6.0e9   # 6.0 GHz (Wi-Fi 6E)
     }
     
-    # Frequency Dependent PA Efficiency (eta)
-    # f < 2.5G: 0.50, 2.5-6G: 0.35, >6G: 0.19 (Simplified mapping for discrete channels)
+    # Frequency Dependent PA Efficiency (eta) - Monotonically decreasing
     ETA_PA = {
-        2.4e9: 0.50,
-        5.0e9: 0.35,
-        5.8e9: 0.19 # Assuming slight drop or use 0.35 if strictly <6. User said 2.5 <= f <= 6 is 0.35. 5.8 is <= 6.
+        0.9e9: 0.60,  # 60% efficiency at 900 MHz
+        1.2e9: 0.55,  # 55% efficiency at 1.2 GHz
+        2.4e9: 0.50,  # 50% efficiency at 2.4 GHz
+        3.5e9: 0.40,  # 40% efficiency at 3.5 GHz
+        5.0e9: 0.30,  # 30% efficiency at 5.0 GHz
+        5.8e9: 0.22,  # 22% efficiency at 5.8 GHz
+        6.0e9: 0.18   # 18% efficiency at 6.0 GHz
     }
-    # Correction based on user prompt: 2.5 <= f <= 6 GHz for eta = 0.35. 5.8e9 fits here.
     
     FC = 2.4e9    # Default Carrier frequency (Hz) - Deprecated for dynamic, but kept for init.
     ETA = 2.0     # Path loss exponent (Free space assumption)

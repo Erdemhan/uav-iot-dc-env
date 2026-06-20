@@ -1,8 +1,8 @@
 # PROJE GELİŞİM RAPORU VE TEKNİK DOKÜMANTASYON
 
 **Proje Başlığı:** Nesnelerin İnterneti Tabanlı İHA Uygulamalarında Güvenlik Hassasiyetli Akıllı Yöntemlerin Geliştirilmesi
-**Rapor Tarihi:** 02.02.2026 01:07
-**Versiyon:** 2.2.0 (Robustness Sürümü)
+**Rapor Tarihi:** 20.06.2026 14:20
+**Versiyon:** 2.3.0 (Erken Durdurma ve En İyi Model Sürümü)
 
 ---
 
@@ -543,3 +543,26 @@ Hafızalı (Recurrent) modellerin etkisini ölçmek ve grafik okumayı bilimsel 
 
 **Amaç:**
 Makale (Paper) için gerekli olan güvenilir, tekrarlanabilir ve istatistiksel olarak anlamlı veri setini oluşturmak.
+
+### [19.06.2026 23:35] - Kod Temizliği ve Optimizasyonu (v2.2.1)
+**Yapılan Değişiklikler:**
+1. **Kullanılmayan Eski Kodların Temizlenmesi:**
+   * PettingZoo ortamına geçişle birlikte tamamen atıl kalan ve artık hiçbir yerde kullanılmayan eski Gymnasium tabanlı tek-ajan simülasyon ortamı `simulation/environment.py` dosyası silindi.
+2. **Tekrar Eden Kodların ve Tanımlamaların Kaldırılması:**
+   * `simulation/pettingzoo_env.py` dosyasındaki mükerrer/çift ödül hesaplama satırları silinerek kod temizlendi.
+   * `confs/env_config.py` dosyasındaki çift `UAV_START_Z` tanımı kaldırıldı.
+   * `scripts/train.py` dosyasının en sonunda yer alan mükerrer `print` ve `ray.shutdown()` ifadeleri temizlendi.
+
+**Amaç:**
+Kod tabanındaki mükerrerlikleri temizlemek, okunabilirliği artırmak ve kullanılmayan eski dosyaları kaldırarak projeyi daha temiz ve sürdürülebilir bir yapıya kavuşturmak.
+
+### [20.06.2026 14:20] - Erken Durdurma ve En İyi Model Kayıt Desteği (v2.3.0)
+**Yapılan Değişiklikler:**
+1. **Erken Durdurma (Early Stopping) Entegrasyonu:**
+   * `train.py`, `train_dqn.py` ve `train_ppo_lstm.py` dosyalarına `EarlyStoppingStopper` sınıfı entegre edildi. Ajanların performansı platoya girdiğinde (100 iterasyon boyunca ödül artmadığında) eğitim otomatik olarak sonlandırılarak zamandan tasarruf sağlanmaktadır.
+2. **En İyi Modelin Kaydedilmesi (Best Checkpoint Saving):**
+   * Tüm eğitim scriptlerinde `tune.run` fonksiyonuna `checkpoint_freq=10`, `keep_checkpoints_num=3` ve `checkpoint_score_attr="env_runners/episode_reward_mean"` parametreleri eklendi. Böylece diske sadece son model değil, eğitim süresince elde edilmiş en yüksek ödüllü (en iyi) model kaydedilmektedir.
+
+**Amaç:**
+Gereksiz uzun süren eğitimleri kısaltarak zaman tasarrufu sağlamak ve her zaman en kararlı ve başarılı çalışan modelleri garanti altına almak.
+
