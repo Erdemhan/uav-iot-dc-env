@@ -72,12 +72,22 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir", type=str, default="ray_results", help="Output directory for PPO")
     args = parser.parse_args()
     
-    ray.init()
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    runtime_env = {"env_vars": {"PYTHONPATH": project_root}}
+    try:
+        ray.init(num_gpus=1, ignore_reinit_error=True, runtime_env=runtime_env)
+    except Exception:
+        ray.init(num_gpus=1, ignore_reinit_error=True, runtime_env=runtime_env)
     
     # Reproducibility
     import torch
     import numpy as np
+    import random
     from confs.model_config import GlobalConfig
+    
+    torch.set_num_threads(2)
+    
+    random.seed(GlobalConfig.RANDOM_SEED)
     torch.manual_seed(GlobalConfig.RANDOM_SEED)
     np.random.seed(GlobalConfig.RANDOM_SEED)
     # CUDA determinism

@@ -354,7 +354,7 @@ plot_channel_usage <- function(df, exp_dir) {
     geom_step(aes(y = uav_channel, color = "UAV"), linewidth = 1) +
     geom_step(aes(y = jammer_channel, color = "Jammer"), linetype = "dashed", linewidth = 1) +
     scale_color_manual(values = c("UAV" = "blue", "Jammer" = "red")) +
-    scale_y_continuous(breaks = c(0, 1, 2), labels = c("2.4 GHz", "5.0 GHz", "5.8 GHz"), limits = c(-0.5, 2.5)) +
+    scale_y_continuous(breaks = 0:7, labels = paste("Ch", 0:7), limits = c(-0.5, 7.5)) +
     theme_minimal() +
     labs(title = "Channel Hopping Dynamics", x = "Time Step", y = "Channel", color = "Entity")
 

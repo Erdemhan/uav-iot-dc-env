@@ -80,8 +80,6 @@ def main():
         print("Evaluating Baseline (QJC)")
         print("="*70)
         
-        from simulation.controllers import UAVRuleBasedController
-        
         # Setup logger
         full_config = {}
         full_config.update(UAVConfig.__dict__)
@@ -89,15 +87,13 @@ def main():
         logger = SimulationLogger(config_dict=full_config, log_dir=args.output_dir)
         
         # Create environment
-        env = UAV_IoT_PZ_Env(logger=logger)
-        uav_controller = UAVRuleBasedController(env)
+        env = UAV_IoT_PZ_Env(logger=logger, auto_uav=True)
         
         if not args.no_viz:
             viz = Visualization()
         
         # Reset
         observations, infos = env.reset(seed=GlobalConfig.RANDOM_SEED)
-        uav_controller.reset()
         
         # Load trained Q-table
         try:
@@ -113,10 +109,6 @@ def main():
         try:
             for step in range(EnvConfig.MAX_STEPS):
                 actions = {}
-                
-                # UAV Action
-                if 'uav_0' in env.agents:
-                    actions['uav_0'] = uav_controller.get_action()
                 
                 # Jammer Action
                 if 'jammer_0' in env.agents:
@@ -147,7 +139,12 @@ def main():
         return
 
     # === PPO/DQN EVALUATION ===
-    ray.init() 
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    runtime_env = {"env_vars": {"PYTHONPATH": project_root}}
+    try:
+        ray.init(ignore_reinit_error=True, runtime_env=runtime_env)
+    except Exception:
+        ray.init(ignore_reinit_error=True, runtime_env=runtime_env)
     register_env("uav_iot_ppo_v1", env_creator_ppo)
     register_env("uav_iot_dqn_v1", env_creator_dqn)
     register_env("uav_iot_ppo_lstm_v1", env_creator_ppo) # Same creator works
@@ -183,7 +180,6 @@ def main():
     
     # Reset with seed
     obs_dict, infos = env.reset(seed=GlobalConfig.RANDOM_SEED)
-    env.uav_controller = env.uav_controller # Ensure controller exists (set in reset)
     
     # Initialize LSTM State if needed
     lstm_state = []

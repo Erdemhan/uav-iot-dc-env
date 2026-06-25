@@ -6,7 +6,7 @@ class GlobalConfig:
     """
     RANDOM_SEED = 42            # Random seed for reproducibility
     FLATTEN_ACTIONS = True      # Flatten MultiDiscrete to Discrete for DQN compatibility
-    TRAIN_ITERATIONS = 750     # Number of training iterations
+    TRAIN_ITERATIONS = 1000     # Number of training iterations
     TRAIN_BATCH_SIZE = 1000     # Steps collected per iteration (PPO/DQN)
     
     # Early Stopping Parameters
@@ -17,10 +17,11 @@ class GlobalConfig:
     
     # EARLY_STOPPING_MIN_REWARD: Sabır sayacının devreye girmesi için ajanın ulaşması gereken 
     # minimum ortalama ödül barajıdır (Bu baraj aşılana kadar erken durdurma tetiklenmez).
-    EARLY_STOPPING_MIN_REWARD = 15.0
+    # Önemli: Düşük iterasyonlu testler için erken durdurma barajını sıfıra yakın tutuyoruz.
+    EARLY_STOPPING_MIN_REWARD = 0.0
     
     # Checkpointing Parameters
-    CHECKPOINT_FREQ = 10                                     # Her N iterasyonda bir model yedekleme sıklığı
+    CHECKPOINT_FREQ = 50                                     # Her N iterasyonda bir model yedekleme sıklığı
     KEEP_CHECKPOINTS_NUM = 3                                 # Disk üzerinde tutulacak en yüksek performanslı en iyi model sayısı
     CHECKPOINT_SCORE_ATTR = "env_runners/episode_reward_mean" # Checkpoint'leri sıralamak için kullanılan performans metriği
 
@@ -31,7 +32,7 @@ class QJCConfig:
     Parameters for the Baseline QJC Algorithm (Liao et al. 2025).
     Used in simulation/entities.py and train_baseline.py
     """
-    TAU_0 = 0.1          # Base Learning Rate
+    TAU_0 = 1e-4          # Base Learning Rate
     GAMMA = 0.9          # Discount Factor
     TEMP_XI = 5.0        # Softmax Temperature (Xi)
     MU_OFFSET = 1.1      # Offset for log calculation (mu + offset)
@@ -55,7 +56,7 @@ class PPOConfig:
     FCNET_HIDDENS = [256, 256]  # Fully connected hidden layers
     
     # Resources
-    NUM_WORKERS = 1      # Number of parallel rollout workers
+    NUM_WORKERS = 2      # Number of parallel rollout workers
     USE_GPU = True        # GTX 3080 detected with CUDA 12.1
 
 class DQNConfig:
@@ -67,6 +68,7 @@ class DQNConfig:
     LR = 1e-4              # Learning Rate
     GAMMA = 0.9            # Discount Factor (harmonized with QJC/PPO)
     TRAIN_BATCH_SIZE = 1000
+    ROLLOUT_FRAGMENT_LENGTH = 100
     
     # DQN-Specific Parameters
     TARGET_NETWORK_UPDATE_FREQ = 500  # Update target network every N steps
@@ -75,14 +77,14 @@ class DQNConfig:
     REPLAY_BUFFER_CAPACITY = 50000    # Replay buffer size
     
     # Training Control (CRITICAL for speed)
-    NUM_STEPS_SAMPLED_BEFORE_LEARNING_STARTS = 1000  # Start training after collecting initial samples
-    TRAINING_INTENSITY = 1            # Gradient updates per env step (1 = match PPO speed)
+    NUM_STEPS_SAMPLED_BEFORE_LEARNING_STARTS = 0  # Start training after collecting initial samples
+    TRAINING_INTENSITY = None           # Natural intensity (train_batch_size / (rollout_fragment_length * num_env_runners))
     
     # Model Architecture
     FCNET_HIDDENS = [256, 256]  # Fully connected hidden layers
     
     # Resources
-    NUM_WORKERS = 1      # Number of parallel rollout workers
+    NUM_WORKERS = 2      # Number of parallel rollout workers
     
     USE_GPU = True        # GTX 3080 detected with CUDA 12.1
 
@@ -106,5 +108,5 @@ class PPOLSTMConfig:
     FCNET_HIDDENS = [256, 256]
     
     # Resources
-    NUM_WORKERS = 1
+    NUM_WORKERS = 2
     USE_GPU = True

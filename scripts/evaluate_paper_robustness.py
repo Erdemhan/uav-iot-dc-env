@@ -140,19 +140,9 @@ def evaluate_algo(algo_name, run_dir):
             # Using Env internals for accuracy (Paper Metrics)
             
             # 1. JSR (Reachable)
-            # We need to recalculate reachable count because step only returns 'jammed_count'
-            # Let's peek into env structures
-            uav_pos = env.uav.position
             # Recalculate reachable
             reachable_count = 0
             for node in env.nodes:
-                d = np.linalg.norm(node.position - uav_pos)
-                # Max range check (approx based on Path Loss and Tx Power)
-                # If connected_theoretical is True (SINR_no_jam > Threshold)
-                # We can re-use the internal logic if we access it, but easier to trust 'jammed_count' 
-                # and assume 'reachable' is total nodes for now? 
-                # NO. Paper says "N_reachable".
-                # Let's iterate nodes and check connection_status
                 # Status 0=Connected, 1=OutRange, 2=Jammed
                 if node.connection_status != 1: # If not out of range
                     reachable_count += 1
@@ -164,15 +154,14 @@ def evaluate_algo(algo_name, run_dir):
                 ep_reachable += reachable_count
             
             # 2. Tracking
-            # Check directly
-            if env.attacker.current_channel == env.uav.current_channel:
+            # Check directly against the channel of the UAV closest to the jammer
+            closest_uav = min(env.uavs, key=lambda uav: np.linalg.norm(uav.position - env.attacker.position))
+            if env.attacker.current_channel == closest_uav.current_channel:
                 ep_tracking += 1
                 
             # 3. Power
-            ep_power_sum += env.attacker.jamming_power # This is Output Power
-            # Note: Paper says "Total Power" including Circuit? 
-            # Controller calculates it. Let's use info["jammer_cost"] if available
-            ep_power_sum += infos["jammer_0"]["jammer_cost"] # This is Total Power
+            # Use total DC power consumption (including PA efficiency and circuit overhead)
+            ep_power_sum += infos["jammer_0"]["jammer_cost"]
             
             # 4. SINR
             # Average SINR of all nodes? 
@@ -189,7 +178,9 @@ def evaluate_algo(algo_name, run_dir):
                 step_sinr_n += 1
             
             if step_sinr_n > 0:
-                ep_sinr_sum += (step_sinr_sum / step_sinr_n)
+                step_avg_sinr = step_sinr_sum / step_sinr_n
+                step_avg_sinr_db = 10 * np.log10(max(step_avg_sinr, 1e-12))
+                ep_sinr_sum += step_avg_sinr_db
                 ep_sinr_count += 1
                 
         # --- End Episode ---
@@ -217,7 +208,12 @@ def main():
     print(f"Using Absolute Run Directory: {run_dir_abs}")
     
     # Init Ray once
-    ray.init(ignore_reinit_error=True, log_to_driver=False)
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    runtime_env = {"env_vars": {"PYTHONPATH": project_root}}
+    try:
+        ray.init(ignore_reinit_error=True, log_to_driver=False, runtime_env=runtime_env)
+    except Exception:
+        ray.init(ignore_reinit_error=True, log_to_driver=False, runtime_env=runtime_env)
     register_env("uav_iot_ppo_v1", env_creator)
     register_env("uav_iot_dqn_v1", env_creator)
     register_env("uav_iot_ppo_lstm_v1", env_creator)
@@ -305,8 +301,8 @@ def plot_comparison(results, output_dir):
     # 3. Power
     plot_bar(axes[1, 0], "Power", "Average Power Consumption", "Power (W)")
     
-    # 4. SINR
-    plot_bar(axes[1, 1], "SINR", "Average Network SINR", "SINR (dB)", threshold=0)
+    # 4. Empty Slot (Hidden)
+    axes[1, 1].set_visible(False)
     
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     out_plot = os.path.join(output_dir, "comparison_robustness.png")

@@ -1,6 +1,8 @@
 
 import os
 import sys
+import os
+import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import subprocess
 import json
@@ -11,6 +13,8 @@ import argparse
 from datetime import datetime
 from confs.model_config import GlobalConfig, QJCConfig, PPOConfig, DQNConfig, PPOLSTMConfig
 from confs.env_config import EnvConfig
+from confs.config import UAVConfig
+from scripts.dashboard_server import start_dashboard, stop_dashboard, DashboardState
 
 # ANSI Colors for terminal output
 # ... (keep existing codes) ...
@@ -37,6 +41,8 @@ class ParallelTrainer:
         self.default_total = GlobalConfig.TRAIN_ITERATIONS
         self.debug = debug  # Debug mode for verbose output
         self.error_messages = {}  # Store error messages
+        self.stdout_log = {}
+        self.is_finished = False
         # Update interval: use provided value, or default based on debug mode
         self.update_interval = update_interval if update_interval is not None else (10 if debug else 3)
         
@@ -46,13 +52,22 @@ class ParallelTrainer:
         if self.debug:
             print(f"[{name}] Command: {command}")
         
+        import os
+        process_env = os.environ.copy()
+        process_env["OMP_NUM_THREADS"] = "2"
+        process_env["MKL_NUM_THREADS"] = "2"
+        process_env["OPENBLAS_NUM_THREADS"] = "2"
+        process_env["VECLIB_MAXIMUM_THREADS"] = "2"
+        process_env["NUMEXPR_NUM_THREADS"] = "2"
+
         process = subprocess.Popen(
             command,
             shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            bufsize=1
+            bufsize=1,
+            env=process_env
         )
         
         self.processes[name] = process
@@ -61,6 +76,7 @@ class ParallelTrainer:
         self.iterations[name] = 0
         self.total_iterations[name] = self.default_total
         self.error_messages[name] = []
+        self.stdout_log[name] = []
         
         # Start thread to monitor output
         thread = threading.Thread(target=self._monitor_output, args=(name, process))
@@ -76,7 +92,14 @@ class ParallelTrainer:
         """Monitor stderr for error messages"""
         try:
             for line in process.stderr:
-                self.error_messages[name].append(line.strip())
+                clean_line = line.strip()
+                if clean_line:
+                    self.error_messages[name].append(clean_line)
+                    if name not in self.stdout_log:
+                        self.stdout_log[name] = []
+                    self.stdout_log[name].append(f"[ERROR] {clean_line}")
+                    if len(self.stdout_log[name]) > 50:
+                        self.stdout_log[name].pop(0)
                 if self.debug:
                     print(f"[{name} ERROR] {line.strip()}")
         except Exception:
@@ -86,6 +109,14 @@ class ParallelTrainer:
         """Monitor process output and extract progress"""
         try:
             for line in process.stdout:
+                clean_line = line.strip()
+                if clean_line:
+                    if name not in self.stdout_log:
+                        self.stdout_log[name] = []
+                    self.stdout_log[name].append(clean_line)
+                    if len(self.stdout_log[name]) > 50:
+                        self.stdout_log[name].pop(0)
+                
                 # Extract episode/iteration progress
                 if name == "Baseline":
                     # Look for "Episode X/Y"
@@ -123,50 +154,59 @@ class ParallelTrainer:
             if self.debug:
                 print(f"\n[{name}] Exception: {e}")
     
-    def display_progress(self):
+    def _draw_progress_screen(self):
+        print(f"{Colors.HEADER}=" * 80)
+        mode_str = "PARALLEL" if not hasattr(self, "is_finished") or not self.is_finished else "SEQUENTIAL"
+        print(f"{mode_str} {self.stage} PROGRESS")
+        print("=" * 80 + f"{Colors.ENDC}")
+        print()
+        
+        for name in ["Baseline", "PPO", "DQN", "PPO-LSTM"]:
+            status = self.status.get(name, "PENDING")
+            progress = self.progress.get(name, 0)
+            current_iter = self.iterations.get(name, 0)
+            total_iter = self.total_iterations.get(name, 0)
+            
+            # Status icon and color
+            if status == "COMPLETED":
+                icon = "[OK]"
+                color = Colors.OKGREEN
+            elif status == "FAILED":
+                icon = "[XX]"
+                color = Colors.FAIL
+            elif status == "RUNNING":
+                icon = "[>>]"
+                color = Colors.WARNING  # Yellow for running
+            else:
+                icon = "[  ]"
+                color = Colors.ENDC
+            
+            # Progress bar
+            bar_length = 30
+            filled = int(bar_length * progress / 100)
+            bar = "#" * filled + "." * (bar_length - filled)
+            
+            # Format iteration counter
+            iter_str = f"({current_iter}/{total_iter})" if total_iter > 0 else ""
+            
+            # Print colored line
+            print(f"{color}{icon} {name:12s} [{bar}] {progress:3d}% {iter_str:12s} {self.stage}{Colors.ENDC}")
+        
+        print()
+        print(f"{Colors.HEADER}=" * 80 + f"{Colors.ENDC}")
+
+    def display_progress(self, sequential=False):
         """Display live progress in terminal"""
-        while any(s == "RUNNING" for s in self.status.values()):
-            os.system('cls' if os.name == 'nt' else 'clear')
-            
-            print(f"{Colors.HEADER}=" * 80)
-            print(f"PARALLEL {self.stage} PROGRESS")
-            print("=" * 80 + f"{Colors.ENDC}")
-            print()
-            
-            for name in ["Baseline", "PPO", "DQN", "PPO-LSTM"]:
-                status = self.status.get(name, "PENDING")
-                progress = self.progress.get(name, 0)
-                current_iter = self.iterations.get(name, 0)
-                total_iter = self.total_iterations.get(name, 0)
-                
-                # Status icon and color
-                if status == "COMPLETED":
-                    icon = "[OK]"
-                    color = Colors.OKGREEN
-                elif status == "FAILED":
-                    icon = "[XX]"
-                    color = Colors.FAIL
-                elif status == "RUNNING":
-                    icon = "[>>]"
-                    color = Colors.WARNING  # Yellow for running
-                else:
-                    icon = "[  ]"
-                    color = Colors.ENDC
-                
-                # Progress bar
-                bar_length = 30
-                filled = int(bar_length * progress / 100)
-                bar = "#" * filled + "." * (bar_length - filled)
-                
-                # Format iteration counter
-                iter_str = f"({current_iter}/{total_iter})" if total_iter > 0 else ""
-                
-                # Print colored line
-                print(f"{color}{icon} {name:12s} [{bar}] {progress:3d}% {iter_str:12s} {self.stage}{Colors.ENDC}")
-            
-            print()
-            print(f"{Colors.HEADER}=" * 80 + f"{Colors.ENDC}")
-            time.sleep(self.update_interval)
+        if sequential:
+            while not self.is_finished:
+                os.system('cls' if os.name == 'nt' else 'clear')
+                self._draw_progress_screen()
+                time.sleep(self.update_interval)
+        else:
+            while any(s == "RUNNING" for s in self.status.values()):
+                os.system('cls' if os.name == 'nt' else 'clear')
+                self._draw_progress_screen()
+                time.sleep(self.update_interval)
         
         # Final display
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -176,17 +216,19 @@ class ParallelTrainer:
         print()
         
         for name in ["Baseline", "PPO", "DQN", "PPO-LSTM"]:
-            status = self.status[name]
+            status = self.status.get(name, "PENDING")
             current_iter = self.iterations.get(name, 0)
             total_iter = self.total_iterations.get(name, 0)
             
             if status == "COMPLETED":
                 print(f"{Colors.OKGREEN}[OK] {name:12s} - COMPLETED ({current_iter}/{total_iter}){Colors.ENDC}")
-            else:
+            elif status == "FAILED":
                 print(f"{Colors.FAIL}[FAILED] {name:12s} - FAILED{Colors.ENDC}")
                 # Show last few error lines
                 if name in self.error_messages and self.error_messages[name]:
                     print(f"         {Colors.FAIL}Last error: {self.error_messages[name][-1][:70]}{Colors.ENDC}")
+            else:
+                print(f"{Colors.WARNING}[PENDING] {name:12s} - NOT STARTED{Colors.ENDC}")
         
         print()
         print(f"{Colors.OKGREEN}=" * 80 + f"{Colors.ENDC}")
@@ -198,7 +240,9 @@ class ParallelTrainer:
 
 def main():
     # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="Run parallel training experiments")
+    parser = argparse.ArgumentParser(description="Run parallel or sequential training experiments")
+    parser.add_argument("--parallel", action="store_true",
+                       help="Run training and evaluation in parallel (default: sequential)")
     parser.add_argument("--debug", action="store_true", 
                        help="Enable debug mode with verbose output (slower updates)")
     parser.add_argument("--ui", type=int, default=None,
@@ -219,6 +263,10 @@ def main():
     print("="*80)
     print(f"Starting Experiment Run: {timestamp}")
     print(f"Artifacts Directory: {run_dir}")
+    if args.parallel:
+        print("Execution Mode: PARALLEL")
+    else:
+        print("Execution Mode: SEQUENTIAL (default)")
     if args.debug:
         print("Debug Mode: ENABLED (verbose output)")
     else:
@@ -231,7 +279,7 @@ def main():
     
     # Save metadata
     def get_config_dict(cls):
-        return {k: v for k, v in cls.__dict__.items() if not k.startswith('__') and not isinstance(v, classmethod) and not callable(v)}
+        return {k: v for k, v in cls.__dict__.items() if not k.startswith('__') and not isinstance(v, (classmethod, staticmethod)) and not callable(v)}
         
     metadata = {
         "timestamp": timestamp,
@@ -243,7 +291,9 @@ def main():
         "qjc_config": get_config_dict(QJCConfig),
         "ppo_config": get_config_dict(PPOConfig),
         "dqn_config": get_config_dict(DQNConfig),
-        "ppo_lstm_config": get_config_dict(PPOLSTMConfig)
+        "ppo_lstm_config": get_config_dict(PPOLSTMConfig),
+        "env_config": get_config_dict(EnvConfig),
+        "uav_config": get_config_dict(UAVConfig)
     }
     with open(os.path.join(run_dir, "metadata.json"), 'w') as f:
         json.dump(metadata, f, indent=2)
@@ -251,89 +301,236 @@ def main():
     # Initialize parallel trainer with debug mode from argument
     trainer = ParallelTrainer(run_dir, stage="TRAINING", debug=args.debug, update_interval=args.ui)
     
+    # Start Real-time Dashboard
+    start_dashboard(run_dir, timestamp)
+    DashboardState.current_trainer = trainer
+    
+    # Stop any previous Ray instances to avoid port conflicts and hung processes
+    print("Stopping any existing Ray processes...")
+    try:
+        import subprocess
+        subprocess.call("ray stop --force", shell=True)
+    except Exception as e:
+        print(f"Warning: Could not stop existing Ray processes: {e}")
+    
     # Define training commands
     baseline_dir = os.path.join(run_dir, "baseline")
     ppo_dir = os.path.join(run_dir, "ppo")
     dqn_dir = os.path.join(run_dir, "dqn")
     ppo_lstm_dir = os.path.join(run_dir, "ppo_lstm")
     
-    # Start all training processes in parallel
-    trainer.start_training(
-        "Baseline",
-        f"{sys.executable} -u scripts/train_baseline.py --output-dir {baseline_dir}",
-        baseline_dir
-    )
-    
-    trainer.start_training(
-        "PPO",
-        f"{sys.executable} -u scripts/train.py --output-dir {ppo_dir}",
-        ppo_dir
-    )
-    
-    trainer.start_training(
-        "DQN",
-        f"{sys.executable} -u scripts/train_dqn.py --output-dir {dqn_dir}",
-        dqn_dir
-    )
+    if args.parallel:
+        # Start all training processes in parallel
+        trainer.start_training(
+            "Baseline",
+            f"{sys.executable} -u scripts/train_baseline.py --output-dir {baseline_dir}",
+            baseline_dir
+        )
+        
+        trainer.start_training(
+            "PPO",
+            f"{sys.executable} -u scripts/train.py --output-dir {ppo_dir}",
+            ppo_dir
+        )
+        
+        trainer.start_training(
+            "DQN",
+            f"{sys.executable} -u scripts/train_dqn.py --output-dir {dqn_dir}",
+            dqn_dir
+        )
 
-    trainer.start_training(
-        "PPO-LSTM",
-        f"{sys.executable} -u scripts/train_ppo_lstm.py --output-dir {ppo_lstm_dir}",
-        ppo_lstm_dir
-    )
-    
-    # Display progress
-    trainer.display_progress()
-    trainer.wait_for_completion()
+        trainer.start_training(
+            "PPO-LSTM",
+            f"{sys.executable} -u scripts/train_ppo_lstm.py --output-dir {ppo_lstm_dir}",
+            ppo_lstm_dir
+        )
+        
+        # Display progress
+        trainer.display_progress(sequential=False)
+        trainer.wait_for_completion()
+    else:
+        # Start training processes sequentially
+        trainer.status = {
+            "Baseline": "PENDING",
+            "PPO": "PENDING",
+            "DQN": "PENDING",
+            "PPO-LSTM": "PENDING"
+        }
+        trainer.is_finished = False
+        
+        display_thread = threading.Thread(target=trainer.display_progress, args=(True,))
+        display_thread.daemon = True
+        display_thread.start()
+        
+        # 1. Baseline
+        trainer.start_training(
+            "Baseline",
+            f"{sys.executable} -u scripts/train_baseline.py --output-dir {baseline_dir}",
+            baseline_dir
+        )
+        while trainer.status["Baseline"] in ["PENDING", "RUNNING"]:
+            time.sleep(0.5)
+        if trainer.status["Baseline"] == "FAILED":
+            trainer.is_finished = True
+            display_thread.join()
+            
+        # 2. PPO
+        if trainer.status["Baseline"] == "COMPLETED":
+            trainer.start_training(
+                "PPO",
+                f"{sys.executable} -u scripts/train.py --output-dir {ppo_dir}",
+                ppo_dir
+            )
+            while trainer.status["PPO"] in ["PENDING", "RUNNING"]:
+                time.sleep(0.5)
+            if trainer.status["PPO"] == "FAILED":
+                trainer.is_finished = True
+                display_thread.join()
+                
+        # 3. DQN
+        if trainer.status["PPO"] == "COMPLETED":
+            trainer.start_training(
+                "DQN",
+                f"{sys.executable} -u scripts/train_dqn.py --output-dir {dqn_dir}",
+                dqn_dir
+            )
+            while trainer.status["DQN"] in ["PENDING", "RUNNING"]:
+                time.sleep(0.5)
+            if trainer.status["DQN"] == "FAILED":
+                trainer.is_finished = True
+                display_thread.join()
+                
+        # 4. PPO-LSTM
+        if trainer.status["DQN"] == "COMPLETED":
+            trainer.start_training(
+                "PPO-LSTM",
+                f"{sys.executable} -u scripts/train_ppo_lstm.py --output-dir {ppo_lstm_dir}",
+                ppo_lstm_dir
+            )
+            while trainer.status["PPO-LSTM"] in ["PENDING", "RUNNING"]:
+                time.sleep(0.5)
+                
+        trainer.is_finished = True
+        display_thread.join()
     
     # Check if all succeeded
     if all(s == "COMPLETED" for s in trainer.status.values()):
-        print("\n✓ All training completed successfully!\n")
+        print("\n[OK] All training completed successfully!\n")
     else:
-        print("\n✗ Some training failed. Check logs for details.\n")
+        print("\n[FAIL] Some training failed. Check logs for details.\n")
         failed = [n for n, s in trainer.status.items() if s == "FAILED"]
         print(f"Failed: {', '.join(failed)}\n")
+        DashboardState.stage = "FAILED"
+        DashboardState.end_time = time.time()
         return
     
-    # Run evaluations in parallel
+    # Run evaluations
     print("="*80)
     print("Running Evaluations...")
     print("="*80 + "\n")
     
     eval_trainer = ParallelTrainer(run_dir, stage="EVALUATION", debug=args.debug, update_interval=args.ui)
+    DashboardState.current_trainer = eval_trainer
+    DashboardState.stage = "EVALUATION"
     
-    eval_trainer.start_training(
-        "Baseline",
-        f"{sys.executable} -u scripts/evaluate.py --algo Baseline --dir {baseline_dir} --no-viz --output-dir {os.path.join(baseline_dir, 'evaluation')}",
-        baseline_dir
-    )
-    
-    eval_trainer.start_training(
-        "PPO",
-        f"{sys.executable} -u scripts/evaluate.py --algo PPO --dir {ppo_dir} --no-viz --output-dir {os.path.join(ppo_dir, 'evaluation')}",
-        ppo_dir
-    )
-    
-    eval_trainer.start_training(
-        "DQN",
-        f"{sys.executable} -u scripts/evaluate.py --algo DQN --dir {dqn_dir} --no-viz --output-dir {os.path.join(dqn_dir, 'evaluation')}",
-        dqn_dir
-    )
-    
-    eval_trainer.start_training(
-        "PPO-LSTM",
-        f"{sys.executable} -u scripts/evaluate.py --algo PPO-LSTM --dir {ppo_lstm_dir} --no-viz --output-dir {os.path.join(ppo_lstm_dir, 'evaluation')}",
-        ppo_lstm_dir
-    )
-    
-    eval_trainer.display_progress()
-    eval_trainer.wait_for_completion()
+    if args.parallel:
+        eval_trainer.start_training(
+            "Baseline",
+            f"{sys.executable} -u scripts/evaluate.py --algo Baseline --dir {baseline_dir} --no-viz --output-dir {os.path.join(baseline_dir, 'evaluation')}",
+            baseline_dir
+        )
+        
+        eval_trainer.start_training(
+            "PPO",
+            f"{sys.executable} -u scripts/evaluate.py --algo PPO --dir {ppo_dir} --no-viz --output-dir {os.path.join(ppo_dir, 'evaluation')}",
+            ppo_dir
+        )
+        
+        eval_trainer.start_training(
+            "DQN",
+            f"{sys.executable} -u scripts/evaluate.py --algo DQN --dir {dqn_dir} --no-viz --output-dir {os.path.join(dqn_dir, 'evaluation')}",
+            dqn_dir
+        )
+        
+        eval_trainer.start_training(
+            "PPO-LSTM",
+            f"{sys.executable} -u scripts/evaluate.py --algo PPO-LSTM --dir {ppo_lstm_dir} --no-viz --output-dir {os.path.join(ppo_lstm_dir, 'evaluation')}",
+            ppo_lstm_dir
+        )
+        
+        eval_trainer.display_progress(sequential=False)
+        eval_trainer.wait_for_completion()
+    else:
+        eval_trainer.status = {
+            "Baseline": "PENDING",
+            "PPO": "PENDING",
+            "DQN": "PENDING",
+            "PPO-LSTM": "PENDING"
+        }
+        eval_trainer.is_finished = False
+        
+        display_thread = threading.Thread(target=eval_trainer.display_progress, args=(True,))
+        display_thread.daemon = True
+        display_thread.start()
+        
+        # 1. Baseline
+        eval_trainer.start_training(
+            "Baseline",
+            f"{sys.executable} -u scripts/evaluate.py --algo Baseline --dir {baseline_dir} --no-viz --output-dir {os.path.join(baseline_dir, 'evaluation')}",
+            baseline_dir
+        )
+        while eval_trainer.status["Baseline"] in ["PENDING", "RUNNING"]:
+            time.sleep(0.5)
+        if eval_trainer.status["Baseline"] == "FAILED":
+            eval_trainer.is_finished = True
+            display_thread.join()
+            
+        # 2. PPO
+        if eval_trainer.status["Baseline"] == "COMPLETED":
+            eval_trainer.start_training(
+                "PPO",
+                f"{sys.executable} -u scripts/evaluate.py --algo PPO --dir {ppo_dir} --no-viz --output-dir {os.path.join(ppo_dir, 'evaluation')}",
+                ppo_dir
+            )
+            while eval_trainer.status["PPO"] in ["PENDING", "RUNNING"]:
+                time.sleep(0.5)
+            if eval_trainer.status["PPO"] == "FAILED":
+                eval_trainer.is_finished = True
+                display_thread.join()
+                
+        # 3. DQN
+        if eval_trainer.status["PPO"] == "COMPLETED":
+            eval_trainer.start_training(
+                "DQN",
+                f"{sys.executable} -u scripts/evaluate.py --algo DQN --dir {dqn_dir} --no-viz --output-dir {os.path.join(dqn_dir, 'evaluation')}",
+                dqn_dir
+            )
+            while eval_trainer.status["DQN"] in ["PENDING", "RUNNING"]:
+                time.sleep(0.5)
+            if eval_trainer.status["DQN"] == "FAILED":
+                eval_trainer.is_finished = True
+                display_thread.join()
+                
+        # 4. PPO-LSTM
+        if eval_trainer.status["DQN"] == "COMPLETED":
+            eval_trainer.start_training(
+                "PPO-LSTM",
+                f"{sys.executable} -u scripts/evaluate.py --algo PPO-LSTM --dir {ppo_lstm_dir} --no-viz --output-dir {os.path.join(ppo_lstm_dir, 'evaluation')}",
+                ppo_lstm_dir
+            )
+            while eval_trainer.status["PPO-LSTM"] in ["PENDING", "RUNNING"]:
+                time.sleep(0.5)
+                
+        eval_trainer.is_finished = True
+        display_thread.join()
     
     # Check evaluation results
     if all(s == "COMPLETED" for s in eval_trainer.status.values()):
-        print("\n✓ All evaluations completed!\n")
+        print("\n[OK] All evaluations completed!\n")
     else:
-        print("\n✗ Some evaluations failed.\n")
+        print("\n[FAIL] Some evaluations failed.\n")
+        DashboardState.stage = "FAILED"
+        DashboardState.end_time = time.time()
         return
     
     # Generate comparison
@@ -344,9 +541,20 @@ def main():
     ret = subprocess.call(f"{sys.executable} visualization/compare.py --run-dir {run_dir}", shell=True)
     
     if ret == 0:
-        print(f"\n✓ Experiment Complete! Results in: {run_dir}\n")
+        DashboardState.stage = "COMPLETED"
+        DashboardState.end_time = time.time()
+        print(f"\n[OK] Experiment Complete! Results in: {run_dir}\n")
     else:
-        print("\n✗ Comparison generation failed.\n")
+        DashboardState.stage = "FAILED"
+        DashboardState.end_time = time.time()
+        print("\n[FAIL] Comparison generation failed.\n")
+        
+    print("\n[DASHBOARD] Press Enter in this console to exit and close the dashboard...")
+    input()
+    stop_dashboard()
+    
+    # Ray shutdown no longer needed since processes run independently
+    pass
 
 if __name__ == "__main__":
     main()

@@ -21,6 +21,11 @@ class SimulationLogger:
         os.makedirs(self.log_dir, exist_ok=True)
         
         self.csv_path = os.path.join(self.log_dir, "history.csv")
+        if os.path.exists(self.csv_path):
+            try:
+                os.remove(self.csv_path)
+            except OSError:
+                pass
         self.buffer: List[Dict[str, Any]] = []
         
         if config_dict:

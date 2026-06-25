@@ -72,13 +72,21 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir", type=str, default="ray_results_dqn", help="Output directory for DQN")
     args = parser.parse_args()
     
-    if ray.is_initialized():
-        ray.shutdown()
-    ray.init(num_gpus=1)
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    runtime_env = {"env_vars": {"PYTHONPATH": project_root}}
+    try:
+        if ray.is_initialized():
+            ray.shutdown()
+        ray.init(num_gpus=1, ignore_reinit_error=True, runtime_env=runtime_env)
+    except Exception:
+        ray.init(num_gpus=1, ignore_reinit_error=True, runtime_env=runtime_env)
     
     # Reproducibility
     import torch
     import numpy as np
+    import random
+    torch.set_num_threads(2)
+    random.seed(GlobalConfig.RANDOM_SEED)
     torch.manual_seed(GlobalConfig.RANDOM_SEED)
     np.random.seed(GlobalConfig.RANDOM_SEED)
     # CUDA determinism
@@ -109,8 +117,11 @@ if __name__ == "__main__":
         .environment("uav_iot_dqn_v1", env_config={"seed": GlobalConfig.RANDOM_SEED})
         .framework("torch")
         .debugging(seed=GlobalConfig.RANDOM_SEED)
-        # FAIRNESS: Match PPO's worker count for equal sampling
-        .env_runners(num_env_runners=DQNHyperparams.NUM_WORKERS) 
+        # FAIRNESS: Match PPO's worker count and fragment length for equal sampling
+        .env_runners(
+            num_env_runners=DQNHyperparams.NUM_WORKERS,
+            rollout_fragment_length=DQNHyperparams.ROLLOUT_FRAGMENT_LENGTH
+        ) 
         .training(
             model={"fcnet_hiddens": DQNHyperparams.FCNET_HIDDENS},
             gamma=DQNHyperparams.GAMMA,

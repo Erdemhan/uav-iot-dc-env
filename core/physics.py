@@ -20,14 +20,11 @@ def calculate_path_loss(d: float, fc: float = UAVConfig.FC, eta: float = UAVConf
 
 def calculate_jammer_power_consumption(p_jam_out: float, frequency: float) -> float:
     """
-    Calculates Total Jammer Power Consumption (Cui et al., 2005).
-    P_total = (P_out / eta(f)) + P_circuit
+    Calculates Jammer Power Consumption.
+    Directly returns the RF output power (p_jam_out) in Watts.
     """
-    # Get efficiency for this frequency, default to mid-band (0.35) if not found
-    eta_pa = UAVConfig.ETA_PA.get(frequency, 0.35)
-    
-    p_total = (p_jam_out / eta_pa) + UAVConfig.P_CIRCUIT
-    return p_total
+    return p_jam_out
+
 
 def calculate_received_power(p_tx: float, d: float, beta_0: float) -> float:
     """

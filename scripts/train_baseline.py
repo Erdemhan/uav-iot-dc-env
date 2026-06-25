@@ -25,6 +25,8 @@ def main():
     
     # Reproducibility
     from confs.model_config import GlobalConfig
+    import random
+    random.seed(GlobalConfig.RANDOM_SEED)
     np.random.seed(GlobalConfig.RANDOM_SEED)
     
     # Configuration
@@ -110,9 +112,10 @@ def main():
         # Log to CSV
         mean_reward = total_reward / step_count if step_count > 0 else 0
         csv_writer.writerow([episode + 1, total_reward, mean_reward])
+        training_log.flush()
         
-        # Dynamic logging interval (at least every episode for short runs, or 10% for long runs)
-        log_interval = max(1, TRAIN_EPISODES // 10)
+        # Dynamic logging interval (at least every episode for short runs, or 0.5% for long runs)
+        log_interval = max(1, TRAIN_EPISODES // 200)
         
         if (episode + 1) % log_interval == 0:
             print(f"Episode {episode+1}/{TRAIN_EPISODES} - Total Reward: {total_reward:.2f} - Q-Table: {np.round(learned_q_table, 2)}")

@@ -24,7 +24,8 @@ class Visualization:
         self.ax.set_ylim(0, self.area_size)
         
         # UAV
-        self.ax.scatter(env.uav.x, env.uav.y, c='blue', marker='^', s=100, label='UAV')
+        uav = env.uavs[0] if hasattr(env, 'uavs') and len(env.uavs) > 0 else env.uav
+        self.ax.scatter(uav.x, uav.y, c='blue', marker='^', s=100, label='UAV')
         
         # Nodes
         for i, node in enumerate(env.nodes):
@@ -36,11 +37,11 @@ class Visualization:
             
             # 2. Draw Label
             self.ax.text(node.x + 15, node.y + 15, f"N{node.id}", fontsize=9, fontweight='bold', color='black', zorder=4)
-
+ 
             # 3. Status Overlays
             if node.connection_status == 0: # Connected
                 # Line to UAV
-                self.ax.plot([env.uav.x, node.x], [env.uav.y, node.y], color=node_base_color, linestyle='--', linewidth=1.5, alpha=0.8)
+                self.ax.plot([uav.x, node.x], [uav.y, node.y], color=node_base_color, linestyle='--', linewidth=1.5, alpha=0.8)
                 
             elif node.connection_status == 2: # Jammed
                 # Red X on top
@@ -62,7 +63,7 @@ class Visualization:
                 # Positions (Vectorized)
                 # Grid Points (res x res)
                 # UAV Pos
-                uav_pos = np.array([env.uav.x, env.uav.y])
+                uav_pos = np.array([uav.x, uav.y])
                 jam_pos = np.array([env.attacker.x, env.attacker.y])
                 
                 # Distances
@@ -76,7 +77,7 @@ class Visualization:
                 import core.physics as physics
                 from confs.env_config import EnvConfig
                 from confs.config import UAVConfig
-
+ 
                 # Beta
                 beta_uav = physics.calculate_path_loss(d_uav)
                 beta_jam = physics.calculate_path_loss(d_jam)
@@ -98,26 +99,27 @@ class Visualization:
                 
                 # Visualization Logic:
                 # We want to show RED only where:
-                # 1. Connection IS broken (sinr_total < 1.0)
-                # 2. Connection WOULD BE fine without jammer (sinr_no_jam > 1.0)
-                # If sinr_no_jam < 1.0, it's Out of Range (Gray zone concept), not Jamming.
+                # 1. Connection IS broken (sinr_total < threshold)
+                # 2. Connection WOULD BE fine without jammer (sinr_no_jam > threshold)
+                # If sinr_no_jam < threshold, it's Out of Range, not Jamming.
+                
+                sinr_threshold_linear = 10 ** (UAVConfig.SINR_THRESHOLD / 10.0)
                 
                 # Create a field for contouring
-                # We set values where sinr_no_jam < 1.0 to a high value (e.g. 10.0) 
-                # so they don't fall into the < 1.0 contour level.
+                # We set values where sinr_no_jam < threshold to a high value (e.g. 100.0) 
+                # so they don't fall into the jammed contour level.
                 visual_field = sinr_total.copy()
-                visual_field[sinr_no_jam < 1.0] = 100.0 
+                visual_field[sinr_no_jam < sinr_threshold_linear] = 100.0 
                 
-                # Threshold (Linear 1.0)
                 # Draw Contour
-                # Levels: [0, 1.0] -> Jammed Region
-                self.ax.contourf(X, Y, visual_field, levels=[0, 1.0], colors=['red'], alpha=0.2)
-                self.ax.contour(X, Y, visual_field, levels=[1.0], colors=['red'], linestyles='--', linewidths=0.5)
+                # Levels: [0, threshold] -> Jammed Region
+                self.ax.contourf(X, Y, visual_field, levels=[0, sinr_threshold_linear], colors=['red'], alpha=0.2)
+                self.ax.contour(X, Y, visual_field, levels=[sinr_threshold_linear], colors=['red'], linestyles='--', linewidths=0.5)
                 
                 
             except Exception as e:
                 print(f"Viz Error: {e}")
-
+ 
         # Info Screen
         info_text = f"Step: {env.current_step}\n"
         info_text += f"Jammer Power: {env.attacker.jamming_power:.2f} W\n"
