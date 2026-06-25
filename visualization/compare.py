@@ -36,13 +36,18 @@ def preprocess_df(df):
     if status_cols:
         # Count 2s
         jammed_counts = (df[status_cols] == 2).sum(axis=1)
-        df["jam_success_rate"] = jammed_counts / len(status_cols)
+        reachable_counts = (df[status_cols] != 1).sum(axis=1)
+        df["jam_success_rate"] = np.where(reachable_counts > 0, jammed_counts / reachable_counts, 0.0)
+        df["reachable_count"] = reachable_counts
+        df["jammed_count"] = jammed_counts
     else:
         if "jammed_count" in df.columns:
             # Assume 10 nodes (hardcoded fallback)
             df["jam_success_rate"] = df["jammed_count"] / 10.0
+            df["reachable_count"] = 10.0
         else:
             df["jam_success_rate"] = 0
+            df["reachable_count"] = 0.0
             
     return df
 
@@ -91,7 +96,10 @@ def main():
             print(f"    - Avg Jammed Nodes: {df['jammed_count'].mean():.2f}")
             print(f"    - Total Jammed: {df['jammed_count'].sum()}")
             print(f"    - Max Jammed (single step): {df['jammed_count'].max()}")
-        print(f"    - Success Rate: {df['jam_success_rate'].mean()*100:.1f}%")
+        total_reachable = df["reachable_count"].sum() if "reachable_count" in df.columns else 0
+        total_jammed = df["jammed_count"].sum() if "jammed_count" in df.columns else 0
+        success_rate = (total_jammed / total_reachable * 100) if total_reachable > 0 else 0.0
+        print(f"    - Success Rate: {success_rate:.1f}%")
         
         print("  Power Usage:")
         if "jammer_power" in df.columns:
@@ -126,35 +134,26 @@ def main():
     ax1.legend(loc='best', fontsize=10)
     ax1.grid(True, alpha=0.3)
     
-    # Plot 2: Network SINR
+    # Plot 2: Channel Tracking Accuracy
     ax2 = axes[1]
-    for label, data in data_map.items():
-        df = data["df"]
-        color = data["color"]
-        ax2.plot(df.index, df["avg_sinr_db"], label=label, color=color, linewidth=2, alpha=0.8)
-    ax2.set_title("Network SINR (Lower = Better Jamming)", fontsize=14, fontweight='bold')
-    ax2.set_ylabel("SINR (dB)", fontsize=12)
-    ax2.set_xlabel("Time Step", fontsize=12)
-    ax2.legend(loc='best', fontsize=10)
-    ax2.grid(True, alpha=0.3)
-    
-    # Plot 3: Channel Tracking Accuracy
-    ax3 = axes[2]
     for label, data in data_map.items():
         df = data["df"]
         color = data["color"]
         if "uav_channel" in df.columns and "jammer_channel" in df.columns:
             # Rolling average for smoothness
             match = (df["uav_channel"] == df["jammer_channel"]).rolling(5, min_periods=1).mean() * 100
-            ax3.plot(df.index, match, label=label, color=color, linewidth=2, alpha=0.8)
-    ax3.set_title("Channel Tracking Accuracy (5-step Rolling Avg)", fontsize=14, fontweight='bold')
-    ax3.set_ylabel("Match Rate (%)", fontsize=12)
-    ax3.set_xlabel("Time Step", fontsize=12)
-    ax3.legend(loc='best', fontsize=10)
-    ax3.grid(True, alpha=0.3)
+            ax2.plot(df.index, match, label=label, color=color, linewidth=2, alpha=0.8)
+    ax2.set_title("Channel Tracking Accuracy (5-step Rolling Avg)", fontsize=14, fontweight='bold')
+    ax2.set_ylabel("Match Rate (%)", fontsize=12)
+    ax2.set_xlabel("Time Step", fontsize=12)
+    ax2.legend(loc='best', fontsize=10)
+    ax2.grid(True, alpha=0.3)
     
-    # Plot 4: Training Curves
-    ax4 = axes[3]
+    # Plot 3: Training Curves
+    ax3 = axes[2]
+    
+    # Hide the 4th subplot (bottom right)
+    axes[3].set_visible(False)
     
     # Load training data
     # Load Config to get TRAIN_BATCH_SIZE
@@ -176,7 +175,7 @@ def main():
         # Group by bin and take mean of 'total_reward'
         df_resampled = df_train.groupby('step_bin')['total_reward'].mean().reset_index()
         
-        ax4.plot(df_resampled['step_bin'], df_resampled['total_reward'], 
+        ax3.plot(df_resampled['step_bin'], df_resampled['total_reward'], 
                 label='Baseline (QJC)', color='gray', linewidth=2, alpha=0.8, marker='o', markersize=4)
 
     # PPO
@@ -187,7 +186,7 @@ def main():
             df_ppo = pd.read_csv(latest_ppo_file)
             # Use Ray 2.x column names
             if 'timesteps_total' in df_ppo.columns and 'env_runners/episode_reward_mean' in df_ppo.columns:
-                ax4.plot(df_ppo['timesteps_total'], df_ppo['env_runners/episode_reward_mean'], 
+                ax3.plot(df_ppo['timesteps_total'], df_ppo['env_runners/episode_reward_mean'], 
                         label='PPO', color='tab:blue', linewidth=2, alpha=0.8, marker='o', markersize=4)
     
     # DQN
@@ -198,7 +197,7 @@ def main():
             df_dqn = pd.read_csv(latest_dqn_file)
             # Use Ray 2.x column names
             if 'timesteps_total' in df_dqn.columns and 'env_runners/episode_reward_mean' in df_dqn.columns:
-                ax4.plot(df_dqn['timesteps_total'], df_dqn['env_runners/episode_reward_mean'], 
+                ax3.plot(df_dqn['timesteps_total'], df_dqn['env_runners/episode_reward_mean'], 
                         label='DQN', color='tab:orange', linewidth=2, alpha=0.8, marker='o', markersize=4)
 
     # PPO-LSTM
@@ -208,15 +207,15 @@ def main():
         if os.path.exists(latest_ppo_lstm_file):
             df_ppo_lstm = pd.read_csv(latest_ppo_lstm_file)
             if 'timesteps_total' in df_ppo_lstm.columns and 'env_runners/episode_reward_mean' in df_ppo_lstm.columns:
-                ax4.plot(df_ppo_lstm['timesteps_total'], df_ppo_lstm['env_runners/episode_reward_mean'], 
+                ax3.plot(df_ppo_lstm['timesteps_total'], df_ppo_lstm['env_runners/episode_reward_mean'], 
                         label='PPO-LSTM', color='tab:purple', linewidth=2, alpha=0.8, marker='o', markersize=4)
     
-    ax4.set_title("Training Progress: Reward Learning Curves", fontsize=14, fontweight='bold')
-    ax4.set_ylabel("Mean Episode Reward", fontsize=12)
-    ax4.set_xlabel("Total Environment Steps", fontsize=12)
-    ax4.legend(loc='best', fontsize=10)
-    ax4.grid(True, alpha=0.3)
-    ax4.axhline(y=0, color='gray', linestyle='--', alpha=0.5, linewidth=1)
+    ax3.set_title("Training Progress: Reward Learning Curves", fontsize=14, fontweight='bold')
+    ax3.set_ylabel("Mean Episode Reward", fontsize=12)
+    ax3.set_xlabel("Total Environment Steps", fontsize=12)
+    ax3.legend(loc='best', fontsize=10)
+    ax3.grid(True, alpha=0.3)
+    ax3.axhline(y=0, color='gray', linestyle='--', alpha=0.5, linewidth=1)
     
     plt.suptitle("UAV-IoT Jamming: Algorithm Comparison", fontsize=16, fontweight='bold', y=0.995)
     plt.tight_layout()
@@ -269,11 +268,14 @@ def main():
         f.write("Algorithm,Avg_Jammed_Nodes,Total_Jammed,Max_Jammed,Success_Rate,Avg_Power_W,Max_Power_W,Channel_Match_Rate,Avg_SINR_dB\n")
         for label, data in data_map.items():
             df = data["df"]
+            total_reachable = df["reachable_count"].sum() if "reachable_count" in df.columns else 0
+            total_jammed = df["jammed_count"].sum() if "jammed_count" in df.columns else 0
+            success_rate = (total_jammed / total_reachable * 100) if total_reachable > 0 else 0.0
             f.write(f"{label},")
             f.write(f"{df['jammed_count'].mean():.2f}," if "jammed_count" in df.columns else "N/A,")
             f.write(f"{df['jammed_count'].sum()}," if "jammed_count" in df.columns else "N/A,")
             f.write(f"{df['jammed_count'].max()}," if "jammed_count" in df.columns else "N/A,")
-            f.write(f"{df['jam_success_rate'].mean()*100:.1f}," if "jam_success_rate" in df.columns else "N/A,")
+            f.write(f"{success_rate:.1f}," if "jammed_count" in df.columns else "N/A,")
             f.write(f"{df['jammer_power'].mean():.4f}," if "jammer_power" in df.columns else "N/A,")
             f.write(f"{df['jammer_power'].max():.4f}," if "jammer_power" in df.columns else "N/A,")
             if "uav_channel" in df.columns and "jammer_channel" in df.columns:

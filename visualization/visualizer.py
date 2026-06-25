@@ -111,13 +111,32 @@ class SimulationVisualizer:
             node_colors = [cmap(i) for i in range(10)]
             
             for i, (Nx, Ny) in enumerate(zip(xs, ys)):
-                # Use modulo for color index (safe for >10 nodes)
-                c = node_colors[i % 10]
-                plt.scatter(Nx, Ny, color=c, marker="s", s=100, label="IoT Nodes" if i==0 else "", zorder=4, edgecolors='black')
-                plt.text(Nx+10, Ny+10, f"N{i}", fontsize=9, color="black", fontweight='bold')
+                # Parse actual node ID from column name to prevent alphabetical sort label mismatch
+                try:
+                    node_id = int(node_x_cols[i].split("_")[1])
+                except:
+                    node_id = i
+                c = node_colors[node_id % 10]
+                plt.scatter(Nx, Ny, color=c, marker="s", s=100, label="IoT Nodes" if node_id==0 else "", zorder=4, edgecolors='black')
+                plt.text(Nx+10, Ny+10, f"N{node_id}", fontsize=9, color="black", fontweight='bold')
 
         # 2. UAV Path (Line)
-        plt.plot(self.df["uav_x"], self.df["uav_y"], color="gray", alpha=0.5, linewidth=2, label="UAV Path")
+        import re
+        uav_x_cols = sorted([c for c in self.df.columns if re.match(r"^uav_\d+_x$", c)])
+        uav_y_cols = sorted([c for c in self.df.columns if re.match(r"^uav_\d+_y$", c)])
+        
+        if uav_x_cols and uav_y_cols:
+            uav_colors = ["gray", "purple", "brown", "orange"]
+            for idx, (col_x, col_y) in enumerate(zip(uav_x_cols, uav_y_cols)):
+                color = uav_colors[idx % len(uav_colors)]
+                plt.plot(self.df[col_x], self.df[col_y], color=color, alpha=0.5, linewidth=2, label=f"UAV {idx} Path")
+                # Individual UAV Start/End Points
+                plt.scatter(self.df[col_x].iloc[0], self.df[col_y].iloc[0], color="blue", marker="^", s=100, label="Start" if idx==0 else "", zorder=5)
+                plt.scatter(self.df[col_x].iloc[-1], self.df[col_y].iloc[-1], color="blue", marker="s", s=80, label="End" if idx==0 else "", zorder=5)
+        else:
+            plt.plot(self.df["uav_x"], self.df["uav_y"], color="gray", alpha=0.5, linewidth=2, label="UAV Path")
+            plt.scatter(self.df["uav_x"].iloc[0], self.df["uav_y"].iloc[0], color="blue", marker="^", s=150, label="Start", zorder=5)
+            plt.scatter(self.df["uav_x"].iloc[-1], self.df["uav_y"].iloc[-1], color="blue", marker="s", s=100, label="End", zorder=5)
         
         # 3. UAV States (Scatter on Path)
         # Status 0: Connected -> Distinct Colors with Offset
@@ -142,20 +161,16 @@ class SimulationVisualizer:
                  # Calculate Offset to prevent overlap
                  # Radial spread or linear shift. Linear is simpler.
                  # Shift range: [-30m, +30m]
-                 if num_nodes > 1:
-                     offset_mag = 15.0 
-                     # angle = 2*pi * i / num_nodes
-                     # dx = np.cos(angle) * offset_mag
-                     # dy = np.sin(angle) * offset_mag
-                     # Or simple linear shift
-                     dx = (i - num_nodes/2.0) * 10.0
-                     dy = (i % 2) * 10.0 # Stagger Y slightly
-                 else:
-                     dx, dy = 0, 0
-                     
-                 plt.scatter(connected["uav_x"] + dx, connected["uav_y"] + dy, 
-                             color=node_colors[node_id % 10], s=25, alpha=0.7, 
-                             label=f"N{node_id} Connected" if i < 5 else "") # Limit labels
+                  # Keep offset very small (e.g. ±3m) to keep points close to the actual UAV position
+                  if num_nodes > 1:
+                      dx = (node_id - num_nodes/2.0) * 1.5
+                      dy = (node_id % 2) * 1.5 # Stagger Y slightly
+                  else:
+                      dx, dy = 0, 0
+                      
+                  plt.scatter(connected["uav_x"] + dx, connected["uav_y"] + dy, 
+                              color=node_colors[node_id % 10], s=25, alpha=0.7, 
+                              label=f"N{node_id} Connected" if node_id < 5 else "") # Limit labels
 
             
         # Status 1: Out of Range -> Gray
@@ -169,10 +184,6 @@ class SimulationVisualizer:
         if not jammed_points.empty:
             plt.scatter(jammed_points["uav_x"], jammed_points["uav_y"], 
                         color="red", s=50, marker="x", label="Jamming Detected")
-
-        # 4. Start/End Points
-        plt.scatter(self.df["uav_x"].iloc[0], self.df["uav_y"].iloc[0], color="blue", marker="^", s=150, label="Start", zorder=5)
-        plt.scatter(self.df["uav_x"].iloc[-1], self.df["uav_y"].iloc[-1], color="blue", marker="s", s=100, label="End", zorder=5)
 
         # 5. Attacker Position
         area_size = float(self.config.get("AREA_SIZE", EnvConfig.AREA_SIZE))
@@ -385,8 +396,11 @@ class SimulationVisualizer:
         if not matches.empty:
             ax.scatter(matches["step"], matches["uav_channel"], s=100, facecolors='none', edgecolors='black', label="Collision (Potential Jam)")
         
-        ax.set_yticks([0, 1, 2])
-        ax.set_yticklabels(["2.4 GHz", "5.0 GHz", "5.8 GHz"])
+        from confs.config import UAVConfig
+        yticks = sorted(UAVConfig.CHANNELS.keys())
+        yticklabels = [f"Ch {ch} ({UAVConfig.CHANNELS[ch]/1e6:.1f} MHz)" for ch in yticks]
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(yticklabels)
         ax.set_xlabel("Time Step")
         ax.set_ylabel("Channel Frequency")
         ax.set_title("Channel Hopping Dynamics", fontsize=14)

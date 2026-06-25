@@ -26,48 +26,47 @@ class UAVConfig:
     A = 0.5       # Rotor disc area (m^2)
 
     # Communication Parameters
-    B = 2e6       # Bandwidth (Hz) -> 2 MHz
+    B = 125e3     # Bandwidth (Hz) -> 125 kHz (Standard LoRa channel for EU868)
     
-    # Multi-Channel Support (7 Channels representing realistic IoT/UAV bands)
+    # Multi-Channel Support (8 standard EU868 LoRa channels)
     # Channels (Hz)
     CHANNELS = {
-        0: 0.9e9,  # 900 MHz (IoT/LoRa Telemetry)
-        1: 1.2e9,  # 1.2 GHz (GPS/L-band communication)
-        2: 2.4e9,  # 2.4 GHz (Wi-Fi / Standard IoT)
-        3: 3.5e9,  # 3.5 GHz (CBRS / Private 5G)
-        4: 5.0e9,  # 5.0 GHz (Wi-Fi / 5G)
-        5: 5.8e9,  # 5.8 GHz (High-band Wi-Fi / FPV video)
-        6: 6.0e9   # 6.0 GHz (Wi-Fi 6E)
+        0: 868.1e6,  # 868.1 MHz (Default LoRaWAN Channel 1)
+        1: 868.3e6,  # 868.3 MHz (Default LoRaWAN Channel 2)
+        2: 868.5e6,  # 868.5 MHz (Default LoRaWAN Channel 3)
+        3: 867.1e6,  # 867.1 MHz (Optional LoRaWAN Channel 4)
+        4: 867.3e6,  # 867.3 MHz (Optional LoRaWAN Channel 5)
+        5: 867.5e6,  # 867.5 MHz (Optional LoRaWAN Channel 6)
+        6: 867.7e6,  # 867.7 MHz (Optional LoRaWAN Channel 7)
+        7: 867.9e6   # 867.9 MHz (Optional LoRaWAN Channel 8)
     }
     
-    # Frequency Dependent PA Efficiency (eta) - Monotonically decreasing
+    # Frequency Dependent PA Efficiency (eta) - Uniform at 29.8% for 868 MHz band transceivers (based on SX1261 datasheet at +14 dBm)
     ETA_PA = {
-        0.9e9: 0.60,  # 60% efficiency at 900 MHz
-        1.2e9: 0.55,  # 55% efficiency at 1.2 GHz
-        2.4e9: 0.50,  # 50% efficiency at 2.4 GHz
-        3.5e9: 0.40,  # 40% efficiency at 3.5 GHz
-        5.0e9: 0.30,  # 30% efficiency at 5.0 GHz
-        5.8e9: 0.22,  # 22% efficiency at 5.8 GHz
-        6.0e9: 0.18   # 18% efficiency at 6.0 GHz
+        868.1e6: 0.298,
+        868.3e6: 0.298,
+        868.5e6: 0.298,
+        867.1e6: 0.298,
+        867.3e6: 0.298,
+        867.5e6: 0.298,
+        867.7e6: 0.298,
+        867.9e6: 0.298
     }
     
     FC = 2.4e9    # Default Carrier frequency (Hz) - Deprecated for dynamic, but kept for init.
     ETA = 2.0     # Path loss exponent (Free space assumption)
     
     # Noise and Power
-    N0_Linear = 10**(-100/10) * 1e-3 # -100 dBm noise floor
+    N0_Linear = 10**(-117/10) * 1e-3 # -117 dBm noise floor (for 125 kHz bandwidth & 6 dB Noise Figure of SX1261)
     
-    # Power Constants (Liao et al.)
-    P_UAV_TX_DBM = 20.0
-    P_JAM_TX_DBM_MAX = 30.0
-    
-    P_TX_UAV = 10**(P_UAV_TX_DBM/10) * 1e-3 # 0.1 W
-    # Note: P_TX_NODE is already in EnvConfig, usually lower (e.g. 0.1W or less)
+    # Note: Transmission powers (P_TX_NODE, P_TX_UAV) are configured in EnvConfig (confs/env_config.py)
+    # to avoid duplication and maintain consistency across the simulation.
+
     
     # Jammer Power Model (Cui et al.)
     P_CIRCUIT = 0.1 # W (Assumed base circuit power if not specified)
-    SINR_THRESHOLD = 1.0 # 0 dB
-    PERSISTENCE_THRESHOLD = 5 # Steps to wait before channel-switching (rule-based controller)
+    SINR_THRESHOLD = -6.5 # 0 dB
+    PERSISTENCE_THRESHOLD = 1 # Steps to wait before channel-switching (rule-based controller)
 
     
     

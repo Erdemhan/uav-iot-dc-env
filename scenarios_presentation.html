@@ -121,10 +121,15 @@
 
         /* App Layout Container */
         .app-container {
-            max-width: 1400px;
+            max-width: 1500px;
             margin: 2rem auto;
             padding: 0 2rem;
             min-height: calc(100vh - 180px);
+        }
+
+        #tech-presentation-layout {
+            min-height: 1080px !important;
+            max-width: 1920px !important;
         }
 
         /* TABS (DASHBOARD MODE) */
@@ -779,6 +784,116 @@
             fill: currentColor;
             vertical-align: middle;
         }
+
+        /* TECH PRESENTATION CUSTOM CSS */
+        .file-tree {
+            list-style: none;
+            padding-left: 0;
+            font-size: 0.88rem;
+            color: var(--text-muted);
+        }
+        .file-tree li {
+            padding: 0.4rem 0.6rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .file-tree li:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+        }
+        .file-tree li.active-file {
+            background: rgba(168, 85, 247, 0.15);
+            color: var(--purple-neon);
+            border-left: 3px solid var(--purple-neon);
+            font-weight: bold;
+        }
+        .file-tree .dir-label {
+            font-weight: 700;
+            color: var(--text-main);
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .file-tree-sub {
+            list-style: none;
+            padding-left: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+        .ide-code-box {
+            background: #05070c;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 1rem;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.78rem;
+            color: #cbd5e1;
+            line-height: 1.45;
+            overflow-x: auto;
+            max-height: 200px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.8);
+        }
+        .ide-code-box pre {
+            margin: 0;
+        }
+        .ide-code-box .code-comment {
+            color: #64748b;
+            font-style: italic;
+        }
+        .ide-code-box .code-keyword {
+            color: #f43f5e;
+            font-weight: bold;
+        }
+        .ide-code-box .code-def {
+            color: #38bdf8;
+        }
+        .ide-code-box .code-str {
+            color: #10b981;
+        }
+        .ide-code-box .line-hl {
+            background: rgba(168, 85, 247, 0.2);
+            border-left: 3px solid var(--purple-neon);
+            display: block;
+            padding-left: 4px;
+            margin-left: -4px;
+        }
+        .markov-grid-table {
+            border-collapse: collapse;
+            font-size: 0.72rem;
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+        .markov-grid-table th, .markov-grid-table td {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 4px;
+            text-align: center;
+            font-family: monospace;
+            width: 12.5%;
+        }
+        .markov-grid-table th {
+            background: rgba(30, 41, 59, 0.8);
+            color: var(--text-main);
+            font-size: 0.7rem;
+        }
+        .markov-grid-table td.cell-active {
+            background: rgba(168, 85, 247, 0.35) !important;
+            color: #fff !important;
+            font-weight: bold;
+            box-shadow: inset 0 0 8px var(--purple-neon);
+            animation: pulse-cell 0.8s infinite alternate;
+        }
+        .markov-grid-table td.cell-highlight {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--cyan-neon);
+        }
+        @keyframes pulse-cell {
+            from { background-color: rgba(168, 85, 247, 0.2); }
+            to { background-color: rgba(168, 85, 247, 0.55); }
+        }
     </style>
 </head>
 <body>
@@ -795,7 +910,8 @@
             <div class="logo-text">İHA-IoT DESTEKLİ ANTİ-JAMMING</div>
         </div>
         <div class="mode-toggle">
-            <button class="mode-btn active" id="btn-presentation" onclick="switchMode('presentation')">Sunum Modu</button>
+            <button class="mode-btn active" id="btn-presentation" onclick="switchMode('presentation')">Senaryo Sunumu</button>
+            <button class="mode-btn" id="btn-tech-presentation" onclick="switchMode('tech')">Teknik Sunum (Animasyonlu)</button>
             <button class="mode-btn" id="btn-dashboard" onclick="switchMode('dashboard')">Panel Modu</button>
         </div>
     </div>
@@ -822,6 +938,12 @@
                 </button>
                 <button class="tab-btn" id="tab-5" onclick="showTab(5)">
                     Deneysel Sonuçlar
+                </button>
+                <button class="tab-btn" id="tab-6" onclick="showTab(6)">
+                    İnteraktif Sistem Simülasyonu
+                </button>
+                <button class="tab-btn" id="tab-7" onclick="showTab(7)">
+                    Teknik Mimari & Kod Yapısı
                 </button>
             </div>
 
@@ -1094,7 +1216,7 @@
             <!-- Slide 5: Sistem Konfigürasyonu -->
             <div class="slide-item" id="slide-4">
                 <div class="section-header">
-                    <svg class="icon-svg" style="fill: var(--cyan-neon)" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                    <svg class="icon-svg" style="fill: var(--cyan-neon)" viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87c-0.12,0.21-0.08,0.47,0.12,0.61l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
                     Önerilen Özgün Senaryo Parametreleri
                 </div>
                 <div class="text-block">
@@ -1142,43 +1264,180 @@
             <div class="slide-item" id="slide-5">
                 <div class="section-header">
                     <svg class="icon-svg" style="fill: var(--cyan-neon)" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
-                    Deneysel Bulgular ve Karşılaştırma Sonuçları
+                    Deneysel Bulgular ve Senaryo Kıyaslamaları (Tekli vs. Çoklu İHA)
                 </div>
-                <div class="text-block">
-                    <p>Tasarımını yaptığımız izole anti-jamming ortamında 30 farklı başlangıç tohumu (seed) ile yapılan bilimsel testler sonucunda elde edilen <strong>Jamming Success Rate (JSR - Başarı Oranı)</strong> değerleri aşağıda sunulmuştur:</p>
+                <div class="grid-2col" style="margin-top: 1rem;">
+                    <!-- Left Column: Single UAV results chart -->
+                    <div>
+                        <div style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: bold; color: var(--cyan-neon); margin-bottom: 1rem;">Tekli İHA Başarı Oranları (JSR)</div>
+                        <div class="results-chart-container" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <div class="bar-row">
+                                <span class="bar-label" style="font-size: 0.85rem; width: 120px;">PPO (Önerilen)</span>
+                                <div class="bar-track" style="height: 18px;">
+                                    <div class="bar-fill" id="bar-ppo"></div>
+                                </div>
+                                <span class="bar-value" style="font-size: 0.95rem; width: 50px;">%57.4</span>
+                            </div>
+                            <div class="bar-row">
+                                <span class="bar-label" style="font-size: 0.85rem; width: 120px;">PPO-LSTM</span>
+                                <div class="bar-track" style="height: 18px;">
+                                    <div class="bar-fill lstm" id="bar-lstm"></div>
+                                </div>
+                                <span class="bar-value" style="font-size: 0.95rem; width: 50px;">%53.6</span>
+                            </div>
+                            <div class="bar-row">
+                                <span class="bar-label" style="font-size: 0.85rem; width: 120px;">DQN</span>
+                                <div class="bar-track" style="height: 18px;">
+                                    <div class="bar-fill dqn" id="bar-dqn"></div>
+                                </div>
+                                <span class="bar-value" style="font-size: 0.95rem; width: 50px;">%29.4</span>
+                            </div>
+                            <div class="bar-row">
+                                <span class="bar-label" style="font-size: 0.85rem; width: 120px;">Baseline (QJC)</span>
+                                <div class="bar-track" style="height: 18px;">
+                                    <div class="bar-fill baseline" id="bar-baseline"></div>
+                                </div>
+                                <span class="bar-value" style="font-size: 0.95rem; width: 50px;">%1.9</span>
+                            </div>
+                        </div>
+                        <div class="text-block" style="margin-top: 1rem; font-size: 0.85rem;">
+                            <p>🏆 <strong>Tekli İHA Bulguları:</strong> Durum-farkında PPO, kör Baseline QJC'ye kıyasla <strong>30 kat</strong> daha başarılıdır. PPO-LSTM ise <strong>%24 daha az enerji</strong> ile kurbanı takip etmiştir.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Column: Multi UAV results table -->
+                    <div class="glass-panel" style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-color: rgba(168, 85, 247, 0.2);">
+                        <div style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: bold; color: var(--purple-neon); margin-bottom: 0.75rem;">Çoklu İHA (2 İHA) Deneysel Sonuçları</div>
+                        <div class="table-wrapper" style="margin-bottom: 1rem;">
+                            <table style="font-size: 0.8rem; width: 100%;">
+                                <thead>
+                                    <tr style="background: rgba(30, 41, 59, 0.9);">
+                                        <th style="padding: 0.5rem;">Algoritma</th>
+                                        <th style="padding: 0.5rem; text-align: center;">JSR (%)</th>
+                                        <th style="padding: 0.5rem; text-align: center;">Kanal Uyum (%)</th>
+                                        <th style="padding: 0.5rem; text-align: center;">Güç (W)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="padding: 0.5rem;"><strong>DQN (En İyi Takip)</strong></td>
+                                        <td style="padding: 0.5rem; text-align: center; color: var(--cyan-neon); font-weight: bold;">%13.4</td>
+                                        <td style="padding: 0.5rem; text-align: center; color: var(--emerald-neon); font-weight: bold;">%100.0</td>
+                                        <td style="padding: 0.5rem; text-align: center;">0.56W</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 0.5rem;"><strong>PPO</strong></td>
+                                        <td style="padding: 0.5rem; text-align: center; color: var(--cyan-neon); font-weight: bold;">%12.4</td>
+                                        <td style="padding: 0.5rem; text-align: center;">%71.0</td>
+                                        <td style="padding: 0.5rem; text-align: center;">0.94W</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 0.5rem;"><strong>Baseline (QJC)</strong></td>
+                                        <td style="padding: 0.5rem; text-align: center; color: var(--cyan-neon); font-weight: bold;">%12.4</td>
+                                        <td style="padding: 0.5rem; text-align: center;">%71.0</td>
+                                        <td style="padding: 0.5rem; text-align: center;">1.00W</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 0.5rem;"><strong>PPO-LSTM</strong></td>
+                                        <td style="padding: 0.5rem; text-align: center; color: var(--cyan-neon); font-weight: bold;">%11.2</td>
+                                        <td style="padding: 0.5rem; text-align: center;">%70.0</td>
+                                        <td style="padding: 0.5rem; text-align: center;">0.85W</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-block" style="font-size: 0.85rem; line-height: 1.45;">
+                            <p>📡 <strong>Fiziksel Çeşitlilik:</strong> Çoklu İHA senaryosunda ağ seviyesindeki karıştırma başarı oranı (JSR) %11-13 seviyelerinde sınırlanmıştır. Karıştırıcı sadece tek bir kanalı hedef alabildiğinden, farklı kanallardaki diğer İHA veri toplamaya temiz spektrumda devam eder. Bu durum, çoklu İHA yapısının akıllı jammer'a karşı doğal bir fiziksel savunma sağladığını kanıtlar.</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="results-chart-container">
-                    <div class="bar-row">
-                        <span class="bar-label">PPO (Önerilen)</span>
-                        <div class="bar-track">
-                            <div class="bar-fill" id="bar-ppo"></div>
+            </div>
+
+            <!-- Slide 7: İnteraktif Sistem Simülasyonu -->
+            <div class="slide-item" id="slide-6">
+                <div class="section-header">
+                    <svg class="icon-svg" style="fill: var(--cyan-neon)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                    İnteraktif Sistem Simülasyonu ve Fizik HUD Paneli
+                </div>
+                <div class="grid-2col" style="margin-top: 1rem;">
+                    <!-- Canvas Visualization Box -->
+                    <div class="glass-panel" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.4); padding: 1.5rem; position: relative;">
+                        <canvas id="sim-canvas" width="500" height="500" style="background: #090d16; border: 2px solid rgba(56, 189, 248, 0.1); border-radius: 12px; box-shadow: 0 0 20px rgba(9, 13, 22, 0.8); cursor: pointer;"></canvas>
+                        <div style="display: flex; gap: 1rem; margin-top: 1rem; justify-content: center; width: 100%; flex-wrap: wrap;">
+                            <button class="slide-nav-btn" id="sim-play-btn" onclick="toggleSimPlay()" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Durdur</button>
+                            <button class="slide-nav-btn" id="sim-reset-btn" onclick="resetSim()" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Sıfırla</button>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <label style="font-size: 0.8rem; color: var(--text-muted);">Saldırgan Kanalı:</label>
+                                <select class="filter-select" id="sim-attacker-ch" onchange="setSimAttackerChannel()" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
+                                    <option value="0">Ch 0 (900 MHz)</option>
+                                    <option value="1">Ch 1 (1.2 GHz)</option>
+                                    <option value="2" selected>Ch 2 (2.4 GHz)</option>
+                                    <option value="3">Ch 3 (3.5 GHz)</option>
+                                    <option value="4">Ch 4 (5.0 GHz)</option>
+                                    <option value="5">Ch 5 (5.8 GHz)</option>
+                                    <option value="6">Ch 6 (6.0 GHz)</option>
+                                </select>
+                            </div>
                         </div>
-                        <span class="bar-value">%57.4</span>
                     </div>
-                    <div class="bar-row">
-                        <span class="bar-label">PPO-LSTM</span>
-                        <div class="bar-track">
-                            <div class="bar-fill lstm" id="bar-lstm"></div>
+                    <!-- Live Mathematical HUD -->
+                    <div class="glass-panel" style="background: rgba(15, 23, 42, 0.6); padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+                        <div style="font-family: 'Outfit', sans-serif; font-size: 1.2rem; font-weight: bold; color: var(--cyan-neon); border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">Fiziksel Parametre Hesaplayıcı</div>
+                        <div class="param-list" style="font-size: 0.9rem;">
+                            <li><span>İHA 0 Konumu / Kanalı</span> <span id="hud-uav0-pos" style="color: var(--text-main);">--</span></li>
+                            <li><span>İHA 1 Konumu / Kanalı</span> <span id="hud-uav1-pos" style="color: var(--text-main);">--</span></li>
+                            <li><span>Saldırgan Kanalları / Gücü</span> <span id="hud-attacker-state" style="color: var(--red-neon); font-weight: bold;">--</span></li>
+                            <li><span>Çarpışma Önleme (APF)</span> <span id="hud-apf-status" style="color: var(--text-main);">--</span></li>
                         </div>
-                        <span class="bar-value">%53.6</span>
-                    </div>
-                    <div class="bar-row">
-                        <span class="bar-label">DQN</span>
-                        <div class="bar-track">
-                            <div class="bar-fill dqn" id="bar-dqn"></div>
-                        </div>
-                        <span class="bar-value">%29.4</span>
-                    </div>
-                    <div class="bar-row">
-                        <span class="bar-label">Baseline (QJC)</span>
-                        <div class="bar-track">
-                            <div class="bar-fill baseline" id="bar-baseline"></div>
-                        </div>
-                        <span class="bar-value">%1.9</span>
+                        <div style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: bold; color: var(--purple-neon); margin-top: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.25rem;">Anlık Haberleşme & Fizik Logu</div>
+                        <div id="hud-physics-log" style="height: 150px; overflow-y: auto; font-family: monospace; font-size: 0.82rem; color: var(--text-muted); background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255,255,255,0.05); padding: 0.5rem; border-radius: 8px; margin-top: 0.5rem;"></div>
                     </div>
                 </div>
-                <div class="text-block" style="margin-top: 1.5rem; font-size: 0.95rem;">
-                    <p>🏆 <strong>Temel Bulgular:</strong> PPO, durum bilgisine sahip olmayan Baseline QJC'ye kıyasla <strong>~30 kat</strong> daha yüksek bir başarı sergilemiştir. <strong>PPO-LSTM</strong> ise, Baseline'a kıyasla <strong>%24 daha az enerji</strong> tüketerek en yüksek verimliliğe ulaşmış, kurbanı sessizce takip etmiştir.</p>
+            </div>
+
+            <!-- Slide 8: Teknik Yazılım Mimarisi ve Kod Yapısı -->
+            <div class="slide-item" id="slide-7">
+                <div class="section-header">
+                    <svg class="icon-svg" style="fill: var(--cyan-neon)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 11.9 13 12.5 13 14h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z"/></svg>
+                    Teknik Yazılım Akış ve Mimari Animasyonu
+                </div>
+                <div class="grid-2col" style="margin-top: 1rem; font-size: 0.92rem; grid-template-columns: 1fr auto;">
+                    <!-- Sol Sütun: Etkileşimli Adım Seçici ve Formül/Giriş Açıklamaları -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <div style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: bold; color: var(--cyan-neon);">Yazılımsal Akış Adımları</div>
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+                                <div id="tech-step-0" class="tab-btn" onclick="selectTechStep(0)" style="cursor: pointer; padding: 0.6rem 1rem; border-radius: 8px; text-align: left; transition: all 0.3s;">
+                                    <strong>Adım 1:</strong> Gözlem Vektörü (Observation Flow)
+                                </div>
+                                <div id="tech-step-1" class="tab-btn" onclick="selectTechStep(1)" style="cursor: pointer; padding: 0.6rem 1rem; border-radius: 8px; text-align: left; transition: all 0.3s;">
+                                    <strong>Adım 2:</strong> APF & Ajan Kararları (Action Flow)
+                                </div>
+                                <div id="tech-step-2" class="tab-btn" onclick="selectTechStep(2)" style="cursor: pointer; padding: 0.6rem 1rem; border-radius: 8px; text-align: left; transition: all 0.3s;">
+                                    <strong>Adım 3:</strong> Fizik Motoru ve Sinyal Modeli
+                                </div>
+                                <div id="tech-step-3" class="tab-btn" onclick="selectTechStep(3)" style="cursor: pointer; padding: 0.6rem 1rem; border-radius: 8px; text-align: left; transition: all 0.3s;">
+                                    <strong>Adım 4:</strong> Ödül ve Metrik Güncellemesi
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Dinamik Açıklama Kutusu -->
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.6); padding: 1.25rem; min-height: 180px; display: flex; flex-direction: column; justify-content: center; border-color: rgba(168, 85, 247, 0.2);">
+                            <div id="tech-desc-title" style="font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: bold; color: var(--purple-neon); margin-bottom: 0.5rem;">Adım Detayları</div>
+                            <div id="tech-desc-body" style="color: var(--text-muted); line-height: 1.5; font-size: 0.88rem;">
+                                Akışı görmek için yukarıdaki adımlardan birini seçin. Canvas üzerindeki veri akış yollarını ve ilgili Python modüllerini canlı olarak gözlemleyebilirsiniz.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sağ Sütun: Mimari Animasyon Canvas'ı -->
+                    <div class="glass-panel" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.4); padding: 1rem; position: relative;">
+                        <canvas id="tech-canvas" width="750" height="600" style="background: #090d16; border: 2px solid rgba(168, 85, 247, 0.1); border-radius: 12px; box-shadow: 0 0 20px rgba(9, 13, 22, 0.8);"></canvas>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; font-style: italic;">
+                            Akış Yönü: <span id="tech-flow-label" style="color: var(--cyan-neon); font-weight: bold;">--</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1187,8 +1446,532 @@
                 <button class="slide-nav-btn" id="prev-btn" onclick="changeSlide(-1)">
                     &larr; Önceki
                 </button>
-                <div class="slide-indicator" id="slide-indicator">Slayt <span>1</span> / 6</div>
+                <div class="slide-indicator" id="slide-indicator">Slayt <span>1</span> / 8</div>
                 <button class="slide-nav-btn" id="next-btn" onclick="changeSlide(1)">
+                    Sonraki &rarr;
+                </button>
+            </div>
+
+        </div>
+
+        <!-- TECH PRESENTATION MODE LAYOUT -->
+        <div id="tech-presentation-layout" class="slider-wrapper">
+            
+            <!-- Tech Slide 1: Modüler Yapı ve Dosya Ağacı -->
+            <div class="slide-item active" id="tech-slide-0">
+                <div class="section-header">
+                    <svg class="icon-svg" style="fill: var(--purple-neon)" viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0-2-.9-2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg>
+                    1. Modüler Yazılım Mimarisi ve Bağımlılık Ağacı
+                </div>
+                <div class="grid-2col" style="margin-top: 1rem; grid-template-columns: 1fr auto;">
+                    <!-- Sol Panel: Dosya Ağacı -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem;">
+                            <div style="font-family: 'Outfit', sans-serif; font-size: 1.05rem; font-weight: bold; color: var(--cyan-neon); margin-bottom: 0.5rem;">Proje Dizin Ağacı</div>
+                            <div class="file-tree">
+                                <div class="dir-label">📁 confs/ <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">(Konfigürasyon)</span></div>
+                                <ul class="file-tree-sub">
+                                    <li id="file-config" class="active-file" onclick="selectTechFile('config')">📄 config.py</li>
+                                    <li id="file-env_config" onclick="selectTechFile('env_config')">📄 env_config.py</li>
+                                </ul>
+                                <div class="dir-label">📁 simulation/ <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">(Gym / Çevre)</span></div>
+                                <ul class="file-tree-sub">
+                                    <li id="file-pettingzoo_env" onclick="selectTechFile('pettingzoo_env')">📄 pettingzoo_env.py</li>
+                                    <li id="file-controllers" onclick="selectTechFile('controllers')">📄 controllers.py</li>
+                                </ul>
+                                <div class="dir-label">📁 core/ <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">(Fizik & Loglama)</span></div>
+                                <ul class="file-tree-sub">
+                                    <li id="file-physics" onclick="selectTechFile('physics')">📄 physics.py</li>
+                                    <li id="file-logger" onclick="selectTechFile('logger')">📄 logger.py</li>
+                                </ul>
+                                <div class="dir-label">📁 scripts/ <span style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">(Eğitim & Değerlendirme)</span></div>
+                                <ul class="file-tree-sub">
+                                    <li id="file-train" onclick="selectTechFile('train')">📄 train.py</li>
+                                    <li id="file-evaluate_robustness" onclick="selectTechFile('evaluate_robustness')">📄 evaluate_paper_robustness.py</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.6); padding: 1.25rem; min-height: 120px;">
+                            <div id="tech-file-title" style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: bold; color: var(--purple-neon); margin-bottom: 0.5rem;">config.py</div>
+                            <div id="tech-file-body" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+                                Simülasyonun genel çalışma parametrelerini barındırır. Toplam kanal sayısı, simülasyon sınırları ve ana frekans havuzu burada tanımlanır.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sağ Panel: Canvas Bağımlılık Eşlemesi & Parametreler/Detaylar -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.4); padding: 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                            <canvas id="tech-tree-canvas" width="750" height="390" style="background: #090d16; border: 1px solid rgba(168, 85, 247, 0.1); border-radius: 12px; box-shadow: 0 0 15px rgba(0,0,0,0.5);"></canvas>
+                        </div>
+                        <div class="glass-panel" id="tech-file-details" style="background: rgba(15, 23, 42, 0.6); padding: 1.5rem; min-height: 200px; border-color: rgba(56, 189, 248, 0.2);">
+                            <!-- Dinamik Parametre Tablosu / Görev Tanımları buraya gelecek -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tech Slide 2: PettingZoo Ajan-Ortam Gym Döngüsü -->
+            <div class="slide-item" id="tech-slide-1">
+                <div class="section-header">
+                    <svg class="icon-svg" style="fill: var(--purple-neon)" viewBox="0 0 24 24"><path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L4.7 18.7c-1.07-1.63-1.7-3.59-1.7-5.7 0-5.52 4.48-10 10-10zm0 14c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26l1.46-1.46c1.07 1.63 1.7 3.59 1.7 5.7 0 5.52-4.48 10-10 10v-3l-4 4 4 4v-3z"/></svg>
+                    2. PettingZoo Ajan-Ortam Gymnasium Etkileşim Döngüsü
+                </div>
+                <div class="grid-2col" style="margin-top: 1rem; grid-template-columns: 1fr auto;">
+                    <!-- Sol Panel: Döngü Kontrolleri -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem;">
+                            <div style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem;">
+                                Simülasyon, standart RL (Pekiştirmeli Öğrenme) döngüsünü takip eder. Ajan (Jammer), ortamdan (Environment) aldığı normalize <strong>Observation</strong> vektörüne göre <strong>Action</strong> (Kanal & Güç) üretir. Ortam bu aksiyonu uygulayarak yeni durum ve <strong>Reward</strong> (Ödül) döner.
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button class="slide-nav-btn" id="tech-gym-step-btn" onclick="stepTechGym()" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Tek Adım (Step)</button>
+                                <button class="slide-nav-btn" id="tech-gym-play-btn" onclick="toggleTechGymPlay()" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Otomatik Oynat</button>
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto;">
+                                    <label style="font-size: 0.75rem; color: var(--text-muted);">Hız:</label>
+                                    <input type="range" id="tech-gym-speed" min="200" max="2000" value="800" style="width: 80px;" onchange="updateTechGymSpeed()">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.6); padding: 1.25rem; font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <div style="font-weight: bold; color: var(--cyan-neon);">Anlık Döngü Değişkenleri</div>
+                            <div style="display: grid; grid-template-columns: 100px 1fr; gap: 0.5rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.5rem;">
+                                <span style="color:var(--text-muted);">Step Sayısı:</span> <span id="tg-var-step" style="font-family: monospace; color:var(--text-main);">0</span>
+                                <span style="color:var(--text-muted);">Observation (Obs):</span> <span id="tg-var-obs" style="font-family: monospace; color:var(--purple-neon); font-size:0.75rem; word-break: break-all;">[ -- ]</span>
+                                <span style="color:var(--text-muted);">Aksiyon (Action):</span> <span id="tg-var-action" style="font-family: monospace; color:var(--cyan-neon);">--</span>
+                                <span style="color:var(--text-muted);">Ödül (Reward):</span> <span id="tg-var-reward" style="font-family: monospace; color:var(--emerald-neon);">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sağ Panel: Canvas ve Zaman Tüneli Kartı -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.4); padding: 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                            <canvas id="tech-gym-canvas" width="750" height="300" style="background: #090d16; border: 1px solid rgba(168, 85, 247, 0.1); border-radius: 12px; box-shadow: 0 0 15px rgba(0,0,0,0.5);"></canvas>
+                        </div>
+                        <div class="glass-panel" id="tech-gym-timeline" style="background: rgba(15, 23, 42, 0.6); padding: 1.25rem; min-height: 200px; display: flex; flex-direction: column; justify-content: center; border-color: rgba(168, 85, 247, 0.2);">
+                            <!-- Zaman tüneli aşamaları buraya gelecek -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tech Slide 3: Sinyal Fiziği ve Kanal Modeli -->
+            <div class="slide-item" id="tech-slide-2">
+                <div class="section-header">
+                    <svg class="icon-svg" style="fill: var(--purple-neon)" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.4c-1.46-1.99-2.35-4.46-2.35-7.4 0-6.63 5.37-12 12-12s12 5.37 12 12c0 2.94-.89 5.41-2.35 7.4l-1.62-1.79C20.26 16.07 21 14.12 21 12c0-4.97-4.03-9-9-9zm0 4c-2.76 0-5 2.24-5 5 0 1.04.32 2.01.87 2.82L6.35 16.4C5.51 15.11 5 13.61 5 12c0-3.87 3.13-7 7-7s7 3.13 7 7c0 1.61-.51 3.11-1.35 4.4l-1.52-1.58c.55-.81.87-1.78.87-2.82 0-2.76-2.24-5-5-5zm0 4c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                    3. Fizik Motoru: Sinyal Yayılımı, SINR ve Shannon Kapasitesi
+                </div>
+                <div class="grid-2col" style="margin-top: 1rem; grid-template-columns: 1fr auto;">
+                    <!-- Sol Panel: Formüller ve Sürgüler -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem;">
+                            <div class="control-group">
+                                <div class="slider-control">
+                                    <div class="slider-label">
+                                        <span>Uzaklık d (İHA - IoT Düğümü)</span>
+                                        <span id="tg-phys-dist-val">120 m</span>
+                                    </div>
+                                    <input type="range" class="custom-range" id="tg-phys-dist-slider" min="10" max="500" value="120" oninput="updateTechPhys()">
+                                </div>
+                                <div class="slider-control" style="margin-top: 0.5rem;">
+                                    <div class="slider-label">
+                                        <span>İHA Verici Gücü (P<sub>tx</sub>)</span>
+                                        <span id="tg-phys-uav-power-val">0.1 W</span>
+                                    </div>
+                                    <select class="filter-select" id="tg-phys-uav-power-select" onchange="updateTechPhys()" style="padding: 0.5rem; margin-top: 0.25rem; width: 100%;">
+                                        <option value="0.1" selected>0.1 W (20 dBm)</option>
+                                        <option value="0.5">0.5 W (27 dBm)</option>
+                                        <option value="1.0">1.0 W (30 dBm)</option>
+                                    </select>
+                                </div>
+                                <div class="slider-control" style="margin-top: 0.5rem;">
+                                    <div class="slider-label">
+                                        <span>Jammer Güç Seviyesi (P<sub>jam</sub>)</span>
+                                        <span id="tg-phys-jam-power-val">1.0 W</span>
+                                    </div>
+                                    <select class="filter-select" id="tg-phys-jam-power-select" onchange="updateTechPhys()" style="padding: 0.5rem; margin-top: 0.25rem; width: 100%;">
+                                        <option value="0.1">0.1 W (20 dBm)</option>
+                                        <option value="0.5">0.5 W (27 dBm)</option>
+                                        <option value="1.0" selected>1.0 W (30 dBm)</option>
+                                    </select>
+                                </div>
+                                <div class="slider-control" style="margin-top: 0.5rem;">
+                                    <div class="slider-label">
+                                        <span>Çalışma Frekansı (Kanal)</span>
+                                        <span id="tg-phys-freq-val">2.4 GHz</span>
+                                    </div>
+                                    <select class="filter-select" id="tg-phys-freq-select" onchange="updateTechPhys()" style="padding: 0.5rem; margin-top: 0.25rem; width: 100%;">
+                                        <option value="0">Ch 0 (900 MHz) - &eta;<sub>PA</sub> = 60%</option>
+                                        <option value="1">Ch 1 (1.2 GHz) - &eta;<sub>PA</sub> = 55%</option>
+                                        <option value="2" selected>Ch 2 (2.4 GHz) - &eta;<sub>PA</sub> = 50%</option>
+                                        <option value="3">Ch 3 (3.5 GHz) - &eta;<sub>PA</sub> = 40%</option>
+                                        <option value="4">Ch 4 (5.0 GHz) - &eta;<sub>PA</sub> = 30%</option>
+                                        <option value="5">Ch 5 (5.8 GHz) - &eta;<sub>PA</sub> = 22%</option>
+                                        <option value="6">Ch 6 (6.0 GHz) - &eta;<sub>PA</sub> = 18%</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
+                                    <label style="font-size: 0.85rem; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 0.25rem;">
+                                        <input type="checkbox" id="tg-phys-jam-active" checked onchange="updateTechPhys()"> Saldırgan Aktif (Aynı Kanalda)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.6); padding: 1.25rem; font-size: 0.8rem; display: flex; flex-direction: column; gap: 0.4rem;">
+                            <div style="font-weight: bold; color: var(--purple-neon); margin-bottom: 0.25rem;">Canlı Hesap Tablosu</div>
+                            <div style="display: grid; grid-template-columns: 160px 1fr; gap: 0.35rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.4rem;">
+                                <span>İletişim Durumu:</span> <span id="tg-calc-status" style="font-family: monospace; font-weight:bold; font-size:0.9rem;">--</span>
+                                <span>Friis Yol Kaybı (&beta;<sub>0</sub>):</span> <span id="tg-calc-loss" style="font-family: monospace; color:var(--text-main);">--</span>
+                                <span>Alınan Sinyal Gücü (P<sub>rx</sub>):</span> <span id="tg-calc-prx" style="font-family: monospace; color:var(--text-main);">--</span>
+                                <span>Alınan Karıştırma Gücü (P<sub>jam</sub>):</span> <span id="tg-calc-pjam" style="font-family: monospace; color:var(--red-neon); font-weight:bold;">--</span>
+                                <span>PA Verimliliği (&eta;<sub>PA</sub>):</span> <span id="tg-calc-pa" style="font-family: monospace; color:var(--cyan-neon);">--</span>
+                                <span>SINR Seviyesi:</span> <span id="tg-calc-sinr" style="font-family: monospace; font-weight:bold; color:var(--purple-neon);">--</span>
+                                <span>Shannon Kapasitesi (R):</span> <span id="tg-calc-rate" style="font-family: monospace; font-weight:bold; color:var(--emerald-neon);">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sağ Panel: Dalga Grafik Canvası ve IDE -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.4); padding: 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                            <canvas id="tech-phys-canvas" width="750" height="270" style="background: #090d16; border: 1px solid rgba(168, 85, 247, 0.1); border-radius: 12px; box-shadow: 0 0 15px rgba(0,0,0,0.5);"></canvas>
+                        </div>
+                        <div class="ide-code-box" id="tech-phys-code">
+                            <pre><span class="code-keyword">def</span> <span class="code-def">calculate_received_power</span>(p_tx, distance, frequency):
+    c = <span class="code-str">3e8</span>
+    beta_0 = (<span class="code-str">1</span>/<span class="code-str">2.0</span>) * Math.pow((<span class="code-str">4</span> * np.pi * frequency) / c, <span class="code-str">-2</span>)
+<span class="line-hl">    p_rx = p_tx * beta_0 / (distance * distance)</span>
+    <span class="code-keyword">return</span> p_rx</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tech Slide 4: Otonom İHA Kontrol Mekanizması -->
+            <div class="slide-item" id="tech-slide-3">
+                <div class="section-header">
+                    <svg class="icon-svg" style="fill: var(--purple-neon)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 11.9 13 12.5 13 14h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z"/></svg>
+                    4. Otonom İHA Kontrol Mekanizması ve Algoritma Akışı
+                </div>
+                <div class="grid-2col" style="margin-top: 1rem; grid-template-columns: 1fr auto;">
+                    <!-- Sol Panel: Otonom Kontrolcü Kuralları -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem;">
+                            <div style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: bold; color: var(--cyan-neon); margin-bottom: 0.75rem;">UAVRuleBasedController İşleyiş Kuralları</div>
+                            <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.88rem;">
+                                <li>
+                                    <strong style="color: var(--text-main);">1. İşbirlikli Hedef Seçimi (Cooperative Waypoints)</strong>
+                                    <span style="color: var(--text-muted); line-height: 1.4; display: block; padding-left: 1rem;">
+                                        İHA'lar ortak ziyaret edilmemiş havuzunu izler. Kendisine en yakın ve diğer İHA tarafından hedeflenmemiş düğümü seçerek çakışmaları engeller.
+                                    </span>
+                                </li>
+                                <li>
+                                    <strong style="color: var(--text-main);">2. APF ile Otonom Çarpışma Önleme</strong>
+                                    <span style="color: var(--text-muted); line-height: 1.4; display: block; padding-left: 1rem;">
+                                        İHA'lar arası mesafe 50 metrenin altına indiğinde, itici gradyan APF kuvveti (<code style="color: var(--purple-neon);">250 &middot; (1/d - 1/d<sub>safe</sub>) / d<sup>2</sup></code>) yön değiştirerek çarpışmayı engeller.
+                                    </span>
+                                </li>
+                                <li>
+                                    <strong style="color: var(--text-main);">3. Otonom Süzülme (Hovering)</strong>
+                                    <span style="color: var(--text-muted); line-height: 1.4; display: block; padding-left: 1rem;">
+                                        Hedef IoT düğümüne ulaşan İHA, veri toplama fazı için <code style="color: var(--cyan-neon);">hover_duration = 5.0s</code> boyunca süzülür ve hızı sıfırlanır.
+                                    </span>
+                                </li>
+                                <li>
+                                    <strong style="color: var(--text-main);">4. Markovian Akıllı Frekans Atlama</strong>
+                                    <span style="color: var(--text-muted); line-height: 1.4; display: block; padding-left: 1rem;">
+                                        Haberleşme <code style="color: var(--red-neon);">persistence_threshold = 5</code> adım boyunca kesintisiz karıştırılırsa, İHA Markov olasılık matrisi üzerinden dinamik kanal değiştirir.
+                                    </span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Sağ Panel: Senaryo Simülasyonu -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.4); padding: 0.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                            <canvas id="tech-scenario-canvas" width="750" height="315" style="background: #090d16; border: 1px solid rgba(168, 85, 247, 0.1); border-radius: 12px; box-shadow: 0 0 15px rgba(0,0,0,0.5);"></canvas>
+                        </div>
+                        <div class="glass-panel" id="tech-scenario-hud" style="background: rgba(15, 23, 42, 0.6); padding: 1.25rem; font-size: 0.85rem; min-height: 100px;">
+                            <div style="font-weight: bold; color: var(--purple-neon); margin-bottom: 0.5rem;">Canlı Senaryo HUD</div>
+                            <div style="display: grid; grid-template-columns: 140px 1fr; gap: 0.4rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.5rem;">
+                                <span>İHA 0 Hedefi:</span> <span id="scen-uav0-target" style="color:var(--cyan-neon); font-weight:bold;">Düğüm --</span>
+                                <span>İHA 1 Hedefi:</span> <span id="scen-uav1-target" style="color:var(--purple-neon); font-weight:bold;">Düğüm --</span>
+                                <span>Kalan Düğümler:</span> <span id="scen-unvisited-count" style="color:var(--emerald-neon); font-weight:bold;">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tech Slide 5: Durum-Farkında Saldırgan ve Markov Tahmin Tablosu -->
+            <div class="slide-item" id="tech-slide-4">
+                <div class="section-header">
+                    <svg class="icon-svg" style="fill: var(--purple-neon)" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+                    5. Durum-Farkında Zeki Jammer ve Markov Tahmin Öğrenme Matrisi
+                </div>
+                <div class="grid-2col" style="margin-top: 1rem;">
+                    <!-- Sol Panel: İHA Kanalları Seçici ve Detaylar -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem;">
+                            <div style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 0.75rem;">
+                                Zeki Jammer, İHA'nın kanal atlama serisini izleyerek <strong>Kanal Geçiş Sayım Matrisini</strong> günceller. İHA'nın kanal zıplamasını manuel simüle etmek için aşağıdaki butonlara tıklayın:
+                            </div>
+                            <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                                <button class="tab-btn" style="padding:0.4rem 0.6rem; font-size:0.75rem;" onclick="triggerMarkovJump(0)">Ch 0</button>
+                                <button class="tab-btn" style="padding:0.4rem 0.6rem; font-size:0.75rem;" onclick="triggerMarkovJump(1)">Ch 1</button>
+                                <button class="tab-btn" style="padding:0.4rem 0.6rem; font-size:0.75rem;" onclick="triggerMarkovJump(2)">Ch 2</button>
+                                <button class="tab-btn" style="padding:0.4rem 0.6rem; font-size:0.75rem;" onclick="triggerMarkovJump(3)">Ch 3</button>
+                                <button class="tab-btn" style="padding:0.4rem 0.6rem; font-size:0.75rem;" onclick="triggerMarkovJump(4)">Ch 4</button>
+                                <button class="tab-btn" style="padding:0.4rem 0.6rem; font-size:0.75rem;" onclick="triggerMarkovJump(5)">Ch 5</button>
+                                <button class="tab-btn" style="padding:0.4rem 0.6rem; font-size:0.75rem;" onclick="triggerMarkovJump(6)">Ch 6</button>
+                            </div>
+                            <div style="font-size: 0.85rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.5rem; display: flex; flex-direction: column; gap: 0.35rem;">
+                                <div>İHA Anlık Kanalı: <span id="tg-mark-uav-ch" style="color:var(--cyan-neon); font-weight:bold;">Ch 2</span></div>
+                                <div>Jammer Tahmini (Gelecek Kanal): <span id="tg-mark-jam-ch" style="color:var(--purple-neon); font-weight:bold;">Ch 3</span></div>
+                                <div>Eşleşme Durumu: <span id="tg-mark-match" style="font-weight:bold;">--</span></div>
+                            </div>
+                        </div>
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.4); padding: 0.75rem; border-color: rgba(56, 189, 248, 0.2);">
+                            <div style="font-size: 0.85rem; font-weight: bold; color: var(--purple-neon); margin-bottom: 0.25rem;">Geçiş Sayı Matrisi (Ajanın Hafızası)</div>
+                            <table class="markov-grid-table" id="tg-markov-table">
+                                <thead>
+                                    <tr>
+                                        <th>Ch</th>
+                                        <th>C0</th>
+                                        <th>C1</th>
+                                        <th>C2</th>
+                                        <th>C3</th>
+                                        <th>C4</th>
+                                        <th>C5</th>
+                                        <th>C6</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Populated in JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Sağ Panel: Gerçek Markov Matrisi Tablosu -->
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.4); padding: 0.75rem; border-color: rgba(56, 189, 248, 0.2);">
+                            <div style="font-size: 0.85rem; font-weight: bold; color: var(--cyan-neon); margin-bottom: 0.25rem;">Gerçek Markov Geçiş Olasılık Matrisi (Ajanın Öğrenmeye Çalıştığı Kurallar)</div>
+                            <table class="markov-grid-table" id="tg-real-markov-table">
+                                <thead>
+                                    <tr>
+                                        <th>İHA Ch</th>
+                                        <th>C0</th>
+                                        <th>C1</th>
+                                        <th>C2</th>
+                                        <th>C3</th>
+                                        <th>C4</th>
+                                        <th>C5</th>
+                                        <th>C6</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><th>C0</th><td style="color:#f8fafc; font-weight:bold;">10%</td><td style="color:var(--cyan-neon); font-weight:bold; background:rgba(56, 189, 248, 0.15);">60%</td><td>6%</td><td>6%</td><td>6%</td><td>6%</td><td>6%</td></tr>
+                                    <tr><th>C1</th><td>6%</td><td style="color:#f8fafc; font-weight:bold;">10%</td><td style="color:var(--cyan-neon); font-weight:bold; background:rgba(56, 189, 248, 0.15);">60%</td><td>6%</td><td>6%</td><td>6%</td><td>6%</td></tr>
+                                    <tr><th>C2</th><td>6%</td><td>6%</td><td style="color:#f8fafc; font-weight:bold;">10%</td><td style="color:var(--cyan-neon); font-weight:bold; background:rgba(56, 189, 248, 0.15);">60%</td><td>6%</td><td>6%</td><td>6%</td></tr>
+                                    <tr><th>C3</th><td>6%</td><td>6%</td><td>6%</td><td style="color:#f8fafc; font-weight:bold;">10%</td><td style="color:var(--cyan-neon); font-weight:bold; background:rgba(56, 189, 248, 0.15);">60%</td><td>6%</td><td>6%</td></tr>
+                                    <tr><th>C4</th><td>6%</td><td>6%</td><td>6%</td><td>6%</td><td style="color:#f8fafc; font-weight:bold;">10%</td><td style="color:var(--cyan-neon); font-weight:bold; background:rgba(56, 189, 248, 0.15);">60%</td><td>6%</td></tr>
+                                    <tr><th>C5</th><td>6%</td><td>6%</td><td>6%</td><td>6%</td><td>6%</td><td style="color:#f8fafc; font-weight:bold;">10%</td><td style="color:var(--cyan-neon); font-weight:bold; background:rgba(56, 189, 248, 0.15);">60%</td></tr>
+                                    <tr><th>C6</th><td style="color:var(--cyan-neon); font-weight:bold; background:rgba(56, 189, 248, 0.15);">60%</td><td>6%</td><td>6%</td><td>6%</td><td>6%</td><td>6%</td><td style="color:#f8fafc; font-weight:bold;">10%</td></tr>
+                                </tbody>
+                            </table>
+                            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.4rem; line-height:1.3;">
+                                *Not: İHA karıştırıldığında kanal değiştirir. Bulunduğu kanalda kalma olasılığı %10, bir üst kanala geçiş olasılığı %60, diğer kanallara geçiş olasılığı ise %6'dır.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tech Slide 6: Ödül Parametreleri ve Hibrit Ödül Fonksiyonu -->
+            <div class="slide-item" id="tech-slide-5">
+                <div class="section-header">
+                    <svg class="icon-svg" style="fill: var(--purple-neon)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 11.9 13 12.5 13 14h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z"/></svg>
+                    6. Pekiştirmeli Öğrenme Ödül Formülasyonu ve Canlı Hesaplayıcı
+                </div>
+                <div class="grid-2col" style="margin-top: 1rem;">
+                    <!-- Sol Panel: Formül ve Sürgüler -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem;">
+                            <div style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: bold; color: var(--cyan-neon); margin-bottom: 0.5rem;">Hibrit Ödül Formülü</div>
+                            <div style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem;">
+                                Jammer ajanının eğitimi, performansı maksimize ederken enerji tüketimini minimize etmeyi hedefleyen hibrit bir ödül fonksiyonuna ($Reward$) dayanır:
+                            </div>
+                            <div class="math-box" style="font-size: 1rem; border-left-color: var(--cyan-neon); margin: 0.5rem 0;">
+                                <span class="math-expr" style="font-size: 1.05rem;">R = w<sub>success</sub> &middot; N<sub>jammed</sub> - w<sub>power</sub> &middot; P<sub>total</sub> + w<sub>track</sub> &middot; N<sub>matched</sub></span>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;">
+                                <div class="slider-control">
+                                    <div class="slider-label">
+                                        <span>Başarı Ağırlığı (w<sub>success</sub>)</span>
+                                        <span id="rew-ws-val">5.0</span>
+                                    </div>
+                                    <input type="range" class="custom-range" id="rew-ws-slider" min="0" max="10" step="0.5" value="5.0" oninput="updateLiveReward()">
+                                </div>
+                                <div class="slider-control">
+                                    <div class="slider-label">
+                                        <span>Güç Cezası Ağırlığı (w<sub>power</sub>)</span>
+                                        <span id="rew-wp-val">2.0</span>
+                                    </div>
+                                    <input type="range" class="custom-range" id="rew-wp-slider" min="0" max="10" step="0.5" value="2.0" oninput="updateLiveReward()">
+                                </div>
+                                <div class="slider-control">
+                                    <div class="slider-label">
+                                        <span>Tahmin Uyum Ağırlığı (w<sub>track</sub>)</span>
+                                        <span id="rew-wt-val">3.0</span>
+                                    </div>
+                                    <input type="range" class="custom-range" id="rew-wt-slider" min="0" max="10" step="0.5" value="3.0" oninput="updateLiveReward()">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Sağ Panel: Canlı Hesaplayıcı ve İletişim Durumları -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem;">
+                            <div style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: bold; color: var(--purple-neon); margin-bottom: 1rem;">Örnek Senaryo Koşulları</div>
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <label style="font-size:0.85rem; color:var(--text-muted);">Bloke Edilen İHA Sayısı (N<sub>jammed</sub>):</label>
+                                    <select class="filter-select" id="rew-scen-jammed" onchange="updateLiveReward()" style="padding:0.4rem; font-size:0.8rem; width:100px;">
+                                        <option value="0">0 İHA</option>
+                                        <option value="1" selected>1 İHA</option>
+                                        <option value="2">2 İHA</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <label style="font-size:0.85rem; color:var(--text-muted);">Jammer Toplam Gücü (P<sub>total</sub>):</label>
+                                    <select class="filter-select" id="rew-scen-power" onchange="updateLiveReward()" style="padding:0.4rem; font-size:0.8rem; width:100px;">
+                                        <option value="0.1">0.1 W</option>
+                                        <option value="0.5">0.5 W</option>
+                                        <option value="1.0" selected>1.0 W</option>
+                                        <option value="2.0">2.0 W</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <label style="font-size:0.85rem; color:var(--text-muted);">Doğru Kanal Tahmini (N<sub>matched</sub>):</label>
+                                    <select class="filter-select" id="rew-scen-matched" onchange="updateLiveReward()" style="padding:0.4rem; font-size:0.8rem; width:100px;">
+                                        <option value="0">Eşleşmedi (0)</option>
+                                        <option value="1" selected>Eşleşti (1)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.6); padding: 1.25rem; display: flex; flex-direction: column; justify-content: center; align-items: center; border-color: rgba(168, 85, 247, 0.2);">
+                            <div style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 0.25rem;">Anlık Hesaplanan Ödül (Reward)</div>
+                            <div id="rew-calculated-val" style="font-family: 'Outfit', sans-serif; font-size: 2.5rem; font-weight: 800; color: var(--purple-neon); text-shadow: 0 0 15px var(--purple-neon);">6.00</div>
+                            <div id="rew-calculated-desc" style="font-size: 0.78rem; color: var(--text-muted); text-align: center; line-height: 1.4; margin-top: 0.5rem; max-width: 320px;">
+                                Pozitif Ödül: Ajan doğru yolda! Frekansı başarılı bir şekilde bloke ediyor ve tahmin uyumu yüksek.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tech Slide 7: Deneysel Metrikler ve Sonuç Parametreleri -->
+            <div class="slide-item" id="tech-slide-6">
+                <div class="section-header">
+                    <svg class="icon-svg" style="fill: var(--purple-neon)" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                    7. Algoritmaların Karşılaştırmalı Performansı ve Deneysel Metrikler
+                </div>
+                <div class="grid-2col" style="margin-top: 1rem;">
+                    <!-- Sol Panel: Metrik Açıklamaları ve LSTM analizi -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem;">
+                            <div style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: bold; color: var(--cyan-neon); margin-bottom: 0.5rem;">Önemli Başarı Metrikleri</div>
+                            <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.88rem; color: var(--text-muted);">
+                                <li>
+                                    <strong style="color:var(--text-main);">🔹 Jamming Success Ratio (JSR)</strong>
+                                    <span>Jammer'ın İHA'nın veri iletimini başarıyla bloke ettiği adımların toplam simülasyon adımlarına oranı.</span>
+                                </li>
+                                <li>
+                                    <strong style="color:var(--text-main);">🔹 Kanal Uyum Oranı (Match Rate)</strong>
+                                    <span>İHA frekans atladığında, jammer'ın İHA ile aynı kanalı tahmin edip hedefleme yüzdesi.</span>
+                                </li>
+                                <li>
+                                    <strong style="color:var(--text-main);">🔹 Ortalama Güç Tüketimi (W)</strong>
+                                    <span>Jammer'ın kanallara göre PA verimlilik kısıtları altında harcadığı ortalama spektral güç.</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.6); padding: 1.25rem; font-size: 0.85rem; border-color: rgba(168, 85, 247, 0.2);">
+                            <div style="font-weight: bold; color: var(--purple-neon); margin-bottom: 0.5rem;">LSTM Hafıza Analizi</div>
+                            <div style="color:var(--text-muted); line-height:1.45;">
+                                PPO-LSTM modeli, standart PPO ile benzer JSR başarısına ulaşırken <strong>enerji tüketimini %24 oranında azaltmıştır</strong>. LSTM hücresi, geçmiş adımların zaman serisi frekans atlama örüntülerini belleğinde tutarak İHA'nın atlama yapmayacağı adımlarda gücünü kısmış ve yüksek PA verimliliğine sahip kanallarda pusuda beklemiştir.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Sağ Panel: Karşılaştırma Grafikleri & Tablo -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem;">
+                            <div style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: bold; color: var(--cyan-neon); margin-bottom: 0.5rem; display:flex; justify-content:space-between; align-items:center;">
+                                <span>Algoritmalar Arası Kıyaslama</span>
+                                <div style="display:flex; gap:0.25rem;">
+                                    <button class="mode-btn active" id="btn-metric-jsr" onclick="selectMetricView('jsr')" style="padding:0.25rem 0.6rem; font-size:0.75rem;">JSR (%)</button>
+                                    <button class="mode-btn" id="btn-metric-power" onclick="selectMetricView('power')" style="padding:0.25rem 0.6rem; font-size:0.75rem;">Güç (W)</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Dynamic bar chart area -->
+                            <div id="metric-bars-container" class="results-chart-container" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                                <!-- Dynamic bars filled by JS -->
+                            </div>
+                        </div>
+                        <div class="glass-panel" style="background: rgba(15, 23, 42, 0.4); padding: 1rem;">
+                            <table style="font-size:0.78rem; width:100%; text-align:center;">
+                                <thead>
+                                    <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
+                                        <th style="padding:0.4rem; text-align:left; color:var(--text-main);">Algoritma</th>
+                                        <th style="padding:0.4rem; color:var(--text-main);">JSR (%)</th>
+                                        <th style="padding:0.4rem; color:var(--text-main);">Match (%)</th>
+                                        <th style="padding:0.4rem; color:var(--text-main);">Güç (W)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                        <td style="padding:0.4rem; text-align:left; font-weight:bold;">PPO (Önerilen)</td>
+                                        <td style="padding:0.4rem; color:var(--cyan-neon); font-weight:bold;">%57.4</td>
+                                        <td style="padding:0.4rem;">%84.6</td>
+                                        <td style="padding:0.4rem;">0.94W</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                        <td style="padding:0.4rem; text-align:left; font-weight:bold;">PPO-LSTM</td>
+                                        <td style="padding:0.4rem; color:var(--cyan-neon); font-weight:bold;">%53.6</td>
+                                        <td style="padding:0.4rem;">%81.2</td>
+                                        <td style="padding:0.4rem; color:var(--emerald-neon); font-weight:bold;">0.71W</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                        <td style="padding:0.4rem; text-align:left; font-weight:bold;">DQN</td>
+                                        <td style="padding:0.4rem; color:var(--cyan-neon); font-weight:bold;">%29.4</td>
+                                        <td style="padding:0.4rem;">%38.4</td>
+                                        <td style="padding:0.4rem;">0.98W</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:0.4rem; text-align:left; font-weight:bold;">Baseline (QJC)</td>
+                                        <td style="padding:0.4rem; color:var(--red-neon);">%1.9</td>
+                                        <td style="padding:0.4rem; color:var(--red-neon);">%14.3</td>
+                                        <td style="padding:0.4rem;">1.00W</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tech Slider Controls Footer -->
+            <div class="slider-controls">
+                <button class="slide-nav-btn" id="tech-prev-btn" onclick="changeTechSlide(-1)">
+                    &larr; Önceki
+                </button>
+                <div class="slide-indicator" id="tech-slide-indicator">Teknik Slayt <span>1</span> / 7</div>
+                <button class="slide-nav-btn" id="tech-next-btn" onclick="changeTechSlide(1)">
                     Sonraki &rarr;
                 </button>
             </div>
@@ -1199,23 +1982,1358 @@
 
     <script>
         let currentSlide = 0;
-        const totalSlides = 6;
+        const totalSlides = 8;
         let isPresentationMode = true;
+        let activeTab = 0;
 
-        // Switch between Slideshow and Full Dashboard View
-        function switchMode(mode) {
-            isPresentationMode = (mode === 'presentation');
-            
-            document.getElementById('btn-presentation').classList.toggle('active', isPresentationMode);
-            document.getElementById('btn-dashboard').classList.toggle('active', !isPresentationMode);
-            
-            document.getElementById('presentation-layout').classList.toggle('active', isPresentationMode);
-            document.getElementById('dashboard-layout').style.display = isPresentationMode ? 'none' : 'block';
+        // --- TECHNICAL ANIMATION MOTORU ---
+        let current_tech_step = 0;
+        let tech_particles = [];
+        
+        const tech_paths = {
+            0: [{ from: "env", to: "train", color: "#38bdf8", label: "Gözlem (Obs) Vektörü" }],
+            1: [{ from: "train", to: "env", color: "#a855f7", label: "Aksiyon (Action) Vektörü" }],
+            2: [
+                { from: "env", to: "physics", color: "#f97316", label: "Mesafe & Frekans" },
+                { from: "physics", to: "env", color: "#10b981", label: "SINR & Veri Hızı" }
+            ],
+            3: [
+                { from: "env", to: "train", color: "#10b981", label: "Ödül (Reward) Sinyali" },
+                { from: "env", to: "confs", color: "#64748b", label: "Parametre Okuma" }
+            ]
+        };
 
-            if (!isPresentationMode) {
-                buildDashboardView();
+        const tech_step_descriptions = [
+            {
+                title: "Adım 1: Gözlem Vektörü (Observation Flow)",
+                body: "Ortam modülü (<code>pettingzoo_env.py</code>), her bir İHA'nın bağıl uzaklığını (sinyal gücü proxy'si), aktif frekans kanallarını, jammer'ın kendi kanalını ve IoT düğümlerinin Jammer alıcısında ölçülen normalize telsiz sinyal güçlerini (RSSI) birleştirerek normalize edilmiş bir <strong>durum (gözlem) vektörü</strong> oluşturur ve bunu eğitilmiş DRL Ajanına (PPO/DQN) iletir.",
+                flow: "simulation/env ➔ scripts/train"
+            },
+            {
+                title: "Adım 2: APF & Karar Mekanizması (Action Flow)",
+                body: "Derin Pekiştirmeli Öğrenme Ajanı (PPO/DQN), aldığı durum gözlemine göre <code>[Kanal_Kodu, Güç_Seviyesi]</code> aksiyonunu belirleyip ortama iletir. Aynı anda, İHA kontrolcüsü (<code>controllers.py</code>) otonom rotasını belirler ve diğer İHA'lardan kaçınmak için <strong>Yapay Potansiyel Alanı (APF)</strong> kuvvet vektörlerini işletir.",
+                flow: "scripts/train ➔ simulation/env"
+            },
+            {
+                title: "Adım 3: Fizik Motoru ve Sinyal Modeli (Physics Update)",
+                body: "Ortam, <code>core/physics.py</code> modülüne İHA/Jammer koordinatlarını ve çalışma frekanslarını gönderir. Fizik motoru, <strong>Friis Sönümleme modeli</strong> ve <strong>Eş-Kanal Girişimi</strong> formüllerini işleterek anlık SINR ve Shannon bant genişliği kapasitesini ($R = B \\log_2(1+SINR)$) hesaplayarak geri döner.",
+                flow: "simulation/env ⇄ core/physics"
+            },
+            {
+                title: "Adım 4: Ödül ve Metrik Güncellemesi (Update & Reward)",
+                body: "İletişim sonuçlarına göre IoT düğümlerinin enerjisi ve AoI'leri güncellenir. Jammer için başarı odaklı, enerji tüketimi cezalı hibrit <strong>ödül sinyali (reward)</strong> hesaplanarak öğrenme döngüsüne beslenir. Gerekli tüm metrikler <code>core/logger.py</code> ile CSV log dosyalarına yazılır.",
+                flow: "simulation/env ➔ scripts/train (Reward)"
+            }
+        ];
+
+        function initTechParticles(stepIndex) {
+            tech_particles = [];
+            const paths = tech_paths[stepIndex] || [];
+            paths.forEach(path => {
+                for (let p = 0; p < 4; p++) {
+                    tech_particles.push({
+                        from: path.from,
+                        to: path.to,
+                        color: path.color,
+                        progress: p * 0.25,
+                        speed: 0.008 + Math.random() * 0.004
+                    });
+                }
+            });
+        }
+
+        function selectTechStep(stepIndex) {
+            current_tech_step = stepIndex;
+            
+            for (let i = 0; i < 4; i++) {
+                const btn = getActiveElement(`#tech-step-${i}`);
+                if (btn) {
+                    if (i === stepIndex) {
+                        btn.classList.add('active');
+                        btn.style.borderColor = 'var(--purple-neon)';
+                        btn.style.color = 'var(--purple-neon)';
+                    } else {
+                        btn.classList.remove('active');
+                        btn.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+                        btn.style.color = 'var(--text-muted)';
+                    }
+                }
+            }
+            
+            const descTitle = getActiveElement('#tech-desc-title');
+            const descBody = getActiveElement('#tech-desc-body');
+            const flowLabel = getActiveElement('#tech-flow-label');
+            
+            const stepData = tech_step_descriptions[stepIndex];
+            if (descTitle) descTitle.innerHTML = stepData.title;
+            if (descBody) descBody.innerHTML = stepData.body;
+            if (flowLabel) {
+                flowLabel.textContent = stepData.flow;
+                flowLabel.style.color = stepIndex === 0 ? 'var(--cyan-neon)' : 
+                                      stepIndex === 1 ? 'var(--purple-neon)' : 
+                                      stepIndex === 2 ? 'var(--purple-neon)' : 'var(--emerald-neon)';
+            }
+            
+            initTechParticles(stepIndex);
+        }
+
+        function drawTechCanvas() {
+            const canvas = getActiveElement('#tech-canvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.scale(1.5, 1.5);
+            
+            const logicalWidth = 500;
+            const logicalHeight = 400;
+            
+            ctx.fillStyle = '#090d16';
+            ctx.fillRect(0, 0, logicalWidth, logicalHeight);
+            
+            ctx.strokeStyle = 'rgba(168, 85, 247, 0.03)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < logicalWidth; x += 30) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, logicalHeight);
+                ctx.stroke();
+            }
+            for (let y = 0; y < logicalHeight; y += 30) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(logicalWidth, y);
+                ctx.stroke();
+            }
+            
+            const node_coords = {
+                confs: { x: 100, y: 70, name: "confs/ (Ayarlar)", desc: "config.py, env_config.py", color: "#38bdf8" },
+                physics: { x: 100, y: 330, name: "core/physics (Fizik)", desc: "Friis, Shannon, Flight Power", color: "#f97316" },
+                env: { x: 260, y: 200, name: "simulation/env (Ortam)", desc: "pettingzoo_env.py", color: "#10b981" },
+                train: { x: 430, y: 200, name: "scripts/train (Ajan)", desc: "Ray/RLLib, PPO/DQN", color: "#a855f7" }
+            };
+            
+            const drawConnectionLine = (fromNode, toNode, isActive, color, textLabel) => {
+                const f = node_coords[fromNode];
+                const t = node_coords[toNode];
+                if (!f || !t) return;
+                
+                ctx.strokeStyle = isActive ? color : 'rgba(255,255,255,0.05)';
+                ctx.lineWidth = isActive ? 3 : 1;
+                ctx.setLineDash(isActive ? [] : [4, 4]);
+                
+                ctx.beginPath();
+                ctx.moveTo(f.x, f.y);
+                ctx.lineTo(t.x, t.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                if (isActive) {
+                    let cx = (f.x + t.x) / 2;
+                    let cy = (f.y + t.y) / 2;
+                    ctx.fillStyle = color;
+                    ctx.font = 'bold 9px Inter';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(textLabel, cx, cy - 8);
+                }
+            };
+            
+            const activePaths = tech_paths[current_tech_step] || [];
+            
+            drawConnectionLine("confs", "env", false, "#38bdf8", "");
+            drawConnectionLine("env", "physics", false, "#f97316", "");
+            drawConnectionLine("physics", "env", false, "#10b981", "");
+            drawConnectionLine("env", "train", false, "#38bdf8", "");
+            drawConnectionLine("train", "env", false, "#a855f7", "");
+            
+            activePaths.forEach(p => {
+                drawConnectionLine(p.from, p.to, true, p.color, p.label);
+            });
+            
+            tech_particles.forEach(p => {
+                const f = node_coords[p.from];
+                const t = node_coords[p.to];
+                if (!f || !t) return;
+                
+                p.progress += p.speed;
+                if (p.progress >= 1) p.progress = 0;
+                
+                let px = f.x + (t.x - f.x) * p.progress;
+                let py = f.y + (t.y - f.y) * p.progress;
+                
+                ctx.fillStyle = p.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = p.color;
+                ctx.beginPath();
+                ctx.arc(px, py, 4, 0, 2*Math.PI);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            });
+            
+            for (let id in node_coords) {
+                const n = node_coords[id];
+                const w = 120;
+                const h = 46;
+                const rx = n.x - w/2;
+                const ry = n.y - h/2;
+                
+                let isNodeActive = false;
+                activePaths.forEach(p => {
+                    if (p.from === id || p.to === id) isNodeActive = true;
+                });
+                if (current_tech_step === 0 && (id === "env" || id === "train")) isNodeActive = true;
+                if (current_tech_step === 1 && (id === "env" || id === "train")) isNodeActive = true;
+                if (current_tech_step === 2 && (id === "env" || id === "physics")) isNodeActive = true;
+                if (current_tech_step === 3 && (id === "env" || id === "train" || id === "confs")) isNodeActive = true;
+                
+                ctx.shadowBlur = isNodeActive ? 15 : 4;
+                ctx.shadowColor = n.color;
+                
+                ctx.fillStyle = '#111827';
+                ctx.strokeStyle = isNodeActive ? n.color : 'rgba(255, 255, 255, 0.1)';
+                ctx.lineWidth = isNodeActive ? 2.5 : 1;
+                
+                ctx.beginPath();
+                ctx.roundRect(rx, ry, w, h, 6);
+                ctx.fill();
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                
+                ctx.fillStyle = isNodeActive ? '#f8fafc' : '#94a3b8';
+                ctx.font = 'bold 11px Outfit';
+                ctx.textAlign = 'center';
+                ctx.fillText(n.name, n.x, n.y - 4);
+                
+                ctx.fillStyle = '#64748b';
+                ctx.font = '9px Inter';
+                ctx.fillText(n.desc, n.x, n.y + 11);
             }
         }
+
+        // --- SIMULATION SYSTEM MOTORU ---
+        let uavs = [];
+        let attacker = null;
+        let nodes = [];
+        let unvisited_nodes = new Set();
+        let targeted_nodes = {};
+        let is_playing = true;
+        let sim_interval_id = null;
+        let animation_frame_id = null;
+        let current_step = 0;
+        
+        const dt = 5.0; // Adım başına zaman aralığı (saniye)
+        const channels = [0.9e9, 1.2e9, 2.4e9, 3.5e9, 5.0e9, 5.8e9, 6.0e9];
+        const eta_pa_dict = {
+            [0.9e9]: 0.60,
+            [1.2e9]: 0.55,
+            [2.4e9]: 0.50,
+            [3.5e9]: 0.40,
+            [5.0e9]: 0.30,
+            [5.8e9]: 0.22,
+            [6.0e9]: 0.18
+        };
+        
+        // 7 kanallı Markov geçiş matrisi oluşturma (Python simülasyonundaki kurallar ile birebir aynı)
+        const transition_matrix = [];
+        const num_channels = 7;
+        for (let i = 0; i < num_channels; i++) {
+            const row = new Array(num_channels).fill(0);
+            row[i] = 0.1;
+            let next_ch = (i + 1) % num_channels;
+            row[next_ch] = 0.6;
+            let remaining_prob = 0.3;
+            let remaining_count = num_channels - 2;
+            let prob_per_channel = remaining_prob / remaining_count;
+            for (let j = 0; j < num_channels; j++) {
+                if (j !== i && j !== next_ch) {
+                    row[j] = prob_per_channel;
+                }
+            }
+            transition_matrix.push(row);
+        }
+
+        // Fizik motoru hesaplamaları
+        function calculatePathLoss(d, fc) {
+            let c = 3e8;
+            let eta = 2.0; 
+            let beta_0 = (1 / eta) * Math.pow((4 * Math.PI * fc) / c, -2);
+            return beta_0;
+        }
+
+        function calculateJammerPowerConsumption(p_jam_out, freq) {
+            let eta_pa = eta_pa_dict[freq] || 0.35;
+            return (p_jam_out / eta_pa) + 0.1; 
+        }
+
+        function calculateReceivedPower(p_tx, d, beta_0) {
+            d = Math.max(d, 1.0);
+            return p_tx * beta_0 / (d * d);
+        }
+
+        function calculateSinr(p_rx, noise_power, jamming_power) {
+            let interference = noise_power + jamming_power;
+            return p_rx / (interference + 1e-30);
+        }
+
+        function calculateDataRate(bandwidth, sinr) {
+            return bandwidth * Math.log2(1 + sinr);
+        }
+
+        function calculateFlightPower(v) {
+            let P0 = 79.86;
+            let P_IND = 88.63;
+            let U_TIP = 120.0;
+            let V0 = 4.03;
+            let RHO = 1.225;
+            let D0 = 0.6;
+            let S = 0.05;
+            let A = 0.5;
+            
+            if (Math.abs(v) < 0.1) {
+                return P0 + P_IND;
+            }
+            
+            let term1 = P0 * (1 + (3 * v * v) / (U_TIP * U_TIP));
+            let term2 = P_IND * (V0 / v);
+            let term3 = 0.5 * D0 * RHO * S * A * Math.pow(v, 3);
+            return term1 + term2 + term3;
+        }
+
+        function calculateIotEnergy(rate) {
+            let E_ACQ = 1e-5;
+            let P_TX_NODE = 0.158;
+            let L_P = 1024;
+            let P_ENC = 0.01;
+            let T_ENC = 1e-4;
+            
+            let transmission_energy = 0;
+            if (rate <= 1e-9) {
+                transmission_energy = P_TX_NODE * 10.0; 
+            } else {
+                transmission_energy = P_TX_NODE * (L_P / rate);
+            }
+            let encoding_energy = P_ENC * (L_P * T_ENC);
+            return E_ACQ + transmission_energy + encoding_energy;
+        }
+
+        let physics_logs = [];
+        function addPhysicsLog(msg) {
+            let step_prefix = `[Adım ${current_step}] `;
+            physics_logs.push(step_prefix + msg);
+            if (physics_logs.length > 40) {
+                physics_logs.shift();
+            }
+            updateLogDisplay();
+        }
+
+        function updateLogDisplay() {
+            const logEl = getActiveElement('#hud-physics-log');
+            if (!logEl) return;
+            
+            logEl.innerHTML = '';
+            physics_logs.forEach(log => {
+                let div = document.createElement('div');
+                div.style.marginBottom = '4px';
+                div.style.borderLeft = '2px solid var(--purple-neon)';
+                div.style.paddingLeft = '6px';
+                div.textContent = log;
+                logEl.appendChild(div);
+            });
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function getActiveElement(selector) {
+            let container = isPresentationMode ? 
+                document.getElementById('presentation-layout') : 
+                document.getElementById('dashboard-layout');
+            return container ? container.querySelector(selector) : null;
+        }
+
+        function getActiveCanvas() {
+            if (isPresentationMode) {
+                return document.querySelector('#slide-6 #sim-canvas');
+            } else {
+                return document.querySelector('#pane-6 #sim-canvas');
+            }
+        }
+
+        function scaleX(x) {
+            return x * 0.5;
+        }
+        function scaleY(y) {
+            return y * 0.5;
+        }
+
+        // Simülasyon başlatma / sıfırlama
+        function resetSim() {
+            current_step = 0;
+            physics_logs = [];
+            
+            // Düğümleri rastgele ve dengeli yerleştir
+            nodes = [];
+            for (let i = 0; i < 5; i++) {
+                nodes.push({
+                    id: i,
+                    x: Math.random() * 700 + 150, 
+                    y: Math.random() * 700 + 150,
+                    aoi: 0.0,
+                    tx_power: 0.1, 
+                    connection_status: 0,
+                    energy_consumed: 0.0,
+                    sinr: 0.0
+                });
+            }
+            
+            unvisited_nodes = new Set([0, 1, 2, 3, 4]);
+            targeted_nodes = {};
+            
+            // İHA'lar
+            uavs = [];
+            for (let i = 0; i < 2; i++) {
+                let spacing = (i + 1) * (1000.0 / 3.0);
+                uavs.push({
+                    id: i,
+                    x: spacing,
+                    y: spacing,
+                    z: 100.0,
+                    drawX: spacing,
+                    drawY: spacing,
+                    vx: 0,
+                    vy: 0,
+                    current_channel: Math.floor(Math.random() * 7),
+                    total_energy_consumed: 0.0,
+                    hover_timer: 0.0,
+                    is_hovering: false,
+                    target_node: null,
+                    jammed_step_counter: 0,
+                    trail: [{x: spacing, y: spacing}],
+                    rotor_angle: 0
+                });
+            }
+            
+            // Saldırganı (Jammer) başlat
+            let att_ch_el = getActiveElement('#sim-attacker-ch');
+            let initial_attacker_ch = att_ch_el ? parseInt(att_ch_el.value) : 2;
+            attacker = {
+                x: 600.0,
+                y: 600.0,
+                current_channel: initial_attacker_ch,
+                jamming_power: 1.0, 
+                pulse_radius: 0
+            };
+            
+            // İlk hedefleri belirle
+            for (let i = 0; i < uavs.length; i++) {
+                selectNextTarget(i);
+            }
+            
+            addPhysicsLog(`[FİZİK] Ortam sıfırlandı. 2 İHA ve 5 Düğüm yerleştirildi.`);
+            addPhysicsLog(`[KANAL] İHA 0 Kanalı: ${uavs[0].current_channel}, İHA 1 Kanalı: ${uavs[1].current_channel}`);
+            
+            updateHudDisplay();
+        }
+
+        function selectNextTarget(uav_id) {
+            let uav = uavs[uav_id];
+            let unvisited = [];
+            nodes.forEach(n => {
+                if (unvisited_nodes.has(n.id)) {
+                    unvisited.push(n);
+                }
+            });
+            
+            let targeted_by_others = new Set();
+            for (let key in targeted_nodes) {
+                if (parseInt(key) !== uav_id && targeted_nodes[key]) {
+                    targeted_by_others.add(targeted_nodes[key].id);
+                }
+            }
+            
+            let available = unvisited.filter(n => !targeted_by_others.has(n.id));
+            
+            if (available.length === 0) {
+                if (unvisited_nodes.size > 0) {
+                    available = unvisited;
+                } else {
+                    if (uav_id === 0) {
+                        unvisited_nodes.clear();
+                        for (let k = 0; k < nodes.length; k++) {
+                            unvisited_nodes.add(k);
+                        }
+                    }
+                    unvisited = [...nodes];
+                    available = unvisited.filter(n => !targeted_by_others.has(n.id));
+                    if (available.length === 0) {
+                        available = unvisited;
+                    }
+                }
+            }
+            
+            if (available.length > 0) {
+                let closest = available[0];
+                let min_d = Infinity;
+                available.forEach(n => {
+                    let dx = n.x - uav.x;
+                    let dy = n.y - uav.y;
+                    let d = Math.sqrt(dx*dx + dy*dy);
+                    if (d < min_d) {
+                        min_d = d;
+                        closest = n;
+                    }
+                });
+                uav.target_node = closest;
+                targeted_nodes[uav_id] = closest;
+                addPhysicsLog(`[İHA ${uav_id}] Hedef düğüm seçildi: Düğüm ${closest.id}`);
+            } else {
+                uav.target_node = null;
+            }
+        }
+
+        function toggleSimPlay() {
+            is_playing = !is_playing;
+            let play_btn = getActiveElement('#sim-play-btn');
+            if (play_btn) {
+                play_btn.textContent = is_playing ? 'Durdur' : 'Başlat';
+            }
+            addPhysicsLog(is_playing ? `[SİMÜLASYON] Simülasyon devam ettirildi.` : `[SİMÜLASYON] Simülasyon duraklatıldı.`);
+        }
+
+        function setSimAttackerChannel() {
+            let attacker_select = getActiveElement('#sim-attacker-ch');
+            if (attacker && attacker_select) {
+                let old_ch = attacker.current_channel;
+                attacker.current_channel = parseInt(attacker_select.value);
+                let freq_str = (channels[attacker.current_channel] / 1e9).toFixed(1) + " GHz";
+                addPhysicsLog(`[SALDIRGAN] Saldırı kanalı değiştirildi: Kanal ${old_ch} -> Kanal ${attacker.current_channel} (${freq_str})`);
+                updateHudDisplay();
+            }
+        }
+
+        // Fizik adımı
+        function simStep() {
+            if (!is_playing) return;
+            
+            current_step++;
+            
+            // 1. İHA Kontrolleri
+            for (let i = 0; i < uavs.length; i++) {
+                const uav = uavs[i];
+                
+                // Markovian Frekans Atlama Mantığı
+                let target_node = targeted_nodes[i];
+                if (target_node) {
+                    let is_jammed = (target_node.connection_status === 2);
+                    if (is_jammed) {
+                        uav.jammed_step_counter++;
+                    } else {
+                        uav.jammed_step_counter = 0;
+                    }
+                    
+                    if (is_jammed && uav.jammed_step_counter >= 5) {
+                        let current_ch = uav.current_channel;
+                        let probs = transition_matrix[current_ch];
+                        let rand = Math.random();
+                        let cumulative = 0;
+                        let next_ch = current_ch;
+                        for (let c = 0; c < probs.length; c++) {
+                            cumulative += probs[c];
+                            if (rand <= cumulative) {
+                                next_ch = c;
+                                break;
+                            }
+                        }
+                        uav.current_channel = next_ch;
+                        uav.jammed_step_counter = 0;
+                        addPhysicsLog(`[İHA ${i}] 5 adım karıştırıldı! Markov geçişi: Ch ${current_ch} -> Ch ${next_ch}`);
+                    }
+                }
+                
+                // Yönlenme ve APF çarpışma engelleme
+                if (uav.is_hovering) {
+                    uav.hover_timer += 1.0; 
+                    if (uav.hover_timer >= 5.0) {
+                        if (uav.target_node !== null) {
+                            unvisited_nodes.delete(uav.target_node.id);
+                        }
+                        uav.is_hovering = false;
+                        uav.hover_timer = 0.0;
+                        uav.target_node = null;
+                        delete targeted_nodes[i];
+                        
+                        selectNextTarget(i);
+                    } else {
+                        uav.vx = 0;
+                        uav.vy = 0;
+                    }
+                }
+                
+                if (!uav.is_hovering) {
+                    if (uav.target_node === null) {
+                        selectNextTarget(i);
+                    }
+                    
+                    if (uav.target_node !== null) {
+                        let tx = uav.target_node.x;
+                        let ty = uav.target_node.y;
+                        let dx = tx - uav.x;
+                        let dy = ty - uav.y;
+                        let dist = Math.sqrt(dx*dx + dy*dy);
+                        
+                        let step_dist = 25.0; 
+                        let arrival_threshold = Math.max(10.0, step_dist * 1.1);
+                        
+                        if (dist < arrival_threshold) {
+                            uav.is_hovering = true;
+                            uav.hover_timer = 0.0;
+                            uav.vx = 0;
+                            uav.vy = 0;
+                            addPhysicsLog(`[İHA ${i}] Hedefe ulaştı, veri toplamak için süzülüyor.`);
+                        } else {
+                            let vx = (dx / dist) * 5.0;
+                            let vy = (dy / dist) * 5.0;
+                            
+                            // APF Repulsion
+                            let rep_vx = 0;
+                            let rep_vy = 0;
+                            for (let j = 0; j < uavs.length; j++) {
+                                if (i === j) continue;
+                                let other = uavs[j];
+                                let odx = uav.x - other.x;
+                                let ody = uav.y - other.y;
+                                let odist = Math.sqrt(odx*odx + ody*ody);
+                                let safe_dist = 50.0; 
+                                if (odist < safe_dist && odist > 0.1) {
+                                    let rep_dx = odx / odist;
+                                    let rep_dy = ody / odist;
+                                    let magnitude = 250.0 * (1.0 / odist - 1.0 / safe_dist) / (odist * odist);
+                                    magnitude = Math.min(magnitude, 10.0); 
+                                    rep_vx += rep_dx * magnitude;
+                                    rep_vy += rep_dy * magnitude;
+                                }
+                            }
+                            
+                            let final_vx = vx + rep_vx;
+                            let final_vy = vy + rep_vy;
+                            let final_speed = Math.sqrt(final_vx*final_vx + final_vy*final_vy);
+                            if (final_speed > 5.0) {
+                                final_vx = (final_vx / final_speed) * 5.0;
+                                final_vy = (final_vy / final_speed) * 5.0;
+                            }
+                            
+                            uav.vx = final_vx;
+                            uav.vy = final_vy;
+                        }
+                    }
+                }
+                
+                uav.x += uav.vx * dt;
+                uav.y += uav.vy * dt;
+                uav.x = Math.max(10, Math.min(990, uav.x));
+                uav.y = Math.max(10, Math.min(990, uav.y));
+                
+                let speed = Math.sqrt(uav.vx*uav.vx + uav.vy*uav.vy);
+                let flight_power = calculateFlightPower(speed);
+                uav.total_energy_consumed += flight_power * dt;
+                
+                uav.trail.push({x: uav.x, y: uav.y});
+                if (uav.trail.length > 30) {
+                    uav.trail.shift();
+                }
+            }
+            
+            // 2. Kanal Fizikleri & Girişimler
+            for (let i = 0; i < nodes.length; i++) {
+                const node = nodes[i];
+                
+                // En yakın İHA ile ilişkilendir
+                let closest_uav_idx = 0;
+                let min_dist = Infinity;
+                for (let u = 0; u < uavs.length; u++) {
+                    let dx = node.x - uavs[u].x;
+                    let dy = node.y - uavs[u].y;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < min_dist) {
+                        min_dist = dist;
+                        closest_uav_idx = u;
+                    }
+                }
+                
+                let assoc_uav = uavs[closest_uav_idx];
+                node.current_channel = assoc_uav.current_channel;
+                
+                let freq = channels[node.current_channel];
+                let beta_uav = calculatePathLoss(min_dist, freq);
+                
+                let dx_jam = node.x - attacker.x;
+                let dy_jam = node.y - attacker.y;
+                let dist_jam = Math.sqrt(dx_jam*dx_jam + dy_jam*dy_jam);
+                let beta_jam = calculatePathLoss(dist_jam, freq);
+                
+                let p_rx_signal = calculateReceivedPower(node.tx_power, min_dist, beta_uav);
+                
+                let p_rx_jam = 0.0;
+                if (assoc_uav.current_channel === attacker.current_channel) {
+                    p_rx_jam = calculateReceivedPower(attacker.jamming_power, dist_jam, beta_jam);
+                }
+                
+                // Eş-kanal girişimi
+                let p_rx_co_channel = 0.0;
+                for (let k = 0; k < nodes.length; k++) {
+                    if (k === i) continue;
+                    let other_node = nodes[k];
+                    let other_min_dist = Infinity;
+                    let other_assoc_uav_idx = 0;
+                    for (let u = 0; u < uavs.length; u++) {
+                        let dx = other_node.x - uavs[u].x;
+                        let dy = other_node.y - uavs[u].y;
+                        let dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist < other_min_dist) {
+                            other_min_dist = dist;
+                            other_assoc_uav_idx = u;
+                        }
+                    }
+                    let other_assoc_uav = uavs[other_assoc_uav_idx];
+                    if (other_assoc_uav.current_channel === assoc_uav.current_channel) {
+                        let dx_other = other_node.x - assoc_uav.x;
+                        let dy_other = other_node.y - assoc_uav.y;
+                        let dist_other = Math.sqrt(dx_other*dx_other + dy_other*dy_other);
+                        let beta_other = calculatePathLoss(dist_other, freq);
+                        p_rx_co_channel += calculateReceivedPower(other_node.tx_power, dist_other, beta_other);
+                    }
+                }
+                
+                let noise_power = 1e-13;
+                let sinr = calculateSinr(p_rx_signal, noise_power, p_rx_jam + p_rx_co_channel);
+                let sinr_no_jam = calculateSinr(p_rx_signal, noise_power, p_rx_co_channel);
+                
+                let rate = calculateDataRate(2e6, sinr);
+                node.sinr = sinr;
+                
+                let connected_now = sinr > 1.0; 
+                let connected_theoretical = sinr_no_jam > 1.0;
+                
+                let status = 0;
+                if (connected_now) {
+                    status = 0;
+                    node.aoi = 0.0;
+                } else {
+                    if (!connected_theoretical) {
+                        status = 1; 
+                    } else {
+                        status = 2; 
+                    }
+                    node.aoi += dt;
+                }
+                
+                node.connection_status = status;
+                let node_energy = calculateIotEnergy(rate);
+                node.energy_consumed += node_energy;
+            }
+            
+            // Log kayıtları
+            if (current_step % 3 === 0) {
+                let j_count = nodes.filter(n => n.connection_status === 2).length;
+                if (j_count > 0) {
+                    addPhysicsLog(`[HABERLEŞME] Karıştırıcı frekansı İHA ile eşleşti! ${j_count} IoT düğümü bloke.`);
+                } else {
+                    let avgRate = nodes.reduce((acc, n) => acc + calculateDataRate(2e6, n.sinr), 0) / (nodes.length * 1e6);
+                    addPhysicsLog(`[HABERLEŞME] İletişim temiz. Hız: ${avgRate.toFixed(2)} Mbps. Enerji korunuyor.`);
+                }
+            }
+            
+            updateHudDisplay();
+        }
+
+        function manageSimInterval() {
+            let showSim = (isPresentationMode && currentSlide === 6) || (!isPresentationMode && activeTab === 6);
+            let showTech = (isPresentationMode && currentSlide === 7) || (!isPresentationMode && activeTab === 7);
+            
+            if (showSim) {
+                if (!sim_interval_id) {
+                    sim_interval_id = setInterval(simStep, 1000); 
+                }
+            } else {
+                if (sim_interval_id) {
+                    clearInterval(sim_interval_id);
+                    sim_interval_id = null;
+                }
+            }
+            
+            if (showTech) {
+                setTimeout(() => {
+                    selectTechStep(current_tech_step);
+                }, 50);
+            }
+            
+            if (showSim || showTech) {
+                if (!animation_frame_id) {
+                    drawLoop(); 
+                }
+            } else {
+                if (animation_frame_id) {
+                    cancelAnimationFrame(animation_frame_id);
+                    animation_frame_id = null;
+                }
+            }
+        }
+
+        function drawLoop() {
+            let showSim = (isPresentationMode && currentSlide === 6) || (!isPresentationMode && activeTab === 6);
+            let showTech = (isPresentationMode && currentSlide === 7) || (!isPresentationMode && activeTab === 7);
+            
+            if (showSim) {
+                drawSimCanvas();
+            } else if (showTech) {
+                drawTechCanvas();
+            }
+            
+            if (showSim || showTech) {
+                animation_frame_id = requestAnimationFrame(drawLoop);
+            } else {
+                animation_frame_id = null;
+            }
+        }
+
+        function updateHudDisplay() {
+            let u0_pos = getActiveElement('#hud-uav0-pos');
+            let u1_pos = getActiveElement('#hud-uav1-pos');
+            let att_state = getActiveElement('#hud-attacker-state');
+            let apf_status = getActiveElement('#hud-apf-status');
+            let play_btn = getActiveElement('#sim-play-btn');
+            let attacker_select = getActiveElement('#sim-attacker-ch');
+            
+            if (uavs.length >= 2) {
+                let u0 = uavs[0];
+                let u1 = uavs[1];
+                if (u0_pos) u0_pos.innerHTML = `(${u0.x.toFixed(0)}m, ${u0.y.toFixed(0)}m, 100m) / <span style="color:var(--cyan-neon);font-weight:bold;">Ch ${u0.current_channel}</span>`;
+                if (u1_pos) u1_pos.innerHTML = `(${u1.x.toFixed(0)}m, ${u1.y.toFixed(0)}m, 100m) / <span style="color:var(--purple-neon);font-weight:bold;">Ch ${u1.current_channel}</span>`;
+            }
+            
+            if (attacker) {
+                let att_freq = (channels[attacker.current_channel] / 1e9).toFixed(1);
+                let power_total = calculateJammerPowerConsumption(attacker.jamming_power, channels[attacker.current_channel]);
+                if (att_state) att_state.innerHTML = `Kanal ${attacker.current_channel} (${att_freq} GHz) / Güç: ${attacker.jamming_power.toFixed(1)}W (Toplam: ${power_total.toFixed(2)}W)`;
+                if (attacker_select) attacker_select.value = attacker.current_channel;
+            }
+            
+            if (play_btn) {
+                play_btn.textContent = is_playing ? 'Durdur' : 'Başlat';
+            }
+            
+            if (uavs.length >= 2) {
+                let dx = uavs[0].x - uavs[1].x;
+                let dy = uavs[0].y - uavs[1].y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if (apf_status) {
+                    if (dist < 50.0) {
+                        apf_status.innerHTML = `<span style="color:var(--red-neon); font-weight:bold;">APF Aktif (${dist.toFixed(1)}m)</span>`;
+                    } else {
+                        apf_status.innerHTML = `<span style="color:var(--emerald-neon);">Güvenli (${dist.toFixed(1)}m)</span>`;
+                    }
+                }
+            }
+            
+            updateLogDisplay();
+        }
+
+        // Canvas çizimleri
+        function drawSimCanvas() {
+            let canvas = getActiveCanvas();
+            if (!canvas) return;
+            
+            let ctx = canvas.getContext('2d');
+            let width = canvas.width;
+            let height = canvas.height;
+            
+            // Temizleme
+            ctx.fillStyle = '#090d16';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Grid
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.04)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([]);
+            for (let x = 0; x < width; x += 25) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < height; y += 25) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+            
+            // Ölçek çizgisi
+            ctx.fillStyle = 'rgba(148, 163, 184, 0.5)';
+            ctx.font = '10px Inter';
+            ctx.fillText('100m', width - 60, height - 20);
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(width - 60, height - 15);
+            ctx.lineTo(width - 10, height - 15);
+            ctx.stroke();
+            
+            // Jammer yayılım dalgaları
+            if (attacker && is_playing) {
+                attacker.pulse_radius = (attacker.pulse_radius + 1.2) % 150;
+                let p_rad = attacker.pulse_radius;
+                let num_pulses = 3;
+                for (let p = 0; p < num_pulses; p++) {
+                    let r = (p_rad + p * 50) % 150;
+                    let opacity = 1 - (r / 150);
+                    ctx.strokeStyle = `rgba(239, 68, 68, ${opacity * 0.15})`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(scaleX(attacker.x), scaleY(attacker.y), r, 0, 2 * Math.PI);
+                    ctx.stroke();
+                }
+            }
+            
+            // Jammer tower
+            if (attacker) {
+                let ax = scaleX(attacker.x);
+                let ay = scaleY(attacker.y);
+                
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#ef4444';
+                
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.2)';
+                ctx.beginPath();
+                ctx.arc(ax, ay, 12, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(ax, ay, 4, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(ax, ay);
+                ctx.lineTo(ax, ay - 18);
+                ctx.moveTo(ax - 8, ay);
+                ctx.lineTo(ax, ay - 18);
+                ctx.moveTo(ax + 8, ay);
+                ctx.lineTo(ax, ay - 18);
+                ctx.stroke();
+                
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#ef4444';
+                ctx.font = 'bold 11px Outfit';
+                ctx.textAlign = 'center';
+                ctx.fillText(`Jammer (Ch ${attacker.current_channel})`, ax, ay - 24);
+            }
+            
+            // Düğümler
+            nodes.forEach(node => {
+                let nx = scaleX(node.x);
+                let ny = scaleY(node.y);
+                
+                let color = '#64748b'; 
+                let statusStr = 'Menzil Dışı';
+                if (node.connection_status === 0) {
+                    color = '#10b981'; 
+                    statusStr = 'Bağlı';
+                } else if (node.connection_status === 2) {
+                    color = '#ef4444'; 
+                    statusStr = 'Karıştırıldı';
+                }
+                
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = color;
+                ctx.fillStyle = color;
+                
+                ctx.beginPath();
+                ctx.arc(nx, ny, 6, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                if (node.connection_status === 0 && is_playing) {
+                    let ringRadius = 6 + (Date.now() % 1000) / 100;
+                    let opacity = 1 - (ringRadius - 6) / 10;
+                    ctx.strokeStyle = `rgba(16, 185, 129, ${opacity * 0.4})`;
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.arc(nx, ny, ringRadius, 0, 2 * Math.PI);
+                    ctx.stroke();
+                }
+                
+                ctx.shadowBlur = 0;
+                
+                ctx.fillStyle = '#f8fafc';
+                ctx.font = 'bold 10px Outfit';
+                ctx.textAlign = 'center';
+                ctx.fillText(`Node ${node.id}`, nx, ny - 12);
+                
+                ctx.fillStyle = color;
+                ctx.font = '9px Inter';
+                let sinrDb = node.sinr > 0 ? (10 * Math.log10(node.sinr)).toFixed(1) + ' dB' : '-inf dB';
+                ctx.fillText(`${statusStr} (${sinrDb})`, nx, ny + 14);
+            });
+            
+            // APF Çarpışma çizgileri
+            if (uavs.length >= 2) {
+                let u0 = uavs[0];
+                let u1 = uavs[1];
+                let dx = u0.x - u1.x;
+                let dy = u0.y - u1.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                
+                if (dist < 50.0) {
+                    let u0x = scaleX(u0.drawX);
+                    let u0y = scaleY(u0.drawY);
+                    let u1x = scaleX(u1.drawX);
+                    let u1y = scaleY(u1.drawY);
+                    
+                    ctx.strokeStyle = '#f97316';
+                    ctx.lineWidth = 1.5;
+                    ctx.setLineDash([4, 4]);
+                    ctx.beginPath();
+                    ctx.moveTo(u0x, u0y);
+                    ctx.lineTo(u1x, u1y);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    
+                    ctx.strokeStyle = 'rgba(249, 115, 22, 0.4)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(u0x, u0y, scaleX(50), 0, 2 * Math.PI);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(u1x, u1y, scaleX(50), 0, 2 * Math.PI);
+                    ctx.stroke();
+                    
+                    let cx = (u0x + u1x) / 2;
+                    let cy = (u0y + u1y) / 2;
+                    ctx.fillStyle = '#f97316';
+                    ctx.font = 'bold 9px Outfit';
+                    ctx.fillText('APF UYARI', cx, cy - 5);
+                }
+            }
+            
+            // İHA'lar
+            uavs.forEach((uav, index) => {
+                if (is_playing) {
+                    uav.drawX += (uav.x - uav.drawX) * 0.08; // smooth draw pos interpolation
+                    uav.drawY += (uav.y - uav.drawY) * 0.08;
+                    uav.rotor_angle += 0.25;
+                } else {
+                    uav.drawX = uav.x;
+                    uav.drawY = uav.y;
+                }
+                
+                let ux = scaleX(uav.drawX);
+                let uy = scaleY(uav.drawY);
+                
+                // Trail
+                ctx.beginPath();
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = index === 0 ? 'rgba(56, 189, 248, 0.3)' : 'rgba(168, 85, 247, 0.3)';
+                for (let t = 0; t < uav.trail.length; t++) {
+                    let tx = scaleX(uav.trail[t].x);
+                    let ty = scaleY(uav.trail[t].y);
+                    if (t === 0) ctx.moveTo(tx, ty);
+                    else ctx.lineTo(tx, ty);
+                }
+                ctx.stroke();
+                
+                // Iletisim isini
+                if (uav.target_node) {
+                    let targetNode = nodes.find(n => n.id === uav.target_node.id);
+                    if (targetNode) {
+                        let tx = scaleX(targetNode.x);
+                        let ty = scaleY(targetNode.y);
+                        
+                        if (targetNode.connection_status === 0) {
+                            ctx.strokeStyle = 'rgba(16, 185, 129, 0.5)';
+                            ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            ctx.moveTo(ux, uy);
+                            ctx.lineTo(tx, ty);
+                            ctx.stroke();
+                        } else if (targetNode.connection_status === 2) {
+                            ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
+                            ctx.lineWidth = 2;
+                            ctx.setLineDash([3, 3]);
+                            ctx.beginPath();
+                            ctx.moveTo(ux, uy);
+                            ctx.lineTo(tx, ty);
+                            ctx.stroke();
+                            ctx.setLineDash([]);
+                            
+                            let mx = (ux + tx) / 2;
+                            let my = (uy + ty) / 2;
+                            ctx.fillStyle = '#ef4444';
+                            ctx.font = '12px Courier';
+                            ctx.fillText('⚡', mx, my + 4);
+                        } else {
+                            ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
+                            ctx.lineWidth = 1;
+                            ctx.setLineDash([5, 5]);
+                            ctx.beginPath();
+                            ctx.moveTo(ux, uy);
+                            ctx.lineTo(tx, ty);
+                            ctx.stroke();
+                            ctx.setLineDash([]);
+                        }
+                    }
+                }
+                
+                // İHA Quadcopter
+                let color = index === 0 ? '#38bdf8' : '#a855f7';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = color;
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                
+                let armLen = 10;
+                ctx.beginPath();
+                ctx.moveTo(ux - armLen, uy - armLen);
+                ctx.lineTo(ux + armLen, uy + armLen);
+                ctx.moveTo(ux + armLen, uy - armLen);
+                ctx.lineTo(ux - armLen, uy + armLen);
+                ctx.stroke();
+                
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(ux, uy, 4, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Rotors
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = '#f8fafc';
+                ctx.lineWidth = 1;
+                let rotorRad = 4;
+                let armOffsets = [
+                    [-armLen, -armLen],
+                    [armLen, -armLen],
+                    [armLen, armLen],
+                    [-armLen, armLen]
+                ];
+                
+                armOffsets.forEach(offset => {
+                    let rx = ux + offset[0];
+                    let ry = uy + offset[1];
+                    
+                    ctx.beginPath();
+                    ctx.arc(rx, ry, rotorRad, 0, 2 * Math.PI);
+                    ctx.stroke();
+                    
+                    ctx.beginPath();
+                    let dx = Math.cos(uav.rotor_angle) * rotorRad;
+                    let dy = Math.sin(uav.rotor_angle) * rotorRad;
+                    ctx.moveTo(rx - dx, ry - dy);
+                    ctx.lineTo(rx + dx, ry + dy);
+                    ctx.stroke();
+                });
+                
+                ctx.fillStyle = color;
+                ctx.font = 'bold 11px Outfit';
+                ctx.textAlign = 'center';
+                ctx.fillText(`İHA ${index} (Ch ${uav.current_channel})`, ux, uy - 16);
+            });
+        }
+
+        // --- ANIMATED TECHNICAL PRESENTATION JAVASCRIPT ---
+        let currentTechSlide = 0;
+        const totalTechSlides = 7;
+        let activeMode = 'presentation'; // 'presentation', 'tech', 'dashboard'
+
+        // Slayt 1 (Dosya Yapısı) değişkenleri
+        let selected_tree_file = 'config';
+        let active_tree_particles = [];
+        const tech_tree_nodes = {
+            config: { x: 75, y: 55, name: "config.py", color: "#38bdf8" },
+            env_config: { x: 75, y: 195, name: "env_config.py", color: "#38bdf8" },
+            pettingzoo_env: { x: 250, y: 125, name: "pettingzoo_env.py", color: "#10b981" },
+            controllers: { x: 250, y: 220, name: "controllers.py", color: "#10b981" },
+            physics: { x: 420, y: 55, name: "physics.py", color: "#f97316" },
+            logger: { x: 420, y: 135, name: "logger.py", color: "#f97316" },
+            train: { x: 420, y: 220, name: "train.py", color: "#a855f7" },
+            evaluate_robustness: { x: 130, y: 125, name: "evaluate_robustness.py", color: "#a855f7" }
+        };
+        const tech_tree_connections = [
+            { from: "config", to: "env_config", color: "rgba(255,255,255,0.15)" },
+            { from: "env_config", to: "pettingzoo_env", color: "rgba(255,255,255,0.15)" },
+            { from: "env_config", to: "controllers", color: "rgba(255,255,255,0.15)" },
+            { from: "controllers", to: "pettingzoo_env", color: "rgba(255,255,255,0.15)" },
+            { from: "physics", to: "pettingzoo_env", color: "rgba(255,255,255,0.15)" },
+            { from: "logger", to: "pettingzoo_env", color: "rgba(255,255,255,0.15)" },
+            { from: "pettingzoo_env", to: "train", color: "rgba(255,255,255,0.15)" },
+            { from: "pettingzoo_env", to: "evaluate_robustness", color: "rgba(255,255,255,0.15)" }
+        ];
+        
+        const tech_file_details_data = {
+            config: {
+                title: "confs/config.py Parametreleri",
+                type: "parameters",
+                items: [
+                    { name: "GRID_SIZE", value: "1000.0 m", desc: "Simülasyon ızgara boyutu (X ve Y düzleminde operasyon alanı)." },
+                    { name: "CHANNELS", value: "[867.1 - 868.5] MHz", desc: "EU868 standardı 8 kanallı LoRaWAN frekans bandı." },
+                    { name: "NUM_CHANNELS", value: "8", desc: "Toplam kullanılabilir spektral kanal sayısı." }
+                ]
+            },
+            env_config: {
+                title: "confs/env_config.py Parametreleri",
+                type: "parameters",
+                items: [
+                    { name: "NUM_UAVS", value: "3", desc: "Ağdaki veri toplayıcı İHA sayısı." },
+                    { name: "COLLISION_THRESHOLD", value: "50.0 m", desc: "Fiziksel çarpışma/yakınlık analiz eşiği." },
+                    { name: "UAV_FLIGHT_SPEED", value: "5.0 m/s", desc: "İHA'ların fiziksel uçuş hızı." }
+                ]
+            },
+            pettingzoo_env: {
+                title: "simulation/env/pettingzoo_env.py Görevleri",
+                type: "tasks",
+                items: [
+                    { name: "AEC Döngü Yönetimi", desc: "Çoklu ajanların sırayla aksiyon almasını ve gözlem yapmasını sağlayan AEC mimarisi." },
+                    { name: "Reset & Step", desc: "Ortam durumunun sıfırlanması ve ajan aksiyonlarının (kanal seçimi, güç seviyesi) ortama uygulanması." },
+                    { name: "Gözlem Uzayı (Observation Space)", desc: "Jammer ve İHA'lar için bağıl uzaklıkları, aktif kanalları ve IoT düğümlerinin Jammer alıcısındaki normalize telsiz sinyal güçlerini (RSSI) içeren normalize edilmiş vektör." }
+                ]
+            },
+            controllers: {
+                title: "simulation/controllers.py Görevleri",
+                type: "tasks",
+                items: [
+                    { name: "Ortak Ziyaret Havuzu (Shared Pool)", desc: "İHA'ların o an hedeflenmemiş en yakın düğüme yöneldiği işbirlikli rota planlaması." },
+                    { name: "Doğrusal Seyrüsefer", desc: "Hesaplama karmaşıklığını önlemek için APF itici kuvvetleri devre dışı bırakılarak doğrudan uçuş yapılması." }
+                ]
+            },
+            physics: {
+                title: "core/physics.py Görevleri",
+                type: "tasks",
+                items: [
+                    { name: "Friis Yol Kaybı Modeli", desc: "Uzaklığa ve frekansa bağlı olarak sinyal gücü sönümlenmesinin gerçekçi hesabı." },
+                    { name: "SINR Formülasyonu", desc: "Eş-kanal girişimi (Co-channel interference) ve jammer sinyal gücü entegreli SINR hesabı." },
+                    { name: "Shannon Kapasitesi", desc: "Shannon formülüyle kanal bant genişliği üzerinden saniyede iletilen veri hızının hesabı." }
+                ]
+            },
+            logger: {
+                title: "core/logger.py Görevleri",
+                type: "tasks",
+                items: [
+                    { name: "Metrik Kaydı", desc: "Eğitim ve test boyunca JSR (Jamming Success Ratio), Match Rate ve anlık güç tüketimlerinin CSV'ye yazılması." }
+                ]
+            },
+            train: {
+                title: "scripts/train.py Görevleri",
+                type: "tasks",
+                items: [
+                    { name: "Model Eğitimi", desc: "Ray/RLLib platformu üzerinden DQN, PPO ve PPO-LSTM modellerinin paralel olarak eğitilmesi." }
+                ]
+            },
+            evaluate_robustness: {
+                title: "scripts/evaluate_paper_robustness.py Görevleri",
+                type: "tasks",
+                items: [
+                    { name: "Dayanıklılık Değerlendirmesi", desc: "Eğitilmiş modellerin 30 farklı seed (rastgelelik çekirdeği) ile kümülatif performanslarının test edilmesi." }
+                ]
+            }
+        };
+
+        const tech_file_data = {
+            config: {
+                title: "confs/config.py (Genel Sabitler)",
+                body: "Simülasyonun genel çalışma parametrelerini barındırır. Toplam kanal sayısı, simülasyon sınırları ve ana frekans havuzu burada tanımlanır."
+            },
+            env_config: {
+                title: "confs/env_config.py (Çevre Ayarları)",
+                body: "Nesnelerin ve ajanların ortam kısıtlarını tanımlar. İHA sayısı (NUM_UAVS = 3), IoT düğüm sayısı (NUM_NODES = 30), yakınlık analiz sınırları (COLLISION_THRESHOLD = 50.0m) ve İHA uçuş hızı (5.0 m/s) gibi ağ seviyesindeki değişkenleri saklar."
+            },
+            pettingzoo_env: {
+                title: "simulation/env/pettingzoo_env.py (PettingZoo Çevresi)",
+                body: "Gymnasium AEC (Agent-Environment Cycle) standardında çoklu-ajanlı PettingZoo ortamıdır. reset() ve step(actions) metodları ile zaman adımlarını yönetir, gözlem uzayını doldurur ve fizik motoru ile haberleşerek ödülleri dağıtır."
+            },
+            controllers: {
+                title: "simulation/controllers.py (İşbirlikli Kontrolcü)",
+                body: "İHA'ların ortak bir 'Ziyaret Edilmeyen Düğümler Havuzu' üzerinden dinamik ve çakışmasız şekilde en yakın düğüme yönelmesini yönetir. Gecikmeyi ve seyahat süresini minimize etmek için APF itici kuvvetleri devre dışı bırakılmıştır."
+            },
+            physics: {
+                title: "core/physics.py (Fizik & Sinyal Motoru)",
+                body: "Sinyal sönümlenmesini (Path Loss), gürültü ve karıştırıcı seviyesine bağlı SINR (Sinyal-Girişim-Gürültü Oranı) değerini ve Shannon Formülü ile anlık veri toplama kapasitesini ($R = B \\log_2(1+SINR)$) hesaplayan ana matematiksel çekirdektir."
+            },
+            logger: {
+                title: "core/logger.py (Veri Kayıt ve Loglama)",
+                body: "Simülasyon eğitim ve test adımları boyunca anlık veri hızlarını, İHA enerji tüketimlerini ve JSR (Jamming Success Ratio) oranlarını toplar. CSV log dosyaları üreterek eğitim sonrası performans grafiklerinin çizilmesini sağlar."
+            },
+            train: {
+                title: "scripts/train.py (Ajan Eğitim Döngüsü)",
+                body: "Ray/RLLib platformunu veya doğrudan PyTorch DRL (Derin Pekiştirmeli Öğrenme) kütüphanelerini kullanarak zeki jammer (PPO, DQN, PPO-LSTM) modellerini eğitir. Ajanların sinir ağı parametrelerini optimize eder."
+            },
+            evaluate_robustness: {
+                title: "scripts/evaluate_paper_robustness.py (Robustness Değerlendirme)",
+                body: "Eğitilmiş modellerin 30 farklı seed üzerinden dayanıklılığını test eder. Çevresel değişimler, çoklu İHA varlığı ve farklı karıştırma güçleri altında DQN, PPO ve Baseline (QJC) modellerinin kümülatif başarısını karşılaştırır."
+            }
+        };
+
+        // Slayt 2 (PettingZoo Döngüsü) değişkenleri
+        let techGymInterval = null;
+        let isTechGymPlaying = false;
+        let techGymStep = 0;
+        let techGymState = 0; // 0: reset/obs, 1: compute_action, 2: env_step, 3: learn
+        let techGymSpeed = 800;
+        let techGymParticles = [];
+
+        // Slayt 4 (Senaryo Akışı) değişkenleri
+        let tech_scenario_nodes = [];
+        let tech_scenario_uavs = [];
+        let tech_scenario_unvisited = new Set();
+
+        // Slayt 5 (Markov) değişkenleri
+        let active_uav_ch = 2;
+        let predicted_jam_ch = 3;
+        let markov_counts = [
+            [5, 12, 2, 1, 1, 0, 0],
+            [1, 6, 15, 3, 0, 0, 1],
+            [0, 2, 4, 18, 2, 1, 0],
+            [1, 0, 1, 5, 20, 3, 1],
+            [0, 1, 0, 2, 8, 14, 2],
+            [2, 0, 1, 0, 1, 7, 19],
+            [16, 2, 0, 0, 0, 1, 5]
+        ];
+
+        let tech_animation_frame_id = null;
+
+        // Switch between layouts and presentation modes
+        function switchMode(mode) {
+            activeMode = mode;
+            isPresentationMode = (mode === 'presentation');
+            
+            document.getElementById('btn-presentation').classList.toggle('active', mode === 'presentation');
+            document.getElementById('btn-tech-presentation').classList.toggle('active', mode === 'tech');
+            document.getElementById('btn-dashboard').classList.toggle('active', mode === 'dashboard');
+            
+            document.getElementById('presentation-layout').style.display = (mode === 'presentation') ? 'flex' : 'none';
+            document.getElementById('tech-presentation-layout').style.display = (mode === 'tech') ? 'flex' : 'none';
+            document.getElementById('dashboard-layout').style.display = (mode === 'dashboard') ? 'block' : 'none';
+
+            if (mode === 'presentation') {
+                document.getElementById('presentation-layout').classList.add('active');
+            } else {
+                document.getElementById('presentation-layout').classList.remove('active');
+            }
+
+            if (mode === 'tech') {
+                document.getElementById('tech-presentation-layout').classList.add('active');
+                setTimeout(() => {
+                    changeTechSlide(0);
+                }, 50);
+            } else {
+                document.getElementById('tech-presentation-layout').classList.remove('active');
+            }
+
+            if (mode === 'dashboard') {
+                buildDashboardView();
+            }
+            
+            manageSimInterval();
+            manageTechIntervals();
+        }
+
 
         // Slideshow Navigation
         function changeSlide(direction) {
@@ -1239,6 +3357,7 @@
                 } else {
                     resetChartBars();
                 }
+                manageSimInterval();
             }
         }
 
@@ -1282,6 +3401,7 @@
 
         // Tab Navigation inside Dashboard
         function showTab(index) {
+            activeTab = index;
             // Deactivate all tab buttons and panes
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(pane => pane.classList.remove('active'));
@@ -1307,6 +3427,7 @@
                     if (baselineBar) baselineBar.style.width = '1.9%';
                 }, 100);
             }
+            manageSimInterval();
         }
 
         // Search & Filter in Scenario Table
@@ -1336,19 +3457,31 @@
 
         // Probabilistic Calculator
         function calculateProbabilities() {
-            // Read inputs
-            const n = parseInt(document.getElementById('input-n').value);
-            const j = parseInt(document.getElementById('input-j').value);
-            const m = parseInt(document.getElementById('input-m').value);
+            let container = isPresentationMode ? 
+                document.getElementById('presentation-layout') : 
+                document.getElementById('dashboard-layout');
+            if (!container) return;
+            
+            const inputN = container.querySelector('#input-n');
+            const inputJ = container.querySelector('#input-j');
+            const inputM = container.querySelector('#input-m');
+            
+            if (!inputN || !inputJ || !inputM) return;
+            
+            const n = parseInt(inputN.value);
+            const j = parseInt(inputJ.value);
+            const m = parseInt(inputM.value);
 
-            // Bounds constraints
             const boundedJ = Math.min(j, n); 
-            document.getElementById('input-j').max = n; // Jammer count cannot exceed channel count in UI
+            inputJ.max = n; 
 
             // Update Labels
-            document.getElementById('val-n').textContent = n;
-            document.getElementById('val-j').textContent = boundedJ;
-            document.getElementById('val-m').textContent = m;
+            const valN = container.querySelector('#val-n');
+            const valJ = container.querySelector('#val-j');
+            const valM = container.querySelector('#val-m');
+            if (valN) valN.textContent = n;
+            if (valJ) valJ.textContent = boundedJ;
+            if (valM) valM.textContent = m;
 
             // Coverage calculation (assuming coordinated jammers)
             const coverageRate = (boundedJ / n) * 100;
@@ -1398,20 +3531,1136 @@
             setValues('#pane-3');
         }
 
-        // Keyboard Navigation (Left / Right Arrows)
+        // --- TECHNICAL SLIDERS CONTROLLERS & DRAWER LOOPS ---
+        function changeTechSlide(direction) {
+            const nextSlide = currentTechSlide + direction;
+            if (nextSlide >= 0 && nextSlide < totalTechSlides) {
+                document.getElementById(`tech-slide-${currentTechSlide}`).classList.remove('active');
+                currentTechSlide = nextSlide;
+                document.getElementById(`tech-slide-${currentTechSlide}`).classList.add('active');
+                document.querySelector('#tech-slide-indicator span').textContent = currentTechSlide + 1;
+                
+                document.getElementById('tech-prev-btn').disabled = (currentTechSlide === 0);
+                document.getElementById('tech-next-btn').disabled = (currentTechSlide === totalTechSlides - 1);
+                
+                manageTechIntervals();
+            }
+        }
+
+        function manageTechIntervals() {
+            // Reset Gym loop playback
+            if (techGymInterval) {
+                clearInterval(techGymInterval);
+                techGymInterval = null;
+                isTechGymPlaying = false;
+                const playBtn = document.getElementById('tech-gym-play-btn');
+                if (playBtn) playBtn.textContent = 'Otomatik Oynat';
+            }
+
+            const showTechSlide0 = (activeMode === 'tech' && currentTechSlide === 0);
+            const showTechSlide1 = (activeMode === 'tech' && currentTechSlide === 1);
+            const showTechSlide2 = (activeMode === 'tech' && currentTechSlide === 2);
+            const showTechSlide3 = (activeMode === 'tech' && currentTechSlide === 3);
+            const showTechSlide4 = (activeMode === 'tech' && currentTechSlide === 4);
+            const showTechSlide5 = (activeMode === 'tech' && currentTechSlide === 5);
+            const showTechSlide6 = (activeMode === 'tech' && currentTechSlide === 6);
+
+            if (showTechSlide0) {
+                selected_tree_file = 'config';
+                active_tree_particles = [];
+                setTimeout(() => selectTechFile('config'), 50);
+            }
+            if (showTechSlide1) {
+                techGymParticles = [];
+                techGymState = 0;
+                techGymStep = 0;
+                document.getElementById('tg-var-step').textContent = '0';
+                document.getElementById('tg-var-obs').textContent = '[ -- ]';
+                document.getElementById('tg-var-action').textContent = '--';
+                document.getElementById('tg-var-reward').textContent = '--';
+                setTimeout(updateTechGymTimeline, 50);
+            }
+            if (showTechSlide2) {
+                setTimeout(updateTechPhys, 50);
+            }
+            if (showTechSlide3) {
+                setTimeout(initTechScenario, 50);
+            }
+            if (showTechSlide4) {
+                setTimeout(() => triggerMarkovJump(active_uav_ch), 50);
+            }
+            if (showTechSlide5) {
+                setTimeout(updateLiveReward, 50);
+            }
+            if (showTechSlide6) {
+                setTimeout(() => selectMetricView('jsr'), 50);
+            }
+
+            // Tech presentation animation frame management
+            if (activeMode === 'tech') {
+                if (!tech_animation_frame_id) {
+                    techDrawLoop();
+                }
+            } else {
+                if (tech_animation_frame_id) {
+                    cancelAnimationFrame(tech_animation_frame_id);
+                    tech_animation_frame_id = null;
+                }
+            }
+        }
+
+        function techDrawLoop() {
+            if (activeMode !== 'tech') {
+                tech_animation_frame_id = null;
+                return;
+            }
+
+            if (currentTechSlide === 0) {
+                drawTechTreeCanvas();
+            } else if (currentTechSlide === 1) {
+                drawTechGymCanvas();
+            } else if (currentTechSlide === 2) {
+                drawTechPhysCanvas();
+            } else if (currentTechSlide === 3) {
+                drawTechScenarioCanvas();
+            }
+
+            tech_animation_frame_id = requestAnimationFrame(techDrawLoop);
+        }
+
+        // --- SLAYT 1: MODÜLER YAPI ---
+        function selectTechFile(file) {
+            selected_tree_file = file;
+            
+            const items = document.querySelectorAll('.file-tree li');
+            items.forEach(it => {
+                if (it.id === `file-${file}`) {
+                    it.classList.add('active-file');
+                } else {
+                    it.classList.remove('active-file');
+                }
+            });
+            
+            const detailsEl = document.getElementById('tech-file-details');
+            const data = tech_file_details_data[file];
+            if (data && detailsEl) {
+                let html = `<div style="font-family:'Outfit', sans-serif; font-size:1.15rem; font-weight:bold; color:var(--cyan-neon); margin-bottom:1rem;">${data.title}</div>`;
+                if (data.type === 'parameters') {
+                    html += `<table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                        <thead>
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.1); text-align:left;">
+                                <th style="padding:0.5rem; color:var(--text-main);">Parametre</th>
+                                <th style="padding:0.5rem; color:var(--text-main);">Değer</th>
+                                <th style="padding:0.5rem; color:var(--text-main);">Açıklama</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+                    data.items.forEach(item => {
+                        html += `<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                            <td style="padding:0.5rem; font-family:monospace; color:var(--purple-neon); font-weight:bold;">${item.name}</td>
+                            <td style="padding:0.5rem; font-family:monospace; color:var(--emerald-neon); font-weight:bold;">${item.value}</td>
+                            <td style="padding:0.5rem; color:var(--text-muted); line-height:1.4;">${item.desc}</td>
+                        </tr>`;
+                    });
+                    html += `</tbody></table>`;
+                } else {
+                    html += `<ul style="list-style:none; display:flex; flex-direction:column; gap:0.75rem; font-size:0.88rem;">`;
+                    data.items.forEach(item => {
+                        html += `<li>
+                            <strong style="color:var(--text-main); display:block; margin-bottom:0.15rem;">🔹 ${item.name}</strong>
+                            <span style="color:var(--text-muted); line-height:1.4; display:block; padding-left:1.2rem;">${item.desc}</span>
+                        </li>`;
+                    });
+                    html += `</ul>`;
+                }
+                detailsEl.innerHTML = html;
+            }
+            
+            // Pulse particles from dependencies
+            if (file === 'env_config') {
+                triggerTreeParticles('config', 'env_config', '#38bdf8');
+            } else if (file === 'pettingzoo_env') {
+                triggerTreeParticles('env_config', 'pettingzoo_env', '#10b981');
+                triggerTreeParticles('controllers', 'pettingzoo_env', '#10b981');
+                triggerTreeParticles('physics', 'pettingzoo_env', '#10b981');
+                triggerTreeParticles('logger', 'pettingzoo_env', '#10b981');
+            } else if (file === 'controllers') {
+                triggerTreeParticles('env_config', 'controllers', '#10b981');
+            } else if (file === 'physics') {
+                triggerTreeParticles('config', 'physics', '#f97316');
+                triggerTreeParticles('env_config', 'physics', '#f97316');
+            } else if (file === 'logger') {
+                triggerTreeParticles('config', 'logger', '#f97316');
+            } else if (file === 'train') {
+                triggerTreeParticles('pettingzoo_env', 'train', '#a855f7');
+            } else if (file === 'evaluate_robustness') {
+                triggerTreeParticles('pettingzoo_env', 'evaluate_robustness', '#a855f7');
+            }
+        }
+
+        function triggerTreeParticles(fromNode, toNode, color) {
+            for (let i = 0; i < 4; i++) {
+                active_tree_particles.push({
+                    from: fromNode,
+                    to: toNode,
+                    color: color,
+                    progress: i * 0.25,
+                    speed: 0.015
+                });
+            }
+        }
+
+        function drawTechTreeCanvas() {
+            const canvas = document.getElementById('tech-tree-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.scale(1.5, 1.5);
+            
+            const logicalWidth = 500;
+            const logicalHeight = 260;
+            
+            ctx.fillStyle = '#090d16';
+            ctx.fillRect(0, 0, logicalWidth, logicalHeight);
+
+            // Lines
+            tech_tree_connections.forEach(c => {
+                const fromNode = tech_tree_nodes[c.from];
+                const toNode = tech_tree_nodes[c.to];
+                if (!fromNode || !toNode) return;
+                
+                const isRelated = (c.from === selected_tree_file || c.to === selected_tree_file);
+                ctx.strokeStyle = isRelated ? 'rgba(168, 85, 247, 0.45)' : 'rgba(255,255,255,0.06)';
+                ctx.lineWidth = isRelated ? 2 : 1;
+                ctx.beginPath();
+                ctx.moveTo(fromNode.x, fromNode.y);
+                ctx.lineTo(toNode.x, toNode.y);
+                ctx.stroke();
+            });
+
+            // Particles update & draw
+            for (let i = active_tree_particles.length - 1; i >= 0; i--) {
+                const p = active_tree_particles[i];
+                p.progress += p.speed;
+                if (p.progress >= 1.0) {
+                    active_tree_particles.splice(i, 1);
+                    continue;
+                }
+                const fromNode = tech_tree_nodes[p.from];
+                const toNode = tech_tree_nodes[p.to];
+                if (!fromNode || !toNode) continue;
+                
+                const px = fromNode.x + (toNode.x - fromNode.x) * p.progress;
+                const py = fromNode.y + (toNode.y - fromNode.y) * p.progress;
+                
+                ctx.fillStyle = p.color;
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = p.color;
+                ctx.beginPath();
+                ctx.arc(px, py, 4, 0, 2*Math.PI);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            // Nodes
+            for (let name in tech_tree_nodes) {
+                const n = tech_tree_nodes[name];
+                const isActive = (name === selected_tree_file);
+                
+                ctx.fillStyle = '#111827';
+                ctx.strokeStyle = isActive ? n.color : 'rgba(255,255,255,0.15)';
+                ctx.lineWidth = isActive ? 2 : 1;
+                
+                if (isActive) {
+                    ctx.shadowBlur = 12;
+                    ctx.shadowColor = n.color;
+                }
+                
+                ctx.beginPath();
+                ctx.roundRect(n.x - 55, n.y - 18, 110, 36, 6);
+                ctx.fill();
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                ctx.fillStyle = isActive ? '#fff' : '#94a3b8';
+                ctx.font = '10px Inter';
+                ctx.textAlign = 'center';
+                ctx.fillText(n.name, n.x, n.y + 4);
+            }
+        }
+
+        // --- SLAYT 2: PETTINGZOO GYM LOOP ---
+        function toggleTechGymPlay() {
+            isTechGymPlaying = !isTechGymPlaying;
+            const playBtn = document.getElementById('tech-gym-play-btn');
+            if (playBtn) {
+                playBtn.textContent = isTechGymPlaying ? 'Duraklat' : 'Otomatik Oynat';
+            }
+            if (isTechGymPlaying) {
+                runTechGymInterval();
+            } else {
+                if (techGymInterval) {
+                    clearInterval(techGymInterval);
+                    techGymInterval = null;
+                }
+            }
+        }
+
+        function runTechGymInterval() {
+            if (techGymInterval) clearInterval(techGymInterval);
+            techGymInterval = setInterval(() => {
+                stepTechGym();
+            }, techGymSpeed);
+        }
+
+        function updateTechGymSpeed() {
+            const speedSlider = document.getElementById('tech-gym-speed');
+            if (speedSlider) {
+                techGymSpeed = parseInt(speedSlider.value);
+                if (isTechGymPlaying) {
+                    runTechGymInterval();
+                }
+            }
+        }
+
+        function shootGymParticles(fromNode, toNode, color, label) {
+            techGymParticles = [];
+            techGymParticles.push({
+                from: fromNode,
+                to: toNode,
+                color: color,
+                label: label,
+                progress: 0,
+                speed: 0.008
+            });
+        }
+
+        function stepTechGym() {
+            techGymState = (techGymState + 1) % 4;
+            
+            const obsEl = document.getElementById('tg-var-obs');
+            const actEl = document.getElementById('tg-var-action');
+            const rewEl = document.getElementById('tg-var-reward');
+            const stepEl = document.getElementById('tg-var-step');
+
+            if (techGymState === 0) {
+                techGymStep++;
+                if (stepEl) stepEl.textContent = techGymStep;
+                const obs_arr = [
+                    (Math.random() * 200 + 400).toFixed(1),
+                    (Math.random() * 200 + 400).toFixed(1),
+                    Math.floor(Math.random() * 7),
+                    (Math.random() * 5).toFixed(1)
+                ];
+                if (obsEl) obsEl.textContent = `[${obs_arr.join(', ')}]`;
+                if (actEl) actEl.textContent = '--';
+                if (rewEl) rewEl.textContent = '--';
+                
+                shootGymParticles('env', 'agent', '#38bdf8', 'Obs (Gözlem)');
+
+            } else if (techGymState === 1) {
+                shootGymParticles('agent-think', 'agent-think', '#a855f7', 'Hesaplanıyor');
+
+            } else if (techGymState === 2) {
+                const active_ch = Math.floor(Math.random() * 7);
+                const act_power = (Math.random() * 0.8 + 0.2).toFixed(1);
+                if (actEl) actEl.textContent = `Kanal ${active_ch} (${act_power}W)`;
+                
+                shootGymParticles('agent', 'env', '#a855f7', 'Action (Aksiyon)');
+
+            } else if (techGymState === 3) {
+                const reward_val = (Math.random() * 2.0 - 0.5).toFixed(2);
+                if (rewEl) rewEl.textContent = reward_val;
+                
+                shootGymParticles('env', 'agent', '#10b981', 'Reward (Ödül)');
+            }
+            
+            updateTechGymTimeline();
+        }
+
+        function updateTechGymTimeline() {
+            const timelineEl = document.getElementById('tech-gym-timeline');
+            if (!timelineEl) return;
+            
+            const stages = [
+                { title: "Obs: Ortam Gözlemi Alınıyor", desc: "İHA bağıl uzaklığı, aktif spektral durum ve düğüm telsiz sinyal güçleri (RSSI) içeren gözlem vektörü oluşturulup Ajan'a gönderilir.", color: "var(--cyan-neon)" },
+                { title: "Think: Sinir Ağı Karar Alıyor", desc: "Ajan (PPO/DQN), Derin Sinir Ağı'nı (DNN) besleyerek en uygun kanal ve güç dağılımı olasılıklarını hesaplar.", color: "var(--purple-neon)" },
+                { title: "Action: Aksiyon Ortama Uygulanıyor", desc: "Seçilen spektral kanal ve verici gücü aksiyon olarak çevreye iletilir. İHA'lar fiziksel olarak yer değiştirir.", color: "var(--cyan-neon)" },
+                { title: "Learn: Ödül Sinyali ve Ağırlık Güncellemesi", desc: "Fiziksel iletişim sonucunda hesaplanan ödül (Reward) sinyali ile ajan ağ ağırlıklarını (Policy) günceller.", color: "var(--emerald-neon)" }
+            ];
+            
+            let html = `<div style="font-family:'Outfit', sans-serif; font-size:1.1rem; font-weight:bold; color:var(--cyan-neon); margin-bottom:1rem;">Döngü Aşamaları</div>`;
+            html += `<div style="display:flex; flex-direction:column; gap:0.5rem;">`;
+            
+            stages.forEach((stage, idx) => {
+                const isActive = (techGymState === idx);
+                const borderStyle = isActive ? `border-left: 4px solid ${stage.color}; background: rgba(255,255,255,0.03);` : `border-left: 4px solid rgba(255,255,255,0.05); opacity:0.4;`;
+                const textStyle = isActive ? `color: var(--text-main); font-weight:bold;` : `color: var(--text-muted);`;
+                
+                html += `<div style="padding:0.6rem 1rem; border-radius:0 8px 8px 0; transition:all 0.3s; ${borderStyle}">
+                    <span style="font-size:0.88rem; display:block; ${textStyle}">${stage.title}</span>
+                    ${isActive ? `<span style="font-size:0.78rem; color:var(--text-muted); display:block; margin-top:0.25rem; line-height:1.4;">${stage.desc}</span>` : ''}
+                </div>`;
+            });
+            
+            html += `</div>`;
+            timelineEl.innerHTML = html;
+        }
+
+        function drawTechGymCanvas() {
+            const canvas = document.getElementById('tech-gym-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.scale(1.5, 1.5);
+            
+            const logicalWidth = 500;
+            const logicalHeight = 200;
+            
+            ctx.fillStyle = '#090d16';
+            ctx.fillRect(0, 0, logicalWidth, logicalHeight);
+
+            // Draw Env Node
+            ctx.fillStyle = '#111827';
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(40, 55, 110, 80, 8);
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 11px Outfit';
+            ctx.textAlign = 'center';
+            ctx.fillText('simulation/env', 95, 80);
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.7)';
+            ctx.font = '9px Inter';
+            ctx.fillText('pettingzoo_env.py', 95, 100);
+            ctx.fillText('core/physics.py', 95, 115);
+
+            // Draw Agent Node
+            ctx.fillStyle = '#111827';
+            ctx.strokeStyle = '#a855f7';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(350, 55, 110, 80, 8);
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 11px Outfit';
+            ctx.fillText('PPO/DQN Agent', 405, 80);
+            ctx.fillStyle = 'rgba(168, 85, 247, 0.7)';
+            ctx.font = '9px Inter';
+            ctx.fillText('Neural Network', 405, 100);
+            ctx.fillText('scripts/train.py', 405, 115);
+
+            // Draw Connection Path Guides
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+            ctx.lineWidth = 4;
+            // Top path (left to right)
+            ctx.beginPath();
+            ctx.moveTo(150, 85);
+            ctx.lineTo(350, 85);
+            ctx.stroke();
+            // Bottom path (right to left)
+            ctx.beginPath();
+            ctx.moveTo(350, 105);
+            ctx.lineTo(150, 105);
+            ctx.stroke();
+
+            // Render particles
+            techGymParticles.forEach(p => {
+                p.progress += p.speed;
+                if (p.progress >= 1.0) p.progress = 0;
+                
+                let startX, startY, endX, endY;
+                if (p.from === 'env' && p.to === 'agent') {
+                    startX = 150; startY = 85;
+                    endX = 350; endY = 85;
+                } else if (p.from === 'agent' && p.to === 'env') {
+                    startX = 350; startY = 105;
+                    endX = 150; endY = 105;
+                } else {
+                    // Internal thinking animation: animate neural net layers
+                    drawNeuralNetThinking(ctx, 405, 95);
+                    return;
+                }
+                
+                const px = startX + (endX - startX) * p.progress;
+                const py = startY + (endY - startY) * p.progress;
+                
+                ctx.fillStyle = p.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = p.color;
+                ctx.beginPath();
+                ctx.arc(px, py, 5, 0, 2*Math.PI);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 9px Inter';
+                ctx.fillText(p.label, px, py - 8);
+            });
+        }
+
+        function drawNeuralNetThinking(ctx, cx, cy) {
+            const layers = [3, 4, 2];
+            const layerDist = 16;
+            const nodeDist = 8;
+            
+            ctx.strokeStyle = 'rgba(168,85,247,0.15)';
+            ctx.lineWidth = 1;
+            
+            for (let l = 0; l < layers.length - 1; l++) {
+                const count1 = layers[l];
+                const count2 = layers[l+1];
+                const x1 = cx - 25 + l * 25;
+                const x2 = cx - 25 + (l+1) * 25;
+                for (let i = 0; i < count1; i++) {
+                    const y1 = cy - ((count1-1)*nodeDist)/2 + i*nodeDist;
+                    for (let j = 0; j < count2; j++) {
+                        const y2 = cy - ((count2-1)*nodeDist)/2 + j*nodeDist;
+                        ctx.beginPath();
+                        ctx.moveTo(x1, y1);
+                        ctx.lineTo(x2, y2);
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            const timeFactor = Date.now() * 0.01;
+            for (let l = 0; l < layers.length; l++) {
+                const count = layers[l];
+                const x = cx - 25 + l * 25;
+                for (let i = 0; i < count; i++) {
+                    const y = cy - ((count-1)*nodeDist)/2 + i*nodeDist;
+                    const glowIntensity = Math.abs(Math.sin(timeFactor + l*1.5 + i*0.5));
+                    ctx.fillStyle = `rgba(168, 85, 247, ${0.4 + glowIntensity * 0.6})`;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, 2*Math.PI);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // --- SLAYT 3: SİNYAL FİZİĞİ ---
+        function updateTechPhys() {
+            const distance = parseFloat(document.getElementById('tg-phys-dist-slider').value);
+            const freqIndex = parseInt(document.getElementById('tg-phys-freq-select').value);
+            const jamming = document.getElementById('tg-phys-jam-active').checked;
+            
+            const uavPowerSelect = document.getElementById('tg-phys-uav-power-select');
+            const jamPowerSelect = document.getElementById('tg-phys-jam-power-select');
+            
+            const p_tx = uavPowerSelect ? parseFloat(uavPowerSelect.value) : 0.1;
+            const p_jam_tx = jamPowerSelect ? parseFloat(jamPowerSelect.value) : 1.0;
+            
+            if (document.getElementById('tg-phys-uav-power-val')) {
+                document.getElementById('tg-phys-uav-power-val').textContent = p_tx.toFixed(1) + " W";
+            }
+            if (document.getElementById('tg-phys-jam-power-val')) {
+                document.getElementById('tg-phys-jam-power-val').textContent = p_jam_tx.toFixed(1) + " W";
+            }
+            
+            const frequencies = [0.9e9, 1.2e9, 2.4e9, 3.5e9, 5.0e9, 5.8e9, 6.0e9];
+            const fc = frequencies[freqIndex];
+            const efficiency = eta_pa_dict[fc] || 0.35;
+            
+            document.getElementById('tg-phys-dist-val').textContent = distance.toFixed(0) + " m";
+            document.getElementById('tg-phys-freq-val').textContent = (fc / 1e9).toFixed(1) + " GHz";
+            
+            const c = 3e8;
+            const eta = 2.0;
+            const beta_0 = (1 / eta) * Math.pow((4 * Math.PI * fc) / c, -2);
+            const p_rx = p_tx * beta_0 / (distance * distance);
+            
+            const noise = 1e-13;
+            let p_jam = 0.0;
+            if (jamming) {
+                const beta_jam = (1 / eta) * Math.pow((4 * Math.PI * fc) / c, -2);
+                p_jam = p_jam_tx * beta_jam / (150.0 * 150.0);
+            }
+            
+            const sinr = p_rx / (noise + p_jam + 1e-30);
+            const rate = 2e6 * Math.log2(1 + sinr);
+            
+            document.getElementById('tg-calc-loss').textContent = beta_0.toExponential(4);
+            document.getElementById('tg-calc-prx').textContent = p_rx.toExponential(4) + " W";
+            document.getElementById('tg-calc-pjam').textContent = p_jam > 0 ? p_jam.toExponential(4) + " W" : "0.0 W";
+            document.getElementById('tg-calc-pa').textContent = (efficiency * 100).toFixed(0) + "%";
+            document.getElementById('tg-calc-sinr').textContent = (10 * Math.log10(sinr)).toFixed(2) + " dB";
+            document.getElementById('tg-calc-rate').textContent = (rate / 1e6).toFixed(3) + " Mbps";
+            
+            const statusEl = document.getElementById('tg-calc-status');
+            if (statusEl) {
+                if (sinr > 1.0) {
+                    statusEl.innerHTML = `<span style="color:var(--emerald-neon); text-shadow:0 0 10px rgba(16,185,129,0.4);">🟢 BAĞLANTI AKTİF</span>`;
+                } else {
+                    statusEl.innerHTML = `<span style="color:var(--red-neon); text-shadow:0 0 10px rgba(239,68,68,0.4);">🔴 İLETİŞİM KESİLDİ (Bloke)</span>`;
+                }
+            }
+            
+            const codeEl = document.getElementById('tech-phys-code');
+            if (codeEl) {
+                codeEl.innerHTML = `<pre><span class="code-keyword">def</span> <span class="code-def">calculate_received_power</span>(p_tx=<span class="code-str">${p_tx.toFixed(1)}W</span>, distance=<span class="code-str">${distance.toFixed(0)}m</span>, beta_0=<span class="code-str">${beta_0.toExponential(2)}</span>):
+    c = <span class="code-str">3e8</span>
+    beta_0 = (<span class="code-str">1</span>/<span class="code-str">2.0</span>) * Math.pow((<span class="code-str">4</span> * np.pi * frequency) / c, <span class="code-str">-2</span>)
+<span class="line-hl">    p_rx = p_tx * beta_0 / (distance * distance) # = ${p_rx.toExponential(3)}W</span>
+    <span class="code-keyword">return</span> p_rx</pre>`;
+            }
+        }
+
+        function drawTechPhysCanvas() {
+            const canvas = document.getElementById('tech-phys-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.scale(1.5, 1.5);
+            
+            const logicalWidth = 500;
+            const logicalHeight = 180;
+            
+            ctx.fillStyle = '#090d16';
+            ctx.fillRect(0, 0, logicalWidth, logicalHeight);
+
+            const distance = parseFloat(document.getElementById('tg-phys-dist-slider').value);
+            const freqIndex = parseInt(document.getElementById('tg-phys-freq-select').value);
+            const jamming = document.getElementById('tg-phys-jam-active').checked;
+            
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < logicalWidth; x += 30) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0); ctx.lineTo(x, logicalHeight); ctx.stroke();
+            }
+
+            // Draw Node on left
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath();
+            ctx.arc(50, 90, 8, 0, 2*Math.PI);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 9px Outfit';
+            ctx.textAlign = 'center';
+            ctx.fillText('IoT Düğüm', 50, 112);
+
+            // Draw UAV on right
+            const uavX = 140 + (distance / 500) * 310;
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(uavX - 8, 90 - 8); ctx.lineTo(uavX + 8, 90 + 8);
+            ctx.moveTo(uavX + 8, 90 - 8); ctx.lineTo(uavX - 8, 90 + 8);
+            ctx.stroke();
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.arc(uavX, 90, 4, 0, 2*Math.PI);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.fillText('İHA', uavX, 112);
+
+            // Wave draw
+            const timeFactor = Date.now() * 0.006;
+            const amplitude = 30 * Math.max(0.08, 1.0 - (distance / 500.0));
+            const baseFreq = 0.04 + freqIndex * 0.025;
+
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let x = 50; x < uavX; x++) {
+                let noiseOffset = 0;
+                if (jamming && x > (uavX - 50) * 0.4 + 50) {
+                    noiseOffset = (Math.random() - 0.5) * 14;
+                }
+                const y = 90 + Math.sin(x * baseFreq - timeFactor) * amplitude + noiseOffset;
+                if (x === 50) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Draw Jammer at the bottom middle if active
+            if (jamming) {
+                const jamX = (50 + uavX) / 2;
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(jamX, 140, 6, 0, 2*Math.PI);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.fillText('Jammer', jamX, 155);
+
+                ctx.strokeStyle = 'rgba(239,68,68,0.2)';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                ctx.moveTo(jamX, 140);
+                ctx.lineTo(jamX, 90);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        // --- SLAYT 4: SENARYO VE ÇOKLU İHA İŞLEYİŞ MANTIĞI ---
+        function initTechScenario() {
+            tech_scenario_nodes = [
+                { id: 0, x: 80, y: 60, name: "Node 0" },
+                { id: 1, x: 200, y: 160, name: "Node 1" },
+                { id: 2, x: 380, y: 70, name: "Node 2" },
+                { id: 3, x: 150, y: 45, name: "Node 3" },
+                { id: 4, x: 330, y: 150, name: "Node 4" }
+            ];
+            
+            tech_scenario_unvisited.clear();
+            for (let i = 0; i < 5; i++) tech_scenario_unvisited.add(i);
+            
+            tech_scenario_uavs = [
+                { id: 0, x: 50, y: 180, color: '#38bdf8', speed: 1.5, target_node: null, is_hovering: false, hover_timer: 0 },
+                { id: 1, x: 450, y: 180, color: '#a855f7', speed: 1.5, target_node: null, is_hovering: false, hover_timer: 0 }
+            ];
+            
+            selectNextScenarioTarget(0);
+            selectNextScenarioTarget(1);
+        }
+
+        function selectNextScenarioTarget(uav_id) {
+            let uav = tech_scenario_uavs[uav_id];
+            let unvisited = tech_scenario_nodes.filter(n => tech_scenario_unvisited.has(n.id));
+            
+            let targeted_by_other = null;
+            let other_id = 1 - uav_id;
+            if (tech_scenario_uavs[other_id] && tech_scenario_uavs[other_id].target_node) {
+                targeted_by_other = tech_scenario_uavs[other_id].target_node.id;
+            }
+            
+            let available = unvisited.filter(n => n.id !== targeted_by_other);
+            if (available.length === 0) {
+                if (unvisited.length > 0) {
+                    available = unvisited;
+                } else {
+                    // Reset visited pool
+                    for (let i = 0; i < 5; i++) tech_scenario_unvisited.add(i);
+                    unvisited = [...tech_scenario_nodes];
+                    available = unvisited.filter(n => n.id !== targeted_by_other);
+                    if (available.length === 0) available = unvisited;
+                }
+            }
+            
+            if (available.length > 0) {
+                // Find closest
+                let min_d = Infinity;
+                let closest = available[0];
+                available.forEach(n => {
+                    let d = Math.sqrt((n.x - uav.x)**2 + (n.y - uav.y)**2);
+                    if (d < min_d) {
+                        min_d = d;
+                        closest = n;
+                    }
+                });
+                uav.target_node = closest;
+            } else {
+                uav.target_node = null;
+            }
+        }
+
+        function updateTechScenario() {
+            tech_scenario_uavs.forEach((uav, uav_id) => {
+                if (uav.is_hovering) {
+                    uav.hover_timer += 0.05;
+                    if (uav.hover_timer >= 2.0) { // 2 seconds hovering in tech presentation demo
+                        if (uav.target_node) {
+                            tech_scenario_unvisited.delete(uav.target_node.id);
+                        }
+                        uav.is_hovering = false;
+                        uav.hover_timer = 0;
+                        selectNextScenarioTarget(uav_id);
+                    }
+                } else {
+                    if (!uav.target_node) {
+                        selectNextScenarioTarget(uav_id);
+                    }
+                    if (uav.target_node) {
+                        let dx = uav.target_node.x - uav.x;
+                        let dy = uav.target_node.y - uav.y;
+                        let d = Math.sqrt(dx*dx + dy*dy);
+                        if (d < 5.0) {
+                            uav.is_hovering = true;
+                            uav.hover_timer = 0;
+                        } else {
+                            let vx = (dx / d) * uav.speed;
+                            let vy = (dy / d) * uav.speed;
+                            
+                            // APF separation between UAV 0 and UAV 1
+                            let other_uav = tech_scenario_uavs[1 - uav_id];
+                            let odx = uav.x - other_uav.x;
+                            let ody = uav.y - other_uav.y;
+                            let odist = Math.sqrt(odx*odx + ody*ody);
+                            if (odist < 50.0 && odist > 0.1) {
+                                vx += (odx / odist) * 1.2;
+                                vy += (ody / odist) * 1.2;
+                            }
+                            
+                            uav.x += vx;
+                            uav.y += vy;
+                        }
+                    }
+                }
+            });
+            
+            // Update HUD text
+            const u0_tar = document.getElementById('scen-uav0-target');
+            const u1_tar = document.getElementById('scen-uav1-target');
+            const count_el = document.getElementById('scen-unvisited-count');
+            
+            if (u0_tar && tech_scenario_uavs[0]) {
+                const u0 = tech_scenario_uavs[0];
+                u0_tar.textContent = u0.is_hovering ? `Düğüm ${u0.target_node ? u0.target_node.id : '--'} (Süzülüyor)` : `Düğüm ${u0.target_node ? u0.target_node.id : '--'}`;
+            }
+            if (u1_tar && tech_scenario_uavs[1]) {
+                const u1 = tech_scenario_uavs[1];
+                u1_tar.textContent = u1.is_hovering ? `Düğüm ${u1.target_node ? u1.target_node.id : '--'} (Süzülüyor)` : `Düğüm ${u1.target_node ? u1.target_node.id : '--'}`;
+            }
+            if (count_el) {
+                count_el.textContent = Array.from(tech_scenario_unvisited).join(', ') || 'Hepsi Ziyaret Edildi (Sıfırlanıyor)';
+            }
+        }
+
+        function drawTechScenarioCanvas() {
+            const canvas = document.getElementById('tech-scenario-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.scale(1.5, 1.5);
+            
+            const logicalWidth = 500;
+            const logicalHeight = 210;
+            
+            ctx.fillStyle = '#090d16';
+            ctx.fillRect(0, 0, logicalWidth, logicalHeight);
+            
+            // Draw grid
+            ctx.strokeStyle = 'rgba(255,255,255,0.02)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < logicalWidth; x += 30) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, logicalHeight); ctx.stroke();
+            }
+            
+            // Update simulation steps
+            updateTechScenario();
+            
+            if (tech_scenario_uavs.length < 2) return;
+            
+            // Draw Node targets
+            tech_scenario_nodes.forEach(n => {
+                const isUnvisited = tech_scenario_unvisited.has(n.id);
+                ctx.fillStyle = isUnvisited ? '#10b981' : 'rgba(255,255,255,0.15)';
+                ctx.shadowBlur = isUnvisited ? 6 : 0;
+                ctx.shadowColor = '#10b981';
+                
+                ctx.beginPath();
+                ctx.arc(n.x, n.y, 6, 0, 2*Math.PI);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 8px Outfit';
+                ctx.textAlign = 'center';
+                ctx.fillText(`Node ${n.id}`, n.x, n.y - 10);
+            });
+            
+            // Draw UAVs
+            tech_scenario_uavs.forEach((uav, index) => {
+                // Draw target line
+                if (uav.target_node) {
+                    ctx.strokeStyle = index === 0 ? 'rgba(56, 189, 248, 0.25)' : 'rgba(168, 85, 247, 0.25)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([4, 4]);
+                    ctx.beginPath();
+                    ctx.moveTo(uav.x, uav.y);
+                    ctx.lineTo(uav.target_node.x, uav.target_node.y);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+                
+                // Safe zone circle
+                ctx.strokeStyle = index === 0 ? 'rgba(56, 189, 248, 0.12)' : 'rgba(168, 85, 247, 0.12)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(uav.x, uav.y, 25, 0, 2*Math.PI);
+                ctx.stroke();
+                
+                // Draw Mini UAV
+                drawMiniUav(ctx, uav.x, uav.y, uav.color, `İHA ${index}`);
+                
+                // Hovering animation ring
+                if (uav.is_hovering) {
+                    let r = 8 + (Date.now() % 500) / 50;
+                    ctx.strokeStyle = uav.color;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(uav.x, uav.y, r, 0, 2*Math.PI);
+                    ctx.stroke();
+                }
+            });
+            
+            // Warning if UAVs are too close
+            let dx = tech_scenario_uavs[0].x - tech_scenario_uavs[1].x;
+            let dy = tech_scenario_uavs[0].y - tech_scenario_uavs[1].y;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < 50.0) {
+                ctx.strokeStyle = '#f97316';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(tech_scenario_uavs[0].x, tech_scenario_uavs[0].y);
+                ctx.lineTo(tech_scenario_uavs[1].x, tech_scenario_uavs[1].y);
+                ctx.stroke();
+                
+                ctx.fillStyle = '#f97316';
+                ctx.font = 'bold 8px Outfit';
+                ctx.fillText('APF KAÇINMA', (tech_scenario_uavs[0].x + tech_scenario_uavs[1].x)/2, (tech_scenario_uavs[0].y + tech_scenario_uavs[1].y)/2 - 5);
+            }
+        }
+
+        function drawMiniUav(ctx, x, y, color, label) {
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = color;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            
+            let armLen = 7;
+            ctx.beginPath();
+            ctx.moveTo(x - armLen, y - armLen);
+            ctx.lineTo(x + armLen, y + armLen);
+            ctx.moveTo(x + armLen, y - armLen);
+            ctx.lineTo(x - armLen, y + armLen);
+            ctx.stroke();
+            
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, 2*Math.PI);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 8px Outfit';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, x, y - 10);
+        }
+
+        function drawArrow(ctx, fromx, fromy, tox, toy, color, width) {
+            const headlen = 8;
+            const dx = tox - fromx;
+            const dy = toy - fromy;
+            const angle = Math.atan2(dy, dx);
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.beginPath();
+            ctx.moveTo(fromx, fromy);
+            ctx.lineTo(tox, toy);
+            ctx.stroke();
+            
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(tox, toy);
+            ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.fill();
+        }
+
+        // --- SLAYT 5: DURUM-FARKINDA SALDIRGAN & MARKOV ---
+        function triggerMarkovJump(curr_ch) {
+            const prev_ch = active_uav_ch;
+            const old_predicted_jam_ch = predicted_jam_ch;
+            
+            active_uav_ch = curr_ch;
+            
+            // Check match status against the prediction made for this step
+            const matchEl = document.getElementById('tg-mark-match');
+            if (active_uav_ch === old_predicted_jam_ch) {
+                if (matchEl) matchEl.innerHTML = `<span style="color:var(--red-neon); font-weight:bold; text-shadow:0 0 8px var(--red-neon)">💥 BLOKE! (Örüntü Yakalandı)</span>`;
+            } else {
+                if (matchEl) matchEl.innerHTML = `<span style="color:var(--emerald-neon); font-weight:bold;">🟢 TEMİZ (Kaçış Başarılı)</span>`;
+            }
+            
+            // Update tally counts
+            markov_counts[prev_ch][curr_ch]++;
+            
+            // Calculate probabilities row to predict NEXT channel (for the next step)
+            const nextRowSum = markov_counts[curr_ch].reduce((acc, v) => acc + v, 0);
+            const nextProbs = markov_counts[curr_ch].map(v => v / nextRowSum);
+            let maxProbVal = -1;
+            let predicted = 0;
+            for (let c = 0; c < 7; c++) {
+                if (nextProbs[c] > maxProbVal) {
+                    maxProbVal = nextProbs[c];
+                    predicted = c;
+                }
+            }
+            predicted_jam_ch = predicted;
+            
+            // DOM writes
+            const uavChEl = document.getElementById('tg-mark-uav-ch');
+            const jamChEl = document.getElementById('tg-mark-jam-ch');
+            if (uavChEl) uavChEl.textContent = `Ch ${active_uav_ch} (${(channels[active_uav_ch]/1e9).toFixed(1)} GHz)`;
+            if (jamChEl) jamChEl.textContent = `Ch ${predicted_jam_ch} (${(channels[predicted_jam_ch]/1e9).toFixed(1)} GHz)`;
+            
+            renderMarkovTable(prev_ch, curr_ch);
+        }
+
+        function renderMarkovTable(prev_ch, curr_ch) {
+            const tbody = document.querySelector('#tg-markov-table tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            
+            for (let r = 0; r < 7; r++) {
+                const tr = document.createElement('tr');
+                
+                const th = document.createElement('th');
+                th.textContent = `C${r}`;
+                tr.appendChild(th);
+                
+                for (let c = 0; c < 7; c++) {
+                    const td = document.createElement('td');
+                    td.textContent = markov_counts[r][c];
+                    
+                    if (r === prev_ch && c === curr_ch) {
+                        td.className = 'cell-active';
+                    } else if (r === curr_ch && c === predicted_jam_ch) {
+                        td.className = 'cell-highlight';
+                    }
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            }
+        }
+
+        // --- SLAYT 6: ÖDÜL KAZANIMI HESAPLAMA ---
+        function updateLiveReward() {
+            const ws = parseFloat(document.getElementById('rew-ws-slider').value);
+            const wp = parseFloat(document.getElementById('rew-wp-slider').value);
+            const wt = parseFloat(document.getElementById('rew-wt-slider').value);
+            
+            document.getElementById('rew-ws-val').textContent = ws.toFixed(1);
+            document.getElementById('rew-wp-val').textContent = wp.toFixed(1);
+            document.getElementById('rew-wt-val').textContent = wt.toFixed(1);
+            
+            const nJammed = parseInt(document.getElementById('rew-scen-jammed').value);
+            const pTotal = parseFloat(document.getElementById('rew-scen-power').value);
+            const nMatched = parseInt(document.getElementById('rew-scen-matched').value);
+            
+            const reward = (ws * nJammed) - (wp * pTotal) + (wt * nMatched);
+            
+            const valEl = document.getElementById('rew-calculated-val');
+            const descEl = document.getElementById('rew-calculated-desc');
+            
+            if (valEl) {
+                valEl.textContent = (reward >= 0 ? "+" : "") + reward.toFixed(2);
+                if (reward > 0) {
+                    valEl.style.color = 'var(--emerald-neon)';
+                    valEl.style.textShadow = '0 0 15px var(--emerald-neon)';
+                } else if (reward < 0) {
+                    valEl.style.color = 'var(--red-neon)';
+                    valEl.style.textShadow = '0 0 15px var(--red-neon)';
+                } else {
+                    valEl.style.color = 'var(--text-main)';
+                    valEl.style.textShadow = 'none';
+                }
+            }
+            
+            if (descEl) {
+                if (reward > 2.0) {
+                    descEl.textContent = "🏆 Güçlü Pozitif Ödül: Ajan frekansı bloke etmeyi başardı, enerjiyi makul kullandı ve İHA hareket örüntüsüyle uyumlu tahmin üretti.";
+                } else if (reward > 0) {
+                    descEl.textContent = "🟢 Zayıf Pozitif Ödül: Ajan İHA'yı bloke ediyor ancak harcadığı enerji ödülünün bir kısmını götürüyor.";
+                } else if (reward < -2.0) {
+                    descEl.textContent = "🚨 Güçlü Negatif Ceza: İletişim engellenemedi (bloke sıfır) ve jammer gereksiz yere yüksek güç harcayarak cezalandırıldı.";
+                } else {
+                    descEl.textContent = "🟡 Nötr / Düşük Ceza: Bloke başarısız veya harcanan enerji ve başarı dengede kaldı. Ajan yeni stratejiler aramaya teşvik ediliyor.";
+                }
+            }
+        }
+
+        // --- SLAYT 7: ALGORİTMA PERFORMANSLARI MİMARİSİ ---
+        let active_metric_view = 'jsr';
+        
+        function selectMetricView(metric) {
+            active_metric_view = metric;
+            
+            const btnJsr = document.getElementById('btn-metric-jsr');
+            const btnPower = document.getElementById('btn-metric-power');
+            if (btnJsr) btnJsr.classList.toggle('active', metric === 'jsr');
+            if (btnPower) btnPower.classList.toggle('active', metric === 'power');
+            
+            const container = document.getElementById('metric-bars-container');
+            if (!container) return;
+            
+            let barsData = [];
+            if (metric === 'jsr') {
+                barsData = [
+                    { name: "PPO (Önerilen)", val: "%57.4", pct: 57.4, type: "ppo" },
+                    { name: "PPO-LSTM", val: "%53.6", pct: 53.6, type: "lstm" },
+                    { name: "DQN", val: "%29.4", pct: 29.4, type: "dqn" },
+                    { name: "Baseline (QJC)", val: "%1.9", pct: 1.9, type: "baseline" }
+                ];
+            } else {
+                barsData = [
+                    { name: "Baseline (QJC)", val: "1.00 W", pct: 100, type: "baseline" },
+                    { name: "DQN", val: "0.98 W", pct: 98, type: "dqn" },
+                    { name: "PPO (Önerilen)", val: "0.94 W", pct: 94, type: "ppo" },
+                    { name: "PPO-LSTM", val: "0.71 W", pct: 71, type: "lstm" }
+                ];
+            }
+            
+            let html = '';
+            barsData.forEach(bar => {
+                let fillClass = bar.type === 'lstm' ? 'lstm' : 
+                                bar.type === 'dqn' ? 'dqn' : 
+                                bar.type === 'baseline' ? 'baseline' : '';
+                
+                html += `<div class="bar-row">
+                    <span class="bar-label" style="font-size: 0.85rem; width: 120px;">${bar.name}</span>
+                    <div class="bar-track" style="height: 18px;">
+                        <div class="bar-fill ${fillClass}" id="mbar-${bar.type}" style="width: 0%;"></div>
+                    </div>
+                    <span class="bar-value" style="font-size: 0.95rem; width: 60px;">${bar.val}</span>
+                </div>`;
+            });
+            container.innerHTML = html;
+            
+            // Animate after brief delay
+            setTimeout(() => {
+                barsData.forEach(bar => {
+                    const el = document.getElementById(`mbar-${bar.type}`);
+                    if (el) el.style.width = `${bar.pct}%`;
+                });
+            }, 50);
+        }
+
+        // Switch between Slideshow and Full Dashboard View
+        // (Keyboard navigation update for multi-mode)
         document.addEventListener('keydown', (e) => {
-            if (isPresentationMode) {
+            if (activeMode === 'presentation') {
                 if (e.key === 'ArrowRight') {
                     changeSlide(1);
                 } else if (e.key === 'ArrowLeft') {
                     changeSlide(-1);
                 }
+            } else if (activeMode === 'tech') {
+                if (e.key === 'ArrowRight') {
+                    changeTechSlide(1);
+                } else if (e.key === 'ArrowLeft') {
+                    changeTechSlide(-1);
+                }
             }
         });
 
-        // Initialize Slider
+        // Initialize Simulator & Slider
         document.getElementById('prev-btn').disabled = true;
+        document.getElementById('tech-prev-btn').disabled = true;
+        resetSim();
         calculateProbabilities();
+        manageSimInterval();
+
 
     </script>
 </body>
