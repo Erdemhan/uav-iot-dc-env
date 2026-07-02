@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "codebase-memory-mcp": "^0.8.1"
+  }
+}
