@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UAV-IoT Jamming attack Platform - Robustness Report</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #0b0f19;
+            --bg-card: rgba(17, 24, 39, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #f3f4f6;
+            --text-muted: #9ca3af;
+            
+            --color-baseline: #9ca3af;
+            --color-ppo: #10b981;
+            --color-dqn: #ef4444;
+            --color-ppo-lstm: #a855f7;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+
+        .header-title-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-icon {
+            font-size: 32px;
+            color: #3b82f6;
+            filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.4));
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 500;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #3b82f6;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Table styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        th {
+            padding: 12px;
+            font-weight: 700;
+            color: var(--text-primary);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        td {
+            padding: 14px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Image Display Grid */
+        .plots-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+            margin-top: 5px;
+        }
+
+        @media (min-width: 900px) {
+            .plots-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .plot-box {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            min-height: 250px;
+            justify-content: center;
+        }
+
+        .plot-img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: none; /* Show only when loaded */
+        }
+
+        .spinner {
+            font-size: 24px;
+            color: #3b82f6;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-muted);
+            font-size: 13px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="header-title-area">
+                <i class="fa-solid fa-shield-halved header-icon"></i>
+                <div>
+                    <h1>Robustness & Loss Decomposition Report</h1>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                        30 Random Seeds Evaluation (Seeds 100 - 129)
+                    </div>
+                </div>
+            </div>
+            <a href="/" class="back-btn">
+                <i class="fa-solid fa-arrow-left"></i> Back to Training Dashboard
+            </a>
+        </header>
+
+        <!-- Stats Card -->
+        <div class="card">
+            <div class="card-title">
+                <i class="fa-solid fa-table-list"></i>
+                <span>Robustness Statistics</span>
+            </div>
+            <div id="table-container">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 15px; padding: 30px;">
+                    <i class="fa-solid fa-spinner spinner"></i>
+                    <div class="loading-text">Loading robustness evaluation data...<br>This evaluation automatically starts after the training finishes.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plots Card -->
+        <div class="card">
+            <div class="card-title">
+                <i class="fa-solid fa-chart-simple"></i>
+                <span>Evaluation Plots</span>
+            </div>
+            <div class="plots-grid">
+                <div class="plot-box">
+                    <div id="plot1-loading" style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                        <i class="fa-solid fa-spinner spinner"></i>
+                        <span class="loading-text">Waiting for robustness comparison plot...</span>
+                    </div>
+                    <img id="plot1" class="plot-img" alt="Robustness Analysis" onload="document.getElementById('plot1-loading').style.display='none'; this.style.display='block';" onerror="this.style.display='none';">
+                </div>
+                <div class="plot-box">
+                    <div id="plot2-loading" style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                        <i class="fa-solid fa-spinner spinner"></i>
+                        <span class="loading-text">Waiting for loss decomposition plot...</span>
+                    </div>
+                    <img id="plot2" class="plot-img" alt="Loss Decomposition" onload="document.getElementById('plot2-loading').style.display='none'; this.style.display='block';" onerror="this.style.display='none';">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pollInterval = null;
+        let isLoaded = false;
+
+        async function fetchRobustnessData() {
+            try {
+                const response = await fetch('/api/robustness');
+                if (!response.ok) throw new Error('API failed');
+                const data = await response.json();
+
+                if (!data || Object.keys(data).length === 0) {
+                    return; // Still pending
+                }
+
+                // Data loaded!
+                isLoaded = true;
+                if (pollInterval) {
+                    clearInterval(pollInterval);
+                }
+
+                renderTable(data);
+                triggerImageReloads();
+
+            } catch (err) {
+                console.error("Error loading robustness:", err);
+            }
+        }
+
+        function triggerImageReloads() {
+            // Add a cache-busting timestamp to trigger images loading
+            const t = Date.now();
+            const p1 = document.getElementById('plot1');
+            const p2 = document.getElementById('plot2');
+            
+            p1.src = '/api/plots/robustness.png?t=' + t;
+            p2.src = '/api/plots/loss_decomposition.png?t=' + t;
+        }
+
+        function renderTable(data) {
+            const container = document.getElementById('table-container');
+            container.innerHTML = '';
+
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <thead>
+                    <tr style="color: var(--text-primary);">
+                        <th>Algorithm</th>
+                        <th style="color: var(--color-ppo);">JSR (Success)</th>
+                        <th style="color: #3b82f6;">Track (Reachable)</th>
+                        <th style="color: #e67e22;">Power Loss (Gap)</th>
+                        <th style="color: #ef4444;">Channel Loss (Gap)</th>
+                        <th style="color: #ff7b00;">Avg Power</th>
+                        <th style="color: #a855f7;">Avg SINR</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+            `;
+            container.appendChild(table);
+            const tbody = document.getElementById('table-body');
+
+            const algosOrder = [
+                { key: 'Baseline', name: 'Baseline (QJC)', color: 'var(--color-baseline)' },
+                { key: 'PPO', name: 'PPO (Proposed)', color: 'var(--color-ppo)' },
+                { key: 'DQN', name: 'DQN', color: 'var(--color-dqn)' },
+                { key: 'PPO-LSTM', name: 'PPO-LSTM (Recurrent)', color: 'var(--color-ppo-lstm)' }
+            ];
+
+            const getStats = (arr) => {
+                if (!arr || arr.length === 0) return { mean: 0, std: 0 };
+                const n = arr.length;
+                const mean = arr.reduce((a, b) => a + b, 0) / n;
+                const std = Math.sqrt(arr.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / n);
+                return { mean, std };
+            };
+
+            algosOrder.forEach(item => {
+                const algoData = data[item.key];
+                if (!algoData) return;
+
+                const jsr = getStats(algoData.JSR);
+                const trackReach = getStats(algoData.Track_Reachable);
+                const powerGap = getStats(algoData.Power_Gap);
+                const channelGap = getStats(algoData.Channel_Gap);
+                const power = getStats(algoData.Power);
+                const sinr = getStats(algoData.SINR);
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td style="font-weight: 600; color: ${item.color};">${item.name}</td>
+                    <td class="font-mono">${jsr.mean.toFixed(1)}% ± ${jsr.std.toFixed(1)}%</td>
+                    <td class="font-mono">${trackReach.mean.toFixed(1)}% ± ${trackReach.std.toFixed(1)}%</td>
+                    <td class="font-mono">${powerGap.mean.toFixed(1)}% ± ${powerGap.std.toFixed(1)}%</td>
+                    <td class="font-mono">${channelGap.mean.toFixed(1)}% ± ${channelGap.std.toFixed(1)}%</td>
+                    <td class="font-mono">${power.mean.toFixed(3)} W ± ${power.std.toFixed(3)} W</td>
+                    <td class="font-mono">${sinr.mean.toFixed(2)} dB ± ${sinr.std.toFixed(2)} dB</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Start checking
+        fetchRobustnessData();
+        pollInterval = setInterval(() => {
+            if (!isLoaded) {
+                fetchRobustnessData();
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

@@ -424,130 +424,24 @@ def main():
         DashboardState.end_time = time.time()
         return
     
-    # Run evaluations
+    # Run robustness evaluation directly
     print("="*80)
-    print("Running Evaluations...")
+    print("Running 30-seed Robustness Evaluation (30 random seeds)...")
     print("="*80 + "\n")
     
-    eval_trainer = ParallelTrainer(run_dir, stage="EVALUATION", debug=args.debug, update_interval=args.ui)
-    DashboardState.current_trainer = eval_trainer
-    DashboardState.stage = "EVALUATION"
+    DashboardState.stage = "ROBUSTNESS"
+    DashboardState.current_trainer = None
     
-    if args.parallel:
-        eval_trainer.start_training(
-            "Baseline",
-            f"{sys.executable} -u scripts/evaluate.py --algo Baseline --dir {baseline_dir} --no-viz --output-dir {os.path.join(baseline_dir, 'evaluation')}",
-            baseline_dir
-        )
-        
-        eval_trainer.start_training(
-            "PPO",
-            f"{sys.executable} -u scripts/evaluate.py --algo PPO --dir {ppo_dir} --no-viz --output-dir {os.path.join(ppo_dir, 'evaluation')}",
-            ppo_dir
-        )
-        
-        eval_trainer.start_training(
-            "DQN",
-            f"{sys.executable} -u scripts/evaluate.py --algo DQN --dir {dqn_dir} --no-viz --output-dir {os.path.join(dqn_dir, 'evaluation')}",
-            dqn_dir
-        )
-        
-        eval_trainer.start_training(
-            "PPO-LSTM",
-            f"{sys.executable} -u scripts/evaluate.py --algo PPO-LSTM --dir {ppo_lstm_dir} --no-viz --output-dir {os.path.join(ppo_lstm_dir, 'evaluation')}",
-            ppo_lstm_dir
-        )
-        
-        eval_trainer.display_progress(sequential=False)
-        eval_trainer.wait_for_completion()
-    else:
-        eval_trainer.status = {
-            "Baseline": "PENDING",
-            "PPO": "PENDING",
-            "DQN": "PENDING",
-            "PPO-LSTM": "PENDING"
-        }
-        eval_trainer.is_finished = False
-        
-        display_thread = threading.Thread(target=eval_trainer.display_progress, args=(True,))
-        display_thread.daemon = True
-        display_thread.start()
-        
-        # 1. Baseline
-        eval_trainer.start_training(
-            "Baseline",
-            f"{sys.executable} -u scripts/evaluate.py --algo Baseline --dir {baseline_dir} --no-viz --output-dir {os.path.join(baseline_dir, 'evaluation')}",
-            baseline_dir
-        )
-        while eval_trainer.status["Baseline"] in ["PENDING", "RUNNING"]:
-            time.sleep(0.5)
-        if eval_trainer.status["Baseline"] == "FAILED":
-            eval_trainer.is_finished = True
-            display_thread.join()
-            
-        # 2. PPO
-        if eval_trainer.status["Baseline"] == "COMPLETED":
-            eval_trainer.start_training(
-                "PPO",
-                f"{sys.executable} -u scripts/evaluate.py --algo PPO --dir {ppo_dir} --no-viz --output-dir {os.path.join(ppo_dir, 'evaluation')}",
-                ppo_dir
-            )
-            while eval_trainer.status["PPO"] in ["PENDING", "RUNNING"]:
-                time.sleep(0.5)
-            if eval_trainer.status["PPO"] == "FAILED":
-                eval_trainer.is_finished = True
-                display_thread.join()
-                
-        # 3. DQN
-        if eval_trainer.status["PPO"] == "COMPLETED":
-            eval_trainer.start_training(
-                "DQN",
-                f"{sys.executable} -u scripts/evaluate.py --algo DQN --dir {dqn_dir} --no-viz --output-dir {os.path.join(dqn_dir, 'evaluation')}",
-                dqn_dir
-            )
-            while eval_trainer.status["DQN"] in ["PENDING", "RUNNING"]:
-                time.sleep(0.5)
-            if eval_trainer.status["DQN"] == "FAILED":
-                eval_trainer.is_finished = True
-                display_thread.join()
-                
-        # 4. PPO-LSTM
-        if eval_trainer.status["DQN"] == "COMPLETED":
-            eval_trainer.start_training(
-                "PPO-LSTM",
-                f"{sys.executable} -u scripts/evaluate.py --algo PPO-LSTM --dir {ppo_lstm_dir} --no-viz --output-dir {os.path.join(ppo_lstm_dir, 'evaluation')}",
-                ppo_lstm_dir
-            )
-            while eval_trainer.status["PPO-LSTM"] in ["PENDING", "RUNNING"]:
-                time.sleep(0.5)
-                
-        eval_trainer.is_finished = True
-        display_thread.join()
+    ret_robust = subprocess.call(f"{sys.executable} scripts/evaluate_paper_robustness.py --run-dir {run_dir}", shell=True)
     
-    # Check evaluation results
-    if all(s == "COMPLETED" for s in eval_trainer.status.values()):
-        print("\n[OK] All evaluations completed!\n")
-    else:
-        print("\n[FAIL] Some evaluations failed.\n")
-        DashboardState.stage = "FAILED"
-        DashboardState.end_time = time.time()
-        return
-    
-    # Generate comparison
-    print("="*70)
-    print("Generating Comparison Plots...")
-    print("="*70 + "\n")
-    
-    ret = subprocess.call(f"{sys.executable} visualization/compare.py --run-dir {run_dir}", shell=True)
-    
-    if ret == 0:
+    if ret_robust == 0:
         DashboardState.stage = "COMPLETED"
         DashboardState.end_time = time.time()
-        print(f"\n[OK] Experiment Complete! Results in: {run_dir}\n")
+        print(f"\n[OK] Experiment & Robustness Evaluation Complete! Results in: {run_dir}\n")
     else:
         DashboardState.stage = "FAILED"
         DashboardState.end_time = time.time()
-        print("\n[FAIL] Comparison generation failed.\n")
+        print("\n[FAIL] Robustness evaluation failed.\n")
         
     print("\n[DASHBOARD] Press Enter in this console to exit and close the dashboard...")
     input()

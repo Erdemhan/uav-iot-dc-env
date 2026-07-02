@@ -149,6 +149,12 @@
             color: #e9d5ff;
         }
 
+        .stage-badge.robustness {
+            background: rgba(245, 158, 11, 0.15);
+            border-color: rgba(245, 158, 11, 0.3);
+            color: #fde047;
+        }
+
         .stage-badge.completed {
             background: rgba(16, 185, 129, 0.15);
             border-color: rgba(16, 185, 129, 0.3);
@@ -503,7 +509,11 @@
                     </div>
                 </div>
             </div>
-            <div class="header-status-area">
+            <div class="header-status-area" style="display: flex; align-items: center; gap: 12px;">
+                <a href="/robustness.html" target="_blank" class="stage-badge" style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); color: #93c5fd; text-decoration: none; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(59, 130, 246, 0.3)'" onmouseout="this.style.background='rgba(59, 130, 246, 0.15)'">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    <span>Robustness Report</span>
+                </a>
                 <div id="stage-badge" class="stage-badge training">
                     <div class="pulse-dot"></div>
                     <span id="stage-text">Training Stage</span>
@@ -942,12 +952,132 @@
             consoleOutput.appendChild(container);
         }
 
+        async function renderRobustness() {
+            const consoleOutput = document.getElementById('console-output');
+            consoleOutput.innerHTML = '';
+            
+            consoleOutput.innerHTML = `<div class="console-line system">[System] Fetching robustness evaluation results...</div>`;
+            
+            try {
+                const response = await fetch('/api/robustness');
+                if (!response.ok) throw new Error('API failed');
+                const data = await response.json();
+                
+                if (!data || Object.keys(data).length === 0) {
+                    consoleOutput.innerHTML = `<div class="console-line system">[System] Robustness evaluation is pending or running. It will automatically populate here after training completes.</div>`;
+                    return;
+                }
+                
+                consoleOutput.innerHTML = '';
+                
+                const container = document.createElement('div');
+                container.style.padding = '8px';
+                
+                const title = document.createElement('h3');
+                title.style.color = '#3b82f6';
+                title.style.fontSize = '14px';
+                title.style.fontWeight = 'bold';
+                title.style.marginBottom = '12px';
+                title.style.borderBottom = '1px solid rgba(255,255,255,0.08)';
+                title.style.paddingBottom = '6px';
+                title.textContent = 'Algorithm Robustness Results (30 Random Seeds Evaluation)';
+                container.appendChild(title);
+                
+                const table = document.createElement('table');
+                table.style.width = '100%';
+                table.style.borderCollapse = 'collapse';
+                table.style.fontSize = '12px';
+                table.style.textAlign = 'left';
+                
+                const thead = document.createElement('thead');
+                thead.innerHTML = `
+                    <tr style="border-bottom: 1.5px solid rgba(255,255,255,0.15); color: #f3f4f6;">
+                        <th style="padding: 8px 10px; font-weight: bold;">Algorithm</th>
+                        <th style="padding: 8px 10px; font-weight: bold; color: #10b981;">JSR (Success)</th>
+                        <th style="padding: 8px 10px; font-weight: bold; color: #3b82f6;">Track (Reachable)</th>
+                        <th style="padding: 8px 10px; font-weight: bold; color: #e67e22;">Power Loss (Gap)</th>
+                        <th style="padding: 8px 10px; font-weight: bold; color: #e74c3c;">Channel Loss (Gap)</th>
+                        <th style="padding: 8px 10px; font-weight: bold; color: #ff7b00;">Avg Power</th>
+                        <th style="padding: 8px 10px; font-weight: bold; color: #d946ef;">Avg SINR</th>
+                    </tr>
+                `;
+                table.appendChild(thead);
+                
+                const tbody = document.createElement('tbody');
+                
+                const algosOrder = [
+                    { key: 'Baseline', name: 'Baseline (QJC)', color: 'var(--color-baseline)' },
+                    { key: 'PPO', name: 'PPO (Proposed)', color: 'var(--color-ppo)' },
+                    { key: 'DQN', name: 'DQN', color: 'var(--color-dqn)' },
+                    { key: 'PPO-LSTM', name: 'PPO-LSTM (Recurrent)', color: 'var(--color-ppo-lstm)' }
+                ];
+                
+                const getStats = (arr) => {
+                    if (!arr || arr.length === 0) return { mean: 0, std: 0 };
+                    const n = arr.length;
+                    const mean = arr.reduce((a, b) => a + b, 0) / n;
+                    const std = Math.sqrt(arr.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / n);
+                    return { mean, std };
+                };
+                
+                algosOrder.forEach(item => {
+                    const algoData = data[item.key];
+                    if (!algoData) return;
+                    
+                    const jsr = getStats(algoData.JSR);
+                    const trackReach = getStats(algoData.Track_Reachable);
+                    const powerGap = getStats(algoData.Power_Gap);
+                    const channelGap = getStats(algoData.Channel_Gap);
+                    const power = getStats(algoData.Power);
+                    const sinr = getStats(algoData.SINR);
+                    
+                    const row = document.createElement('tr');
+                    row.style.borderBottom = '1px solid rgba(255,255,255,0.03)';
+                    row.style.transition = 'background 0.2s';
+                    row.addEventListener('mouseover', () => row.style.background = 'rgba(255,255,255,0.02)');
+                    row.addEventListener('mouseout', () => row.style.background = 'transparent');
+                    
+                    row.innerHTML = `
+                        <td style="padding: 10px 10px; font-weight: 600; color: ${item.color};">${item.name}</td>
+                        <td style="padding: 10px 10px; font-family: 'JetBrains Mono', monospace;">${jsr.mean.toFixed(1)}% ± ${jsr.std.toFixed(1)}%</td>
+                        <td style="padding: 10px 10px; font-family: 'JetBrains Mono', monospace;">${trackReach.mean.toFixed(1)}% ± ${trackReach.std.toFixed(1)}%</td>
+                        <td style="padding: 10px 10px; font-family: 'JetBrains Mono', monospace;">${powerGap.mean.toFixed(1)}% ± ${powerGap.std.toFixed(1)}%</td>
+                        <td style="padding: 10px 10px; font-family: 'JetBrains Mono', monospace;">${channelGap.mean.toFixed(1)}% ± ${channelGap.std.toFixed(1)}%</td>
+                        <td style="padding: 10px 10px; font-family: 'JetBrains Mono', monospace;">${power.mean.toFixed(3)} W ± ${power.std.toFixed(3)} W</td>
+                        <td style="padding: 10px 10px; font-family: 'JetBrains Mono', monospace;">${sinr.mean.toFixed(2)} dB ± ${sinr.std.toFixed(2)} dB</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                table.appendChild(tbody);
+                container.appendChild(table);
+                
+                const note = document.createElement('div');
+                note.style.marginTop = '16px';
+                note.style.fontSize = '11px';
+                note.style.color = 'var(--text-muted)';
+                note.style.fontStyle = 'italic';
+                note.innerHTML = `<i class="fa-solid fa-circle-info"></i> Robustness plots and JSON data are stored in: comparison/comparison_robustness.png & comparison/robustness_results_30seeds.json`;
+                container.appendChild(note);
+                
+                consoleOutput.appendChild(container);
+                
+            } catch (err) {
+                consoleOutput.innerHTML = `<div class="console-line error">[Error] Failed to load robustness results: ${err.message}</div>`;
+            }
+        }
+
         function renderLogs() {
             const consoleOutput = document.getElementById('console-output');
             consoleOutput.innerHTML = '';
             
             if (activeTab === 'Configs') {
                 renderConfigs();
+                return;
+            }
+            
+            if (activeTab === 'Robustness') {
+                renderRobustness();
                 return;
             }
             
@@ -1014,6 +1144,8 @@
                     stageText.textContent = 'Training Stage';
                 } else if (stage === 'EVALUATION') {
                     stageText.textContent = 'Evaluation Stage';
+                } else if (stage === 'ROBUSTNESS') {
+                    stageText.textContent = 'Robustness Stage';
                 } else if (stage === 'COMPLETED') {
                     stageText.textContent = 'Complete';
                 } else {
@@ -1090,7 +1222,9 @@
                 }
                 
                 // Adjust X-axis range dynamically if needed
-                if (maxSteps > 0) {
+                if (window.experimentMetadata && window.experimentMetadata.total_steps_per_algo) {
+                    rewardChart.options.scales.x.max = window.experimentMetadata.total_steps_per_algo;
+                } else if (maxSteps > 0) {
                     rewardChart.options.scales.x.max = Math.max(100000, maxSteps);
                 }
                 
