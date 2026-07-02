@@ -89,8 +89,10 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
+        path = self.path.split('?')[0]
+        
         # Serve main index.html
-        if self.path == "/" or self.path == "/index.html":
+        if path == "/" or path == "/index.html":
             self.send_response(200)
             self.send_header("Content-type", "text/html")
             self.end_headers()
@@ -106,7 +108,7 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             return
 
         # Serve metadata
-        if self.path == "/api/metadata":
+        if path == "/api/metadata":
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             self.end_headers()
@@ -119,8 +121,68 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({}).encode("utf-8"))
             return
 
+        # Serve robustness results
+        if path == "/api/robustness":
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.end_headers()
+            
+            robustness_path = os.path.join(DashboardState.run_dir, "comparison", "robustness_results_30seeds.json")
+            if os.path.exists(robustness_path):
+                with open(robustness_path, "r", encoding="utf-8") as f:
+                    self.wfile.write(f.read().encode("utf-8"))
+            else:
+                self.wfile.write(json.dumps({}).encode("utf-8"))
+            return
+
+        # Serve robustness.html
+        if path == "/robustness.html":
+            self.send_response(200)
+            self.send_header("Content-type", "text/html")
+            self.end_headers()
+            
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            html_path = os.path.join(base_dir, "dashboard", "robustness.html")
+            if os.path.exists(html_path):
+                with open(html_path, "r", encoding="utf-8") as f:
+                    self.wfile.write(f.read().encode("utf-8"))
+            else:
+                self.wfile.write(b"<h1>robustness.html not found!</h1>")
+            return
+
+        # Serve robustness comparison plot
+        if path == "/api/plots/robustness.png":
+            img_path = os.path.join(DashboardState.run_dir, "comparison", "comparison_robustness.png")
+            if os.path.exists(img_path):
+                self.send_response(200)
+                self.send_header("Content-type", "image/png")
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+                self.end_headers()
+                with open(img_path, "rb") as f:
+                    self.wfile.write(f.read())
+            else:
+                self.send_response(404)
+                self.end_headers()
+            return
+
+        # Serve loss decomposition plot
+        if path == "/api/plots/loss_decomposition.png":
+            img_path = os.path.join(DashboardState.run_dir, "comparison", "loss_decomposition.png")
+            if os.path.exists(img_path):
+                self.send_response(200)
+                self.send_header("Content-type", "image/png")
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+                self.end_headers()
+                with open(img_path, "rb") as f:
+                    self.wfile.write(f.read())
+            else:
+                self.send_response(404)
+                self.end_headers()
+            return
+
         # Serve real-time progress
-        if self.path == "/api/progress":
+        if path == "/api/progress":
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             # Avoid caching

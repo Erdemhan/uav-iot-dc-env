@@ -1,10 +1,10 @@
-
 import os
 import sys
 import argparse
 import numpy as np
 import json
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import ray
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.tune.registry import register_env
@@ -18,15 +18,44 @@ from simulation.controllers import UAVRuleBasedController
 from confs.config import UAVConfig
 from confs.env_config import EnvConfig
 from confs.model_config import GlobalConfig, PPOLSTMConfig, QJCConfig
-from core.logger import SimulationLogger
 
 # Constants
 SEEDS = range(100, 130) # 30 Seeds: 100 to 129
 ALGOS = ["Baseline", "PPO", "DQN", "PPO-LSTM"]
-METRICS = ["JSR", "Tracking_Acc", "Power", "SINR"]
+METRICS = ["JSR", "Track_Reachable", "Power", "SINR", "Tracking_Acc", "Power_Gap", "Channel_Gap"]
 
 def env_creator(config):
     return ParallelPettingZooEnv(UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS))
+
+def load_env_config_from_metadata(run_dir):
+    """Override EnvConfig parameters using metadata.json to match training configuration."""
+    meta_path = os.path.join(run_dir, "metadata.json")
+    if not os.path.exists(meta_path):
+        print(f"  [WARN] metadata.json not found: {meta_path}")
+        return
+    with open(meta_path, "r", encoding="utf-8") as f:
+        meta = json.load(f)
+    ec = meta.get("env_config", {})
+    from confs.env_config import EnvConfig
+    if "NUM_NODES"         in ec: EnvConfig.NUM_NODES        = ec["NUM_NODES"]
+    if "NUM_UAVS"          in ec: EnvConfig.NUM_UAVS         = ec["NUM_UAVS"]
+    if "AREA_SIZE"         in ec: EnvConfig.AREA_SIZE        = ec["AREA_SIZE"]
+    if "ATTACKER_POS_X"    in ec: EnvConfig.ATTACKER_POS_X   = ec["ATTACKER_POS_X"]
+    if "ATTACKER_POS_Y"    in ec: EnvConfig.ATTACKER_POS_Y   = ec["ATTACKER_POS_Y"]
+    if "MAX_JAMMING_POWER" in ec: EnvConfig.MAX_JAMMING_POWER = ec["MAX_JAMMING_POWER"]
+    if "P_TX_NODE"         in ec: EnvConfig.P_TX_NODE        = ec["P_TX_NODE"]
+    if "P_TX_UAV"          in ec: EnvConfig.P_TX_UAV         = ec["P_TX_UAV"]
+    if "MAX_STEPS"         in ec: EnvConfig.MAX_STEPS        = ec["MAX_STEPS"]
+    if "STEP_TIME"         in ec: EnvConfig.STEP_TIME        = ec["STEP_TIME"]
+    if "UAV_START_X"       in ec: EnvConfig.UAV_START_X      = ec["UAV_START_X"]
+    if "UAV_START_Y"       in ec: EnvConfig.UAV_START_Y      = ec["UAV_START_Y"]
+    if "UAV_START_Z"       in ec: EnvConfig.UAV_START_Z      = ec["UAV_START_Z"]
+    if "UAV_SPEED"         in ec: EnvConfig.UAV_SPEED        = ec["UAV_SPEED"]
+    if "W_SUCCESS"         in ec: EnvConfig.W_SUCCESS        = ec["W_SUCCESS"]
+    if "W_TRACKING"        in ec: EnvConfig.W_TRACKING       = ec["W_TRACKING"]
+    if "W_COST"            in ec: EnvConfig.W_COST           = ec["W_COST"]
+    obs_dim = EnvConfig.get_obs_dim()
+    print(f"  EnvConfig override completed. NUM_NODES={EnvConfig.NUM_NODES}, obs_dim={obs_dim}")
 
 def find_latest_checkpoint(base_dir):
     import glob
@@ -48,11 +77,10 @@ def evaluate_algo(algo_name, run_dir):
         algo_dir = os.path.join(run_dir, algo_name.lower().replace("-", "_"))
         ckpt = find_latest_checkpoint(algo_dir)
         if not ckpt:
-            print(f"Checkout not found for {algo_name} in {algo_dir}")
+            print(f"Checkpoint not found for {algo_name} in {algo_dir}")
             return None
         
         try:
-            # We assume Ray is initialized globally
             algo_agent = Algorithm.from_checkpoint(ckpt)
         except Exception as e:
             print(f"Error loading {algo_name}: {e}")
@@ -62,36 +90,27 @@ def evaluate_algo(algo_name, run_dir):
             lstm_cell_size = PPOLSTMConfig.LSTM_CELL_SIZE
 
     elif algo_name == "Baseline":
-        # Baseline relies on loading within the loop or creating a dummy class
-        # We'll handle inside the loop
         pass
 
     # Loop over seeds
     for seed in SEEDS:
-        # print(f"Seed {seed}...", end="\r")
-        
-        # 1. Setup Env
-        # No Logger to save speed/disk
         env = UAV_IoT_PZ_Env(logger=None, auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS)
-        
-        # 2. Reset
         obs, infos = env.reset(seed=seed)
         
-        # 3. Setup Agent logic
         lstm_state = [np.zeros(lstm_cell_size, dtype=np.float32), np.zeros(lstm_cell_size, dtype=np.float32)] if algo_name == "PPO-LSTM" else []
         
         if algo_name == "Baseline":
              env.attacker.load_model(os.path.join(run_dir, "baseline"))
              env.attacker.temp_xi = 0 # Greedy
         
-        # 4. Run Episode
         terminated = False
         steps = 0
         
         # Episode Metrics
         ep_jammed = 0
         ep_reachable = 0
-        ep_tracking = 0
+        ep_tracking_all = 0
+        ep_tracking_reachable = 0
         ep_power_sum = 0
         ep_sinr_sum = 0
         ep_sinr_count = 0
@@ -106,13 +125,12 @@ def evaluate_algo(algo_name, run_dir):
             if algo_name == "Baseline":
                  jam_ch = env.attacker.select_channel_qjc()
                  jam_p = QJCConfig.MAX_POWER_LEVEL
-                 jam_action = np.array([jam_ch, jam_p]) if not GlobalConfig.FLATTEN_ACTIONS else jam_ch * 10 + jam_p
+                 jam_action = jam_ch * 10 + jam_p if GlobalConfig.FLATTEN_ACTIONS else np.array([jam_ch, jam_p])
             
             elif algo_agent:
                 if "jammer_0" in obs:
                     jam_obs = obs["jammer_0"]
                     try:
-                        # Compute Action
                         if algo_name == "PPO-LSTM":
                             res = algo_agent.compute_single_action(jam_obs, state=lstm_state, policy_id="jammer_policy", explore=False)
                             if isinstance(res, tuple):
@@ -121,14 +139,12 @@ def evaluate_algo(algo_name, run_dir):
                             else:
                                 jam_action = res
                         else:
-                            # PPO / DQN
                             jam_action = algo_agent.compute_single_action(jam_obs, policy_id="jammer_policy", explore=False)
                     except:
                         jam_action = 0
                         
             actions["jammer_0"] = jam_action
             
-            # Nodes
             for ag in env.agents:
                 if "node" in ag: actions[ag] = 0
                 
@@ -136,17 +152,8 @@ def evaluate_algo(algo_name, run_dir):
             obs, rewards, terms, truncs, infos = env.step(actions)
             terminated = any(terms.values()) or any(truncs.values())
             
-            # --- Collect Stats directly from Entities ---
-            # Using Env internals for accuracy (Paper Metrics)
-            
-            # 1. JSR (Reachable)
-            # Recalculate reachable
-            reachable_count = 0
-            for node in env.nodes:
-                # Status 0=Connected, 1=OutRange, 2=Jammed
-                if node.connection_status != 1: # If not out of range
-                    reachable_count += 1
-            
+            # --- Collect Stats ---
+            reachable_count = sum(1 for n in env.nodes if n.connection_status != 1)
             jammed_c = infos["jammer_0"]["jammed_count"]
             
             ep_jammed += jammed_c
@@ -154,26 +161,21 @@ def evaluate_algo(algo_name, run_dir):
                 ep_reachable += reachable_count
             
             # 2. Tracking
-            # Check directly against the channel of the UAV closest to the jammer
             closest_uav = min(env.uavs, key=lambda uav: np.linalg.norm(uav.position - env.attacker.position))
-            if env.attacker.current_channel == closest_uav.current_channel:
-                ep_tracking += 1
+            ch_match = (env.attacker.current_channel == closest_uav.current_channel)
+            if ch_match:
+                ep_tracking_all += 1
+                if reachable_count > 0:
+                    ep_tracking_reachable += 1
                 
             # 3. Power
-            # Use total DC power consumption (including PA efficiency and circuit overhead)
             ep_power_sum += infos["jammer_0"]["jammer_cost"]
             
             # 4. SINR
-            # Average SINR of all nodes? 
-            # Or average SINR of Target Node?
-            # Let's take average SINR of all Reachable Nodes
             step_sinr_sum = 0
             step_sinr_n = 0
             for i in range(EnvConfig.NUM_NODES):
-                # Retrieve from info
                 s = infos["jammer_0"].get(f"node_{i}_sinr", 0)
-                # Only include if reachable (status != 1) ?? 
-                # The paper plot shows average SINR. Let's avg all nodes.
                 step_sinr_sum += s
                 step_sinr_n += 1
             
@@ -185,14 +187,20 @@ def evaluate_algo(algo_name, run_dir):
                 
         # --- End Episode ---
         
-        # Calculate Episodes Averages
-        val_jsr = (ep_jammed / ep_reachable) * 100 if ep_reachable > 0 else 0
-        val_track = (ep_tracking / steps) * 100 if steps > 0 else 0
-        val_power = ep_power_sum / steps if steps > 0 else 0
-        val_sinr = ep_sinr_sum / ep_sinr_count if ep_sinr_count > 0 else 0
+        # Calculate Episode Averages
+        val_jsr = (ep_jammed / ep_reachable) * 100 if ep_reachable > 0 else 0.0
+        val_track_all = (ep_tracking_all / steps) * 100 if steps > 0 else 0.0
+        val_track_reach = (ep_tracking_reachable / ep_reachable) * 100 if ep_reachable > 0 else 0.0
+        val_power_gap = val_track_reach - val_jsr
+        val_channel_gap = 100.0 - val_track_reach
+        val_power = ep_power_sum / steps if steps > 0 else 0.0
+        val_sinr = ep_sinr_sum / ep_sinr_count if ep_sinr_count > 0 else 0.0
         
         results["JSR"].append(val_jsr)
-        results["Tracking_Acc"].append(val_track)
+        results["Tracking_Acc"].append(val_track_all)
+        results["Track_Reachable"].append(val_track_reach)
+        results["Power_Gap"].append(val_power_gap)
+        results["Channel_Gap"].append(val_channel_gap)
         results["Power"].append(val_power)
         results["SINR"].append(val_sinr)
         
@@ -203,9 +211,11 @@ def main():
     parser.add_argument("--run-dir", type=str, required=True, help="Path to artifacts directory")
     args = parser.parse_args()
     
-    # CRITICAL: Ray requires absolute paths for checkpoints to avoid "URI has empty scheme" errors
     run_dir_abs = os.path.abspath(args.run_dir)
     print(f"Using Absolute Run Directory: {run_dir_abs}")
+    
+    # Load env config from metadata
+    load_env_config_from_metadata(run_dir_abs)
     
     # Init Ray once
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -214,6 +224,7 @@ def main():
         ray.init(ignore_reinit_error=True, log_to_driver=False, runtime_env=runtime_env)
     except Exception:
         ray.init(ignore_reinit_error=True, log_to_driver=False, runtime_env=runtime_env)
+        
     register_env("uav_iot_ppo_v1", env_creator)
     register_env("uav_iot_dqn_v1", env_creator)
     register_env("uav_iot_ppo_lstm_v1", env_creator)
@@ -227,34 +238,52 @@ def main():
             
             # Print quick stats
             print(f"  > JSR: {np.mean(res['JSR']):.1f}% ± {np.std(res['JSR']):.1f}")
-            print(f"  > Track: {np.mean(res['Tracking_Acc']):.1f}%")
+            print(f"  > Track (All Steps): {np.mean(res['Tracking_Acc']):.1f}%")
+            print(f"  > Track (Reachable): {np.mean(res['Track_Reachable']):.1f}%")
+            print(f"  > Power Gap: {np.mean(res['Power_Gap']):.1f}%")
+            print(f"  > Channel Gap: {np.mean(res['Channel_Gap']):.1f}%")
             print(f"  > Power: {np.mean(res['Power']):.3f} W")
             print(f"  > SINR: {np.mean(res['SINR']):.2f} dB")
             
     ray.shutdown()
     
-    # Save JSON
     comparison_dir = os.path.join(run_dir_abs, "comparison")
     os.makedirs(comparison_dir, exist_ok=True)
-    out_file = os.path.join(comparison_dir, "robustness_results_30seeds.json")
     
+    # Plotting first so images are ready when JSON is available
+    plot_comparison(final_results, comparison_dir)
+    plot_loss_decomposition(final_results, comparison_dir)
+    
+    # Save JSON at the very end to prevent race condition in web dashboard
+    out_file = os.path.join(comparison_dir, "robustness_results_30seeds.json")
     with open(out_file, "w") as f:
         json.dump(final_results, f, indent=4)
         
-    print(f"\nSaved results to {out_file}")
-    
-    # Plotting
-    plot_comparison(final_results, comparison_dir)
+    print(f"\nSaved results and plots to {comparison_dir}")
 
 def plot_comparison(results, output_dir):
     import seaborn as sns
     sns.set_style("whitegrid")
     
-    # Prepare Data
+    # We will plot JSR, Track_Reachable, Power_Gap, and Channel_Gap in 2x2 grid
+    plot_metrics = ["JSR", "Track_Reachable", "Power_Gap", "Channel_Gap"]
+    metric_titles = {
+        "JSR": "Jamming Success Rate (JSR)",
+        "Track_Reachable": "Channel Tracking Accuracy",
+        "Power_Gap": "Power Loss (Power Gap)",
+        "Channel_Gap": "Channel Loss (Channel Gap)"
+    }
+    metric_ylabels = {
+        "JSR": "Success (%)",
+        "Track_Reachable": "Accuracy (%)",
+        "Power_Gap": "Loss (%)",
+        "Channel_Gap": "Loss (%)"
+    }
+    
     means = {}
     stds = {}
     
-    for m in METRICS:
+    for m in plot_metrics:
         means[m] = []
         stds[m] = []
         for algo in ALGOS:
@@ -273,7 +302,7 @@ def plot_comparison(results, output_dir):
     algo_labels = ["Baseline (QJC)", "PPO (Proposed)", "DQN", "PPO-LSTM"]
     
     # Helper for bar plots
-    def plot_bar(ax, metric_key, title, ylabel, threshold=None):
+    def plot_bar(ax, metric_key, title, ylabel):
         bars = ax.bar(algo_labels, means[metric_key], yerr=stds[metric_key], capsize=8, 
                      color=colors, alpha=0.9, edgecolor='black', linewidth=1.5)
         ax.set_title(title, fontsize=14, fontweight='bold', pad=15)
@@ -285,30 +314,80 @@ def plot_comparison(results, output_dir):
         for bar, err in zip(bars, stds[metric_key]):
             height = bar.get_height()
             label = f"{height:.1f}" if abs(height) > 0.1 else f"{height:.3f}"
-            ax.text(bar.get_x() + bar.get_width()/2., height + err + (height*0.05),
+            ax.text(bar.get_x() + bar.get_width()/2., height + err + (height*0.03),
                     label, ha='center', va='bottom', fontsize=11, fontweight='bold')
-            
-        if threshold is not None:
-             ax.axhline(threshold, color='black', linestyle='--', linewidth=2, label="Threshold")
-             ax.legend()
 
-    # 1. JSR
-    plot_bar(axes[0, 0], "JSR", "Jamming Success Rate (JSR)", "Success (%)")
-    
-    # 2. Tracking
-    plot_bar(axes[0, 1], "Tracking_Acc", "Channel Tracking Accuracy", "Accuracy (%)")
-    
-    # 3. Power
-    plot_bar(axes[1, 0], "Power", "Average Power Consumption", "Power (W)")
-    
-    # 4. Empty Slot (Hidden)
-    axes[1, 1].set_visible(False)
+    plot_bar(axes[0, 0], "JSR", metric_titles["JSR"], metric_ylabels["JSR"])
+    plot_bar(axes[0, 1], "Track_Reachable", metric_titles["Track_Reachable"], metric_ylabels["Track_Reachable"])
+    plot_bar(axes[1, 0], "Power_Gap", metric_titles["Power_Gap"], metric_ylabels["Power_Gap"])
+    plot_bar(axes[1, 1], "Channel_Gap", metric_titles["Channel_Gap"], metric_ylabels["Channel_Gap"])
     
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     out_plot = os.path.join(output_dir, "comparison_robustness.png")
     plt.savefig(out_plot, dpi=300, bbox_inches='tight')
     print(f"Saved plot to {out_plot}")
+    plt.close()
 
+def plot_loss_decomposition(results, output_dir):
+    # Stacked bar plot for JSR, Power Gap, and Channel Gap
+    # Total sums to 100%
+    fig, ax = plt.subplots(figsize=(9, 6))
+    
+    jsr_m = [np.mean(results[a]["JSR"]) for a in ALGOS]
+    pwr_m = [np.mean(results[a]["Power_Gap"]) for a in ALGOS]
+    ch_m  = [np.mean(results[a]["Channel_Gap"]) for a in ALGOS]
+    jsr_s = [np.std(results[a]["JSR"]) for a in ALGOS]
+    
+    x = np.arange(len(ALGOS))
+    w = 0.55
+    
+    C_JSR = "#2ecc71" # Green
+    C_PWR = "#e67e22" # Orange
+    C_CH  = "#e74c3c" # Red
+    ALPHA = 0.90
+    
+    # Stacked bars
+    ax.bar(x, ch_m, w, color=C_CH, alpha=ALPHA, label="Channel Loss")
+    ax.bar(x, pwr_m, w, color=C_PWR, alpha=ALPHA, label="Power Loss", bottom=ch_m)
+    bottom_jsr = [c + p for c, p in zip(ch_m, pwr_m)]
+    ax.bar(x, jsr_m, w, color=C_JSR, alpha=ALPHA, label="JSR (Success)", bottom=bottom_jsr)
+    
+    # Error bars for JSR
+    ax.errorbar(x, [b + j for b, j in zip(bottom_jsr, jsr_m)],
+                yerr=jsr_s, fmt="none", color="#1a8a4a", capsize=5, lw=1.5, capthick=1.5)
+                
+    # Labels
+    for i, (c, p, j, js) in enumerate(zip(ch_m, pwr_m, jsr_m, jsr_s)):
+        if c >= 5:
+            ax.text(x[i], c / 2, f"{c:.1f}%", ha="center", va="center", fontsize=10, fontweight="bold", color="white")
+        if p >= 5:
+            ax.text(x[i], c + p / 2, f"{p:.1f}%", ha="center", va="center", fontsize=10, fontweight="bold", color="white")
+        if j >= 5:
+            ax.text(x[i], c + p + j / 2, f"{j:.1f}%", ha="center", va="center", fontsize=10, fontweight="bold", color="white")
+        top = c + p + j
+        ax.text(x[i], top + 2.5, f"{j:.1f} ± {js:.1f}%", ha="center", va="bottom", fontsize=9, color="#1a8a4a", fontweight="bold")
+        
+    ax.set_xticks(x)
+    ax.set_xticklabels(["QJC\n(Baseline)", "PPO", "DQN", "PPO-LSTM"], fontsize=12)
+    ax.set_ylim(0, 115)
+    ax.set_ylabel("Percentage of Reachable Steps (%)", fontsize=12)
+    ax.set_title("Reachable-Normalized Loss Decomposition", fontsize=14, fontweight="bold", pad=15)
+    ax.axhline(100, color="gray", lw=0.8, ls="--", alpha=0.5)
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.grid(axis="y", alpha=0.25)
+    
+    handles = [
+        mpatches.Patch(color=C_JSR, alpha=ALPHA, label="JSR (Jamming Success Rate)"),
+        mpatches.Patch(color=C_PWR, alpha=ALPHA, label="Power Loss (correct channel, distance/power too large)"),
+        mpatches.Patch(color=C_CH,  alpha=ALPHA, label="Channel Loss (wrong channel)"),
+    ]
+    ax.legend(handles=handles, loc="upper right", fontsize=10, framealpha=0.9)
+    
+    plt.tight_layout()
+    out_plot = os.path.join(output_dir, "loss_decomposition.png")
+    plt.savefig(out_plot, dpi=300, bbox_inches="tight")
+    print(f"Saved plot to {out_plot}")
+    plt.close()
 
 if __name__ == "__main__":
     main()
