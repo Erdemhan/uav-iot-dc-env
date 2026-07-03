@@ -476,7 +476,9 @@ def main():
     parser.add_argument("--num-workers",  type=int,  default=10,
                         help="Env runners per trial. 10 workers × 100 steps = train_batch_size=1000 exactly. 11 CPUs total (1 learner + 10 runners) per machine, STRICT_PACK.")
     parser.add_argument("--use-gpu", type=bool, default=True, help="Use RTX 3060 GPU for network updates")
+    parser.add_argument("--max-concurrent", type=int, default=0, help="Maximum concurrent trials for this algorithm. 0 for unlimited.")
     args = parser.parse_args()
+
     
     # Auto-detect CUDA availability
     import torch
@@ -625,11 +627,13 @@ def main():
         search_alg=optuna_search,
         scheduler=scheduler,
         num_samples=args.num_samples,
+        max_concurrent_trials=args.max_concurrent if args.max_concurrent > 0 else None,
         storage_path=opt_local_dir,
         name="optuna_study",
         trial_dirname_creator=short_trial_dirname_creator,
         verbose=1
     )
+
     
     # 5. Extract Optuna Study and Save plots/data
     study = optuna_search.study if hasattr(optuna_search, "study") else optuna_search._ot_study
