@@ -467,7 +467,7 @@ def main():
     parser.add_argument("--algo", type=str, default="PPO", choices=["PPO", "DQN", "PPO-LSTM", "QJC"], help="Algorithm to tune")
     parser.add_argument("--phase", type=int, default=1, choices=[1, 2], help="Optimization Phase (1: Model parameters, 2: Reward parameters)")
     parser.add_argument("--num-samples", type=int, default=30, help="Total number of trials to sample")
-    parser.add_argument("--iterations", type=int, default=100, help="Training iterations per trial")
+    parser.add_argument("--iterations", type=int, default=1000, help="Training iterations per trial (each trial runs for this many algo.train() calls)")
     parser.add_argument("--num-workers", type=int, default=14, help="Environment workers per trial (Ultra 9 core optimization)")
     parser.add_argument("--use-gpu", type=bool, default=True, help="Use RTX 3060 GPU for network updates")
     args = parser.parse_args()
@@ -635,7 +635,7 @@ def main():
             metric="objective",
             mode="max",
             max_t=args.iterations,
-            grace_period=min(50, args.iterations // 2), # Allow models enough time to learn
+            grace_period=max(500, args.iterations // 2),  # Each trial runs at least 500 iters before early stopping
             reduction_factor=2
         )
         

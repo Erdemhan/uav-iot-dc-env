@@ -142,17 +142,26 @@ Ayrıca Ray Dashboard: `http://localhost:8265` adresinden de izlenebilir.
 ```powershell
 .\.venv\Scripts\Activate.ps1
 
-# PPO Phase 1 — Model Hiperparametreleri
-python scripts/tune_models.py --algo PPO --num-samples 30 --iterations 100 --num-workers 14 --use-gpu True
+# PPO Phase 1 — Model Hiperparametreleri (30 trial × 1000 iterasyon)
+python scripts/tune_models.py --algo PPO --num-samples 30 --iterations 1000 --num-workers 14 --use-gpu True
 
 # PPO Phase 2 — Reward Ağırlıkları (Phase 1 bittikten sonra)
-python scripts/tune_models.py --algo PPO --phase 2 --num-samples 20 --iterations 100 --num-workers 14 --use-gpu True
+python scripts/tune_models.py --algo PPO --phase 2 --num-samples 20 --iterations 1000 --num-workers 14 --use-gpu True
 
 # DQN Phase 1
-python scripts/tune_models.py --algo DQN --num-samples 30 --iterations 100 --num-workers 14 --use-gpu True
+python scripts/tune_models.py --algo DQN --num-samples 30 --iterations 1000 --num-workers 14 --use-gpu True
+
+# QJC (Baseline)
+python scripts/tune_models.py --algo QJC --num-samples 30 --iterations 1000
 ```
 
-> Worker'lar denemeleri Ray'in kendi dağıtım mekanizmasıyla otomatik paylaşır. Elle ayar gerekmez.
+> **Bütçe mantığı:**
+> - Her trial → `iterations=1000` training adımı çalıştırır
+> - ASHA erken durdurma: ilk **500 iterasyon** (grace_period) her trial için garantili çalışır
+> - 500. iterasyondan sonra en kötü giden trial'lar kesilebilir; bu standart HPO pratiği
+> - `num_samples=30` → her algoritma için tam 30 farklı hiperparametre kombinasyonu denenir
+> - Adil karşılaştırma: PPO, DQN, QJC **aynı** `num_samples` ve `iterations` değerleriyle çalıştırılmalı
+
 
 ---
 
