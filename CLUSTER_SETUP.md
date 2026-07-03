@@ -55,67 +55,45 @@ netsh advfirewall firewall add rule name="Ray Workers" protocol=TCP dir=in local
 
 ## ADIM 2 — Her Worker Bilgisayarda Yap
 
-### 2.1 Projeyi Git ile İndir
-```powershell
-git clone https://github.com/<KULLANICI_ADI>/uav-iot-dc-env.git
-cd uav-iot-dc-env
+> [!NOTE]
+> **Git Klonlamaya Gerek Yoktur!**
+> Ray, kodların dağıtımını otomatik olarak `runtime_env` (çalışma ortamı) ile Head node'dan Worker'lara zipleyip taşır.
+> Worker makinelerde sadece Python, PyTorch ve Ray'in kurulu olması yeterlidir.
 
-# Proje zaten varsa güncelle:
-# git pull origin main
-```
+İşçileri (Worker) kurmak için iki yöntemden birini seçebilirsiniz:
 
-### 2.2 Sanal Ortam Oluştur ve Kütüphaneleri Kur
-```powershell
-# Sanal ortam oluştur
-python -m venv .venv
-
-# Aktifleştir
-.\.venv\Scripts\Activate.ps1
-
-# Pip güncelle
-python -m pip install --upgrade pip
-
-# Tüm bağımlılıkları kur
-pip install -r requirements.txt
-```
-
-> **RTX 3060 için CUDA'lı PyTorch (daha hızlı eğitim):**
-> ```powershell
-> pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-> ```
-
-### 2.3 Kurulumu Test Et
-```powershell
-python -c "import ray; import torch; print('Ray:', ray.__version__); print('CUDA:', torch.cuda.is_available())"
-# Beklenen çıktı: Ray: 2.x.x  |  CUDA: True
-```
-
-### 2.4 Ray Cluster'a Katıl
-```powershell
-# HEAD_IP = ADIM 1.1'de öğrendiğin IP
-ray start --address="192.168.1.50:6379" --num-cpus=22 --num-gpus=1
-```
-
-> `--num-cpus=22` = Intel Core Ultra 9'un toplam thread sayısı
+### Yöntem A: Otomatik Script İle (Önerilen)
+1. Head makinesindeki `scripts/setup_worker.ps1` dosyasını bir flash bellek veya yerel ağ üzerinden worker makineye kopyalayın (herhangi bir geçici klasöre, örn: Masaüstü).
+2. Worker makinede PowerShell'i açıp o klasöre gidin ve çalıştırın:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File setup_worker.ps1
+   ```
+3. Script sizden Head IP'sini isteyecek, otomatik sanal ortamı kuracak, bağımlılıkları yükleyecek ve Ray'e bağlanacaktır.
 
 ---
 
-## ADIM 3 — Otomatik Script ile Tek Komutta Kur
+### Yöntem B: Manuel Kurulum (Script Kullanmadan)
+Eğer script kullanmak istemiyorsanız, worker makinede boş bir klasör oluşturup şu komutları çalıştırın:
 
-Yukarıdaki adımları otomatikleştirmek için proje klasöründe şunu çalıştır:
+1. **Sanal Ortamı Kur ve Aktifleştir:**
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   python -m pip install --upgrade pip
+   ```
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\setup_worker.ps1
-```
+2. **Gerekli Kütüphaneleri Kur:**
+   ```powershell
+   pip install "ray[rllib]>=2.53.0" pettingzoo==1.24.3 gymnasium torch numpy<2.0.0 pandas matplotlib seaborn optuna plotly
+   ```
+   *(RTX 3060/3080ti için CUDA PyTorch kurmak isterseniz: `pip install torch --index-url https://download.pytorch.org/whl/cu121`)*
 
-Script sırasıyla:
-1. Python kurulumunu kontrol eder
-2. `.venv` sanal ortamı oluşturur ve `requirements.txt`'i kurar
-3. CUDA'lı PyTorch seçeneği sunar
-4. Firewall portlarını otomatik açar
-5. Head node IP'sini sorar ve `ray start` ile cluster'a bağlanır
+3. **Ray Cluster'a Katıl (Worker olarak):**
+   ```powershell
+   # HEAD_IP = ADIM 1.1'de öğrendiğin IP
+   ray start --address="192.168.1.50:6379" --num-cpus=22 --num-gpus=1
+   ```
 
----
 
 ## ADIM 4 — Kümenin Hazır Olduğunu Kontrol Et (Head'de)
 
