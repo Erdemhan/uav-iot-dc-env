@@ -82,6 +82,20 @@ def parse_baseline_progress(csv_path):
     except Exception as e:
         pass
     return history, None, None
+def get_active_run_dir():
+    """Dynamically get the active run directory. Supports both training runs and Optuna tuning runs."""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(base_dir)
+    active_file = os.path.join(project_root, "dashboard_active_run.txt")
+    if os.path.exists(active_file):
+        try:
+            with open(active_file, "r", encoding="utf-8") as f:
+                path = f.read().strip()
+                if os.path.exists(path):
+                    return path
+        except:
+            pass
+    return DashboardState.run_dir
 
 class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
     # Overwrite log_message to keep stdout clean
@@ -90,6 +104,7 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split('?')[0]
+        run_dir = get_active_run_dir()
         
         # Serve main index.html
         if path == "/" or path == "/index.html":
@@ -113,7 +128,7 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-type", "application/json")
             self.end_headers()
             
-            metadata_path = os.path.join(DashboardState.run_dir, "metadata.json")
+            metadata_path = os.path.join(run_dir, "metadata.json")
             if os.path.exists(metadata_path):
                 with open(metadata_path, "r", encoding="utf-8") as f:
                     self.wfile.write(f.read().encode("utf-8"))
@@ -128,7 +143,7 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
             self.end_headers()
             
-            robustness_path = os.path.join(DashboardState.run_dir, "comparison", "robustness_results_30seeds.json")
+            robustness_path = os.path.join(run_dir, "comparison", "robustness_results_30seeds.json")
             if os.path.exists(robustness_path):
                 with open(robustness_path, "r", encoding="utf-8") as f:
                     self.wfile.write(f.read().encode("utf-8"))
@@ -153,7 +168,7 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
 
         # Serve robustness comparison plot
         if path == "/api/plots/robustness.png":
-            img_path = os.path.join(DashboardState.run_dir, "comparison", "comparison_robustness.png")
+            img_path = os.path.join(run_dir, "comparison", "comparison_robustness.png")
             if os.path.exists(img_path):
                 self.send_response(200)
                 self.send_header("Content-type", "image/png")
@@ -168,7 +183,67 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
 
         # Serve loss decomposition plot
         if path == "/api/plots/loss_decomposition.png":
-            img_path = os.path.join(DashboardState.run_dir, "comparison", "loss_decomposition.png")
+            img_path = os.path.join(run_dir, "comparison", "loss_decomposition.png")
+            if os.path.exists(img_path):
+                self.send_response(200)
+                self.send_header("Content-type", "image/png")
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+                self.end_headers()
+                with open(img_path, "rb") as f:
+                    self.wfile.write(f.read())
+            else:
+                self.send_response(404)
+                self.end_headers()
+            return
+
+        # Serve opt.html
+        if path == "/opt.html":
+            self.send_response(200)
+            self.send_header("Content-type", "text/html")
+            self.end_headers()
+            
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            html_path = os.path.join(base_dir, "dashboard", "opt.html")
+            if os.path.exists(html_path):
+                with open(html_path, "r", encoding="utf-8") as f:
+                    self.wfile.write(f.read().encode("utf-8"))
+            else:
+                self.wfile.write(b"<h1>opt.html not found!</h1>")
+            return
+
+        # Serve Optuna results JSON
+        if path == "/api/optuna":
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.end_headers()
+            
+            trials_path = os.path.join(run_dir, "optuna", "optuna_trials.json")
+            best_path = os.path.join(run_dir, "optuna", "best_params.json")
+            
+            response_data = {"trials": [], "best_value": None, "best_trial_number": None}
+            if os.path.exists(trials_path):
+                try:
+                    with open(trials_path, "r", encoding="utf-8") as f:
+                        response_data["trials"] = json.load(f)
+                except:
+                    pass
+            if os.path.exists(best_path):
+                try:
+                    with open(best_path, "r", encoding="utf-8") as f:
+                        best = json.load(f)
+                        response_data["best_value"] = best.get("best_value")
+                        response_data["best_trial_number"] = best.get("best_trial_number")
+                except:
+                    pass
+                    
+            self.wfile.write(json.dumps(response_data).encode("utf-8"))
+            return
+
+        # Serve Optuna plots
+        if path.startswith("/api/plots/optuna/"):
+            plot_name = os.path.basename(path)
+            img_path = os.path.join(run_dir, "optuna", plot_name)
             if os.path.exists(img_path):
                 self.send_response(200)
                 self.send_header("Content-type", "image/png")
@@ -210,19 +285,19 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             # Map algorithm names to folders and config keys
             algos = {
                 "Baseline": {
-                    "csv_finder": lambda: os.path.join(DashboardState.run_dir, "baseline", "training_curve.csv"),
+                    "csv_finder": lambda: os.path.join(run_dir, "baseline", "training_curve.csv"),
                     "parser": parse_baseline_progress
                 },
                 "PPO": {
-                    "csv_finder": lambda: self._find_rllib_progress("ppo"),
+                    "csv_finder": lambda: self._find_rllib_progress(run_dir, "ppo"),
                     "parser": parse_rllib_progress
                 },
                 "DQN": {
-                    "csv_finder": lambda: self._find_rllib_progress("dqn"),
+                    "csv_finder": lambda: self._find_rllib_progress(run_dir, "dqn"),
                     "parser": parse_rllib_progress
                 },
                 "PPO-LSTM": {
-                    "csv_finder": lambda: self._find_rllib_progress("ppo_lstm"),
+                    "csv_finder": lambda: self._find_rllib_progress(run_dir, "ppo_lstm"),
                     "parser": parse_rllib_progress
                 }
             }
@@ -268,8 +343,8 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b"404 Not Found")
 
-    def _find_rllib_progress(self, subfolder):
-        pattern = os.path.join(DashboardState.run_dir, subfolder, "**", "progress.csv")
+    def _find_rllib_progress(self, run_dir, subfolder):
+        pattern = os.path.join(run_dir, subfolder, "**", "progress.csv")
         files = glob.glob(pattern, recursive=True)
         if files:
             return max(files, key=os.path.getmtime)
