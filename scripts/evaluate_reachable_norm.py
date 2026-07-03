@@ -22,8 +22,10 @@ from simulation.pettingzoo_env import UAV_IoT_PZ_Env
 from confs.config import UAVConfig
 from confs.env_config import EnvConfig
 from confs.model_config import GlobalConfig, PPOLSTMConfig, QJCConfig
+from confs.opt_config import OptConfig
 
-SEEDS = range(100, 130)
+SEEDS = OptConfig.EVAL_SEEDS
+
 ALGOS = ["Baseline", "PPO", "DQN", "PPO-LSTM"]
 
 def load_env_config_from_metadata(run_dir):

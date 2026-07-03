@@ -59,6 +59,14 @@ class OptConfig:
     REWARD_W_COST_MIN = 0.005
     REWARD_W_COST_MAX = 0.1
 
+    # --- 30 Static Random Seeds for Robustness Evaluation ---
+    EVAL_SEEDS = [
+        42, 107, 245, 319, 480, 512, 631, 789, 804, 912,
+        1023, 1150, 1289, 1344, 1492, 1588, 1699, 1723, 1850, 1999,
+        2048, 2189, 2250, 2399, 2480, 2512, 2690, 2745, 2819, 2990
+    ]
+
+
 # Populate ARCH_CHOICES statically at load-time (out of class scope to maintain indentation)
 OptConfig.ARCH_CHOICES = OptConfig._generate_choices()
 

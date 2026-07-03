@@ -38,7 +38,8 @@ from confs.model_config import GlobalConfig
 from confs.opt_config import OptConfig
 
 
-SEEDS = range(100, 130)  # Same 30 seeds as Phase 1
+SEEDS = OptConfig.EVAL_SEEDS
+
 
 
 # ---------------------------------------------------------------------------

@@ -18,9 +18,11 @@ from simulation.controllers import UAVRuleBasedController
 from confs.config import UAVConfig
 from confs.env_config import EnvConfig
 from confs.model_config import GlobalConfig, PPOLSTMConfig, QJCConfig
+from confs.opt_config import OptConfig
 
 # Constants
-SEEDS = range(100, 130) # 30 Seeds: 100 to 129
+SEEDS = OptConfig.EVAL_SEEDS
+
 ALGOS = ["Baseline", "PPO", "DQN", "PPO-LSTM"]
 METRICS = ["JSR", "Track_Reachable", "Power", "SINR", "Tracking_Acc", "Power_Gap", "Channel_Gap"]
 
