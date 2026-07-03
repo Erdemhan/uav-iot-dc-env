@@ -35,26 +35,19 @@ class OptConfig:
         [512, 256, 512],
     ]
 
-    # --- PPO Search Space bounds ---
-    PPO_LR_MIN = 1e-5
-    PPO_LR_MAX = 1e-3
-    PPO_GAMMA_MIN = 0.85
-    PPO_GAMMA_MAX = 0.99
+    # --- Shared RL (PPO, DQN, PPO-LSTM) Search Space bounds ---
+    RL_LR_MIN = 1e-5
+    RL_LR_MAX = 1e-3
+    RL_GAMMA_MIN = 0.85
+    RL_GAMMA_MAX = 0.99
 
-    # --- DQN Search Space bounds ---
-    DQN_LR_MIN = 1e-5
-    DQN_LR_MAX = 1e-3
-    DQN_GAMMA_MIN = 0.85
-    DQN_GAMMA_MAX = 0.99
+    # --- DQN-Specific ---
     DQN_TARGET_UPDATE_FREQ = [200, 500, 1000, 2000]
 
-    # --- PPO-LSTM Search Space bounds ---
-    PPOLSTM_LR_MIN = 1e-5
-    PPOLSTM_LR_MAX = 5e-4
-    PPOLSTM_GAMMA_MIN = 0.85
-    PPOLSTM_GAMMA_MAX = 0.99
+    # --- PPO-LSTM-Specific ---
     PPOLSTM_CELL_SIZE = [128, 256, 512]
     PPOLSTM_MAX_SEQ_LEN = [10, 20, 30]
+
 
     # --- QJC Search Space bounds ---
     QJC_TAU_0_MIN = 1e-5

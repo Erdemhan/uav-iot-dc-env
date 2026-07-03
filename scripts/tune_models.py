@@ -548,25 +548,26 @@ def main():
     # Phase 1: Model Hyperparameters
         if args.algo == "PPO":
             search_space = {
-                "lr": tune.loguniform(OptConfig.PPO_LR_MIN, OptConfig.PPO_LR_MAX),
-                "gamma": tune.uniform(OptConfig.PPO_GAMMA_MIN, OptConfig.PPO_GAMMA_MAX),
+                "lr": tune.loguniform(OptConfig.RL_LR_MIN, OptConfig.RL_LR_MAX),
+                "gamma": tune.uniform(OptConfig.RL_GAMMA_MIN, OptConfig.RL_GAMMA_MAX),
                 "architecture": tune.choice(OptConfig.ARCH_CHOICES)
             }
         elif args.algo == "DQN":
             search_space = {
-                "lr": tune.loguniform(OptConfig.DQN_LR_MIN, OptConfig.DQN_LR_MAX),
-                "gamma": tune.uniform(OptConfig.DQN_GAMMA_MIN, OptConfig.DQN_GAMMA_MAX),
+                "lr": tune.loguniform(OptConfig.RL_LR_MIN, OptConfig.RL_LR_MAX),
+                "gamma": tune.uniform(OptConfig.RL_GAMMA_MIN, OptConfig.RL_GAMMA_MAX),
                 "architecture": tune.choice(OptConfig.ARCH_CHOICES),
                 "target_network_update_freq": tune.choice(OptConfig.DQN_TARGET_UPDATE_FREQ)
             }
         elif args.algo == "PPO-LSTM":
             search_space = {
-                "lr": tune.loguniform(OptConfig.PPOLSTM_LR_MIN, OptConfig.PPOLSTM_LR_MAX),
-                "gamma": tune.uniform(OptConfig.PPOLSTM_GAMMA_MIN, OptConfig.PPOLSTM_GAMMA_MAX),
+                "lr": tune.loguniform(OptConfig.RL_LR_MIN, OptConfig.RL_LR_MAX),
+                "gamma": tune.uniform(OptConfig.RL_GAMMA_MIN, OptConfig.RL_GAMMA_MAX),
                 "architecture": tune.choice(OptConfig.ARCH_CHOICES),
                 "lstm_cell_size": tune.choice(OptConfig.PPOLSTM_CELL_SIZE),
                 "max_seq_len": tune.choice(OptConfig.PPOLSTM_MAX_SEQ_LEN)
             }
+
         elif args.algo == "QJC":
             search_space = {
                 "tau_0": tune.loguniform(OptConfig.QJC_TAU_0_MIN, OptConfig.QJC_TAU_0_MAX),
