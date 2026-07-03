@@ -162,7 +162,7 @@ def _run_rllib_algo(algo_name, model_params, env_config_override,
         .environment("uav_iot_reward_v1", env_config={"seed": GlobalConfig.RANDOM_SEED})
         .framework("torch")
         .debugging(seed=GlobalConfig.RANDOM_SEED, log_level="WARN")
-        .env_runners(num_env_runners=num_workers, rollout_fragment_length=100)
+        .env_runners(num_env_runners=num_workers, rollout_fragment_length=100)  # 100 steps = 1 full episode (MAX_STEPS=100)
         .training(model=model_cfg, train_batch_size=1000, lr=lr, gamma=gamma)
         .multi_agent(
             policies={
@@ -309,8 +309,8 @@ def main():
                         help="Number of (W_SUCCESS, W_COST) combinations to try")
     parser.add_argument("--iterations",   type=int,  default=500,
                         help="Training iterations per algorithm per trial")
-    parser.add_argument("--num-workers",  type=int,  default=14,
-                        help="Env runners per RLlib trial")
+    parser.add_argument("--num-workers",  type=int,  default=10,
+                        help="Env runners per trial. 10 × 100 steps = 1000 (train_batch_size), STRICT_PACK on 11 CPUs per machine.")
     parser.add_argument("--use-gpu",      type=bool, default=True,
                         help="Use GPU for PPO/DQN training")
     args = parser.parse_args()
@@ -390,9 +390,11 @@ def main():
 
     # -- Resources --
     from ray.tune import PlacementGroupFactory
+    # STRICT_PACK: all bundles (1 learner + 10 env runners = 11 CPUs) on the same machine.
+    # Remaining 11 CPUs per machine are idle/isolated — no cross-trial interference.
     bundles = ([{"CPU": 1, "GPU": 1 if args.use_gpu else 0}]
                + [{"CPU": 1}] * args.num_workers)
-    trial_resources = PlacementGroupFactory(bundles)
+    trial_resources = PlacementGroupFactory(bundles, strategy="STRICT_PACK")
 
     # -- Search Algorithm --
     optuna_search = OptunaSearch(metric="objective", mode="max")
