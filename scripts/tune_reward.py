@@ -92,13 +92,24 @@ def run_30seeds_eval(algo_agent, algo_name, env_config, lstm_cell_size=256,
                               else np.array([jam_ch, jam_p]))
             elif algo_agent and "jammer_0" in obs:
                 try:
-                    jam_action = algo_agent.compute_single_action(
-                        obs["jammer_0"], policy_id="jammer_policy", explore=False
-                    )
+                    if algo_name == "PPO-LSTM":
+                        res = algo_agent.compute_single_action(
+                            obs["jammer_0"], state=lstm_state, policy_id="jammer_policy", explore=False
+                        )
+                        if isinstance(res, tuple):
+                            jam_action = res[0]
+                            lstm_state = res[1]
+                        else:
+                            jam_action = res
+                    else:
+                        jam_action = algo_agent.compute_single_action(
+                            obs["jammer_0"], policy_id="jammer_policy", explore=False
+                        )
                 except Exception:
                     jam_action = 0
             else:
                 jam_action = 0
+
 
             actions["jammer_0"] = jam_action
             for ag in eval_env.agents:
@@ -144,6 +155,15 @@ def _run_rllib_algo(algo_name, model_params, env_config_override,
         from ray.rllib.algorithms.ppo import PPOConfig
         cfg = PPOConfig()
         model_cfg = {"fcnet_hiddens": fcnet_hiddens}
+    elif algo_name == "PPO-LSTM":
+        from ray.rllib.algorithms.ppo import PPOConfig
+        cfg = PPOConfig()
+        model_cfg = {
+            "fcnet_hiddens": fcnet_hiddens,
+            "use_lstm": True,
+            "lstm_cell_size": model_params.get("lstm_cell_size", 256),
+            "max_seq_len": model_params.get("max_seq_len", 20)
+        }
     elif algo_name == "DQN":
         from ray.rllib.algorithms.dqn import DQNConfig
         cfg = DQNConfig()
@@ -156,6 +176,7 @@ def _run_rllib_algo(algo_name, model_params, env_config_override,
         model_cfg = {"fcnet_hiddens": fcnet_hiddens}
     else:
         raise ValueError(f"Unknown algo: {algo_name}")
+
 
     cfg = (
         cfg
@@ -181,10 +202,12 @@ def _run_rllib_algo(algo_name, model_params, env_config_override,
     for _ in range(iterations):
         algo.train()
     jsr = run_30seeds_eval(
-        algo_agent=algo, algo_name=algo_name, env_config=env_config_override
+        algo_agent=algo, algo_name=algo_name, env_config=env_config_override,
+        lstm_cell_size=model_params.get("lstm_cell_size", 256) if algo_name == "PPO-LSTM" else 256
     )
     algo.stop()
     return jsr
+
 
 
 # ---------------------------------------------------------------------------
@@ -257,17 +280,23 @@ def train_reward_trial(config):
     jsr_dqn = _run_rllib_algo("DQN", config["dqn_params"], env_cfg,
                                iterations, num_workers, num_gpus)
 
-    mean_jsr = float(np.mean([jsr_qjc, jsr_ppo, jsr_dqn]))
+    # 4. PPO-LSTM
+    jsr_ppo_lstm = _run_rllib_algo("PPO-LSTM", config["ppo_lstm_params"], env_cfg,
+                                    iterations, num_workers, num_gpus)
+
+    mean_jsr = float(np.mean([jsr_qjc, jsr_ppo, jsr_dqn, jsr_ppo_lstm]))
 
     tune.report({
-        "objective": mean_jsr,
-        "jsr":       mean_jsr,
-        "jsr_qjc":   jsr_qjc,
-        "jsr_ppo":   jsr_ppo,
-        "jsr_dqn":   jsr_dqn,
-        "W_SUCCESS": w_success,
-        "W_COST":    w_cost,
+        "objective":    mean_jsr,
+        "jsr":          mean_jsr,
+        "jsr_qjc":      jsr_qjc,
+        "jsr_ppo":      jsr_ppo,
+        "jsr_dqn":      jsr_dqn,
+        "jsr_ppo_lstm": jsr_ppo_lstm,
+        "W_SUCCESS":    w_success,
+        "W_COST":       w_cost,
     })
+
 
 
 # ---------------------------------------------------------------------------
@@ -329,15 +358,16 @@ def main():
     with open(tuned_cfg_path, "r", encoding="utf-8") as f:
         tuned_configs = json.load(f)
 
-    missing = [k for k in ["ppo", "dqn", "qjc"] if k not in tuned_configs]
+    missing = [k for k in ["ppo", "dqn", "ppo_lstm", "qjc"] if k not in tuned_configs]
     if missing:
         print(f"[ERROR] Missing Phase 1 results for: {missing}")
         print("        Complete Phase 1 for each algorithm before running Phase 2.")
         raise SystemExit(1)
 
     print("[OK] Phase 1 configs loaded:")
-    for k in ["ppo", "dqn", "qjc"]:
+    for k in ["ppo", "dqn", "ppo_lstm", "qjc"]:
         print(f"     {k.upper()}: {tuned_configs[k]}")
+
 
     # -- Connect to Ray --
     runtime_env = {
@@ -366,10 +396,12 @@ def main():
         "iterations":  args.iterations,
         "num_workers": args.num_workers,
         "use_gpu":     args.use_gpu,
-        "phase1_ppo":  tuned_configs["ppo"],
-        "phase1_dqn":  tuned_configs["dqn"],
-        "phase1_qjc":  tuned_configs["qjc"],
+        "phase1_ppo":      tuned_configs["ppo"],
+        "phase1_dqn":      tuned_configs["dqn"],
+        "phase1_ppo_lstm": tuned_configs["ppo_lstm"],
+        "phase1_qjc":      tuned_configs["qjc"],
     }
+
     with open(os.path.join(run_dir, "metadata.json"), "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=4)
 
@@ -382,11 +414,13 @@ def main():
         "iterations":  args.iterations,
         "num_workers": args.num_workers,
         "num_gpus":    1 if args.use_gpu else 0,
-        "ppo_params":  tuned_configs["ppo"],
-        "dqn_params":  tuned_configs["dqn"],
-        "qjc_params":  tuned_configs["qjc"],
+        "ppo_params":      tuned_configs["ppo"],
+        "dqn_params":      tuned_configs["dqn"],
+        "ppo_lstm_params": tuned_configs["ppo_lstm"],
+        "qjc_params":      tuned_configs["qjc"],
     }
     full_config = {**trial_constant_config, **search_space}
+
 
     # -- Resources --
     from ray.tune import PlacementGroupFactory
@@ -403,10 +437,11 @@ def main():
 
     print(f"\n==================================================")
     print(f" Phase 2 JOINT Reward Optimization")
-    print(f" Algorithms:  PPO + DQN + QJC | Objective: mean JSR")
+    print(f" Algorithms:  PPO + DQN + PPO-LSTM + QJC | Objective: mean JSR")
     print(f" Trials:      {args.num_samples} | Iterations/algo: {args.iterations}")
     print(f" Output:      {run_dir}")
     print(f"==================================================\n")
+
 
     analysis = tune.run(
         train_reward_trial,
