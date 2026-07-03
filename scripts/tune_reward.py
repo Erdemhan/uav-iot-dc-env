@@ -381,7 +381,7 @@ def main():
     trial_constant_config = {
         "iterations":  args.iterations,
         "num_workers": args.num_workers,
-        "num_gpus":    0.5 if args.use_gpu else 0,
+        "num_gpus":    1 if args.use_gpu else 0,
         "ppo_params":  tuned_configs["ppo"],
         "dqn_params":  tuned_configs["dqn"],
         "qjc_params":  tuned_configs["qjc"],
@@ -390,7 +390,7 @@ def main():
 
     # -- Resources --
     from ray.tune import PlacementGroupFactory
-    bundles = ([{"CPU": 1, "GPU": 0.5 if args.use_gpu else 0}]
+    bundles = ([{"CPU": 1, "GPU": 1 if args.use_gpu else 0}]
                + [{"CPU": 1}] * args.num_workers)
     trial_resources = PlacementGroupFactory(bundles)
 
