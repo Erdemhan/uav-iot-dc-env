@@ -34,7 +34,8 @@ from confs.opt_config import OptConfig
 
 
 # Evaluation Constants
-SEEDS = range(100, 130) # Seeds 100 to 129
+SEEDS = OptConfig.EVAL_SEEDS
+
 
 def env_creator(config):
     return ParallelPettingZooEnv(UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS))
