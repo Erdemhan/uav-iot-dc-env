@@ -316,11 +316,13 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                                 "trial_id":          folder,
                                 "current_iteration": cur,
                                 "total_iterations":  None,
-                                "jsr":     _flt("jsr"),
-                                "jsr_ppo": _flt("jsr_ppo"),
-                                "jsr_dqn": _flt("jsr_dqn"),
-                                "jsr_qjc": _flt("jsr_qjc"),
+                                "jsr":          _flt("jsr"),
+                                "jsr_ppo":      _flt("jsr_ppo"),
+                                "jsr_dqn":      _flt("jsr_dqn"),
+                                "jsr_ppo_lstm": _flt("jsr_ppo_lstm"),
+                                "jsr_qjc":      _flt("jsr_qjc"),
                             }
+
                             params_path = os.path.join(trial_path, "params.json")
                             if os.path.exists(params_path):
                                 try:

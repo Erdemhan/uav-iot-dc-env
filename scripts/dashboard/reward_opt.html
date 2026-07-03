@@ -12,6 +12,7 @@
             --bg-tertiary:   #1b233d;
             --accent-ppo:    #a78bfa;
             --accent-dqn:    #34d399;
+            --accent-ppolstm:#f43f5e;
             --accent-qjc:    #fb923c;
             --accent-mean:   #00f2fe;
             --text-primary:  #f1f5f9;
@@ -295,12 +296,16 @@
             <div class="legend-dot" style="background: var(--accent-dqn)"></div> DQN
         </div>
         <div class="legend-pill">
+            <div class="legend-dot" style="background: var(--accent-ppolstm)"></div> PPO-LSTM
+        </div>
+        <div class="legend-pill">
             <div class="legend-dot" style="background: var(--accent-qjc)"></div> QJC (Baseline)
         </div>
         <div class="legend-pill">
             <div class="legend-dot" style="background: var(--accent-mean)"></div> Ortalama JSR
         </div>
     </div>
+
 
     <!-- Summary stats -->
     <div class="stats-grid">
@@ -345,17 +350,19 @@
                             <th>W_COST</th>
                             <th>JSR PPO</th>
                             <th>JSR DQN</th>
+                            <th>JSR PPO-LSTM</th>
                             <th>JSR QJC</th>
                             <th>Mean JSR</th>
                             <th>Süre (s)</th>
                         </tr>
                     </thead>
                     <tbody id="trials-tbody">
-                        <tr><td colspan="9" class="no-data">Veri yükleniyor...</td></tr>
+                        <tr><td colspan="10" class="no-data">Veri yükleniyor...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
+
 
         <!-- Tab 2: Active trials -->
         <div id="tab-active" class="tab-content">
@@ -463,6 +470,7 @@
                     const wc  = t.params && t.params.W_COST    !== undefined ? t.params.W_COST.toFixed(5)    : '—';
                     const jsr_ppo = t.params && t.params.jsr_ppo !== undefined ? t.params.jsr_ppo : null;
                     const jsr_dqn = t.params && t.params.jsr_dqn !== undefined ? t.params.jsr_dqn : null;
+                    const jsr_ppo_lstm = t.params && t.params.jsr_ppo_lstm !== undefined ? t.params.jsr_ppo_lstm : null;
                     const jsr_qjc = t.params && t.params.jsr_qjc !== undefined ? t.params.jsr_qjc : null;
                     const mean    = t.value;
 
@@ -478,6 +486,7 @@
                         <td style="color:var(--accent-qjc); font-weight:600">${wc}</td>
                         <td>${jsrBar(jsr_ppo, 'var(--accent-ppo)')}</td>
                         <td>${jsrBar(jsr_dqn, 'var(--accent-dqn)')}</td>
+                        <td>${jsrBar(jsr_ppo_lstm, 'var(--accent-ppolstm)')}</td>
                         <td>${jsrBar(jsr_qjc, 'var(--accent-qjc)')}</td>
                         <td>${jsrBar(mean,    'var(--accent-mean)')}</td>
                         <td>${t.duration_seconds ? t.duration_seconds.toFixed(0) : '—'}</td>
@@ -486,8 +495,9 @@
                 });
 
                 if (trials.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="9" class="no-data">Henüz tamamlanan trial yok.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="10" class="no-data">Henüz tamamlanan trial yok.</td></tr>';
                 }
+
             } catch (e) {
                 console.error('Error polling reward trials:', e);
             }
@@ -514,11 +524,13 @@
 
                     const jsr_ppo = t.jsr_ppo !== null && t.jsr_ppo !== undefined ? t.jsr_ppo.toFixed(1) + '%' : '—';
                     const jsr_dqn = t.jsr_dqn !== null && t.jsr_dqn !== undefined ? t.jsr_dqn.toFixed(1) + '%' : '—';
+                    const jsr_ppo_lstm = t.jsr_ppo_lstm !== null && t.jsr_ppo_lstm !== undefined ? t.jsr_ppo_lstm.toFixed(1) + '%' : '—';
                     const jsr_qjc = t.jsr_qjc !== null && t.jsr_qjc !== undefined ? t.jsr_qjc.toFixed(1) + '%' : '—';
                     const mean    = t.jsr    !== null && t.jsr    !== undefined ? t.jsr.toFixed(1)    + '%' : '—';
 
                     const card = document.createElement('div');
                     card.className = 'active-card';
+                    card.style.gridTemplateColumns = '90px 1fr repeat(4, 90px) 90px';
                     card.innerHTML = `
                         <div class="trial-id" title="${t.trial_id}">${t.trial_id}</div>
                         <div class="prog-wrap">
@@ -534,6 +546,10 @@
                             <div class="l">DQN JSR</div>
                         </div>
                         <div class="algo-val">
+                            <div class="v" style="color:var(--accent-ppolstm)">${jsr_ppo_lstm}</div>
+                            <div class="l">LSTM JSR</div>
+                        </div>
+                        <div class="algo-val">
                             <div class="v" style="color:var(--accent-qjc)">${jsr_qjc}</div>
                             <div class="l">QJC JSR</div>
                         </div>
@@ -544,6 +560,7 @@
                     `;
                     grid.appendChild(card);
                 });
+
             } catch (e) {
                 console.error('Error polling active reward trials:', e);
             }
