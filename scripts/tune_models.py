@@ -614,7 +614,7 @@ def main():
         }
     else:
         from ray.tune import PlacementGroupFactory
-        bundles = [{"CPU": 1, "GPU": 0.5 if args.use_gpu else 0}] + [{"CPU": 1}] * args.num_workers
+        bundles = [{"CPU": 1, "GPU": 1 if args.use_gpu else 0}] + [{"CPU": 1}] * args.num_workers
         trial_resources = PlacementGroupFactory(bundles)
     
     analysis = tune.run(
