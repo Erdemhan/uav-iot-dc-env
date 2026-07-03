@@ -35,6 +35,8 @@ sys.path.append(PROJECT_ROOT)
 from simulation.pettingzoo_env import UAV_IoT_PZ_Env
 from confs.env_config import EnvConfig
 from confs.model_config import GlobalConfig
+from confs.opt_config import OptConfig
+
 
 SEEDS = range(100, 130)  # Same 30 seeds as Phase 1
 
@@ -407,9 +409,10 @@ def main():
 
     # -- Search Space --
     search_space = {
-        "W_SUCCESS": tune.uniform(0.5, 0.95),
-        "W_COST":    tune.loguniform(0.005, 0.1),
+        "W_SUCCESS": tune.uniform(OptConfig.REWARD_W_SUCCESS_MIN, OptConfig.REWARD_W_SUCCESS_MAX),
+        "W_COST":    tune.loguniform(OptConfig.REWARD_W_COST_MIN, OptConfig.REWARD_W_COST_MAX),
     }
+
     trial_constant_config = {
         "iterations":  args.iterations,
         "num_workers": args.num_workers,
