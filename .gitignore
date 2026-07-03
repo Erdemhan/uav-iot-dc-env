@@ -228,8 +228,7 @@ check_fairness.py
 baseline_q_table
 
 #Scientific Paper
-# paper/ (Removed ignore to allow tracking thesis/paper files)
+paper/
 liaovd(2025).txt
 node_modules/
 gerekceler/
-
