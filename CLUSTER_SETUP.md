@@ -137,30 +137,52 @@ Ayrıca Ray Dashboard: `http://localhost:8265` adresinden de izlenebilir.
 
 ---
 
-## ADIM 5 — Optimizasyonu Başlat (Sadece Head'de)
+## ADIM 5 — Phase 1: Model HPO Başlat (Sadece Head'de)
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 
-# PPO Phase 1 — Model Hiperparametreleri (30 trial × 1000 iterasyon)
+# PPO — Model Hiperparametreleri (30 trial × 1000 iterasyon)
 python scripts/tune_models.py --algo PPO --num-samples 30 --iterations 1000 --num-workers 14 --use-gpu True
 
-# PPO Phase 2 — Reward Ağırlıkları (Phase 1 bittikten sonra)
-python scripts/tune_models.py --algo PPO --phase 2 --num-samples 20 --iterations 1000 --num-workers 14 --use-gpu True
-
-# DQN Phase 1
+# DQN — Model Hiperparametreleri
 python scripts/tune_models.py --algo DQN --num-samples 30 --iterations 1000 --num-workers 14 --use-gpu True
 
-# QJC (Baseline)
+# QJC (Baseline) — Tabular Model Hiperparametreleri
 python scripts/tune_models.py --algo QJC --num-samples 30 --iterations 1000
 ```
 
-> **Bütçe mantığı:**
-> - Her trial → `iterations=1000` training adımı çalıştırır
-> - ASHA erken durdurma: ilk **500 iterasyon** (grace_period) her trial için garantili çalışır
-> - 500. iterasyondan sonra en kötü giden trial'lar kesilebilir; bu standart HPO pratiği
-> - `num_samples=30` → her algoritma için tam 30 farklı hiperparametre kombinasyonu denenir
-> - Adil karşılaştırma: PPO, DQN, QJC **aynı** `num_samples` ve `iterations` değerleriyle çalıştırılmalı
+> **Phase 1 bütçesi:**
+> - Her trial → `iterations=1000` training adımı
+> - ASHA: ilk 500 iterasyon garantili çalışır, sonrası erken kesilebilir
+> - Her algo bağımsız çalıştırılır; sonuçlar `confs/tuned_configs.json`'a kaydedilir
+
+---
+
+## ADIM 6 — Phase 2: Ödül Ağırlığı Optimizasyonu (Phase 1 Bittikten Sonra)
+
+> [!IMPORTANT]
+> Phase 2'yi başlatmadan önce PPO, DQN ve QJC için Phase 1'in **tamamlanmış** olması gerekir.
+> `confs/tuned_configs.json` içinde `ppo`, `dqn`, `qjc` anahtarları mevcut olmalıdır.
+
+```powershell
+# Phase 2 — AYRI script, AYRI dashboard
+# W_SUCCESS ve W_COST'u 3 algoritmanın ortalamasına göre optimize eder
+python scripts/tune_reward.py --num-samples 20 --iterations 500 --num-workers 14 --use-gpu True
+```
+
+**Phase 2 dashboard'unu aç:**
+```powershell
+# Ayrı terminalde:
+python scripts/dashboard_server.py
+# http://localhost:5000/reward_opt.html
+```
+
+> **Phase 2 bütçesi:**
+> - Her trial içinde PPO + DQN + QJC **sıralı** eğitilir
+> - Objective = mean(JSR_ppo, JSR_dqn, JSR_qjc)
+> - ASHA yok — her trial tam çalışır
+> - Sonuç `confs/tuned_configs.json["reward"]`'a kaydedilir
 
 
 ---

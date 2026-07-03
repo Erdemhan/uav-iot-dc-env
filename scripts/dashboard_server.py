@@ -211,6 +211,130 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                 self.wfile.write(b"<h1>opt.html not found!</h1>")
             return
 
+        # ------------------------------------------------------------------ #
+        # Phase 2 — Reward Optimization Dashboard routes                      #
+        # ------------------------------------------------------------------ #
+
+        # Serve reward_opt.html
+        if path == "/reward_opt.html":
+            self.send_response(200)
+            self.send_header("Content-type", "text/html")
+            self.end_headers()
+            base_dir  = os.path.dirname(os.path.abspath(__file__))
+            html_path = os.path.join(base_dir, "dashboard", "reward_opt.html")
+            if os.path.exists(html_path):
+                with open(html_path, "r", encoding="utf-8") as f:
+                    self.wfile.write(f.read().encode("utf-8"))
+            else:
+                self.wfile.write(b"<h1>reward_opt.html not found!</h1>")
+            return
+
+        # Serve Phase 2 metadata
+        if path == "/api/reward_metadata":
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.end_headers()
+            reward_run_dir  = self._get_reward_run_dir()
+            metadata_path   = os.path.join(reward_run_dir, "metadata.json")
+            if reward_run_dir and os.path.exists(metadata_path):
+                with open(metadata_path, "r", encoding="utf-8") as f:
+                    self.wfile.write(f.read().encode("utf-8"))
+            else:
+                self.wfile.write(json.dumps({}).encode("utf-8"))
+            return
+
+        # Serve Phase 2 completed trials + best params
+        if path == "/api/reward_opt":
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.end_headers()
+            reward_run_dir = self._get_reward_run_dir()
+            response_data  = {"trials": [], "best_value": None, "best_params": None, "num_samples": None}
+
+            if reward_run_dir:
+                trials_path = os.path.join(reward_run_dir, "optuna", "optuna_trials.json")
+                best_path   = os.path.join(reward_run_dir, "optuna", "best_params.json")
+                meta_path   = os.path.join(reward_run_dir, "metadata.json")
+
+                if os.path.exists(trials_path):
+                    try:
+                        with open(trials_path, "r", encoding="utf-8") as f:
+                            response_data["trials"] = json.load(f)
+                    except Exception:
+                        pass
+                if os.path.exists(best_path):
+                    try:
+                        with open(best_path, "r", encoding="utf-8") as f:
+                            best = json.load(f)
+                            response_data["best_value"]  = best.get("best_value")
+                            response_data["best_params"] = best.get("params")
+                    except Exception:
+                        pass
+                if os.path.exists(meta_path):
+                    try:
+                        with open(meta_path, "r", encoding="utf-8") as f:
+                            response_data["num_samples"] = json.load(f).get("num_samples")
+                    except Exception:
+                        pass
+
+            self.wfile.write(json.dumps(response_data).encode("utf-8"))
+            return
+
+        # Serve Phase 2 active trial progress (progress.csv per trial)
+        if path == "/api/active_reward_trials":
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.end_headers()
+
+            active_trials  = []
+            reward_run_dir = self._get_reward_run_dir()
+            if reward_run_dir:
+                tune_dir = os.path.join(reward_run_dir, "tune_results", "optuna_study")
+                if os.path.isdir(tune_dir):
+                    for folder in sorted(os.listdir(tune_dir)):
+                        trial_path = os.path.join(tune_dir, folder)
+                        if not os.path.isdir(trial_path):
+                            continue
+                        csv_path = os.path.join(trial_path, "progress.csv")
+                        if not os.path.exists(csv_path):
+                            continue
+                        try:
+                            with open(csv_path, "r", encoding="utf-8") as f:
+                                rows = list(csv.DictReader(f))
+                            if not rows:
+                                continue
+                            last   = rows[-1]
+                            cur    = int(float(last.get("training_iteration", 0) or 0))
+                            # Read per-algo JSR and mean from reported columns
+                            def _flt(key):
+                                v = last.get(key, None)
+                                return float(v) if v not in (None, "") else None
+                            entry = {
+                                "trial_id":          folder,
+                                "current_iteration": cur,
+                                "total_iterations":  None,
+                                "jsr":     _flt("jsr"),
+                                "jsr_ppo": _flt("jsr_ppo"),
+                                "jsr_dqn": _flt("jsr_dqn"),
+                                "jsr_qjc": _flt("jsr_qjc"),
+                            }
+                            params_path = os.path.join(trial_path, "params.json")
+                            if os.path.exists(params_path):
+                                try:
+                                    with open(params_path, "r", encoding="utf-8") as pf:
+                                        entry["total_iterations"] = json.load(pf).get("iterations")
+                                except Exception:
+                                    pass
+                            active_trials.append(entry)
+                        except Exception:
+                            pass
+
+            self.wfile.write(json.dumps({"trials": active_trials}).encode("utf-8"))
+            return
+
         # Serve active Optuna trial progress (Ray Tune progress.csv per trial)
         if path == "/api/active_trials":
             self.send_response(200)
@@ -407,6 +531,21 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         files = glob.glob(pattern, recursive=True)
         if files:
             return max(files, key=os.path.getmtime)
+        return None
+
+    def _get_reward_run_dir(self):
+        """Return the active Phase 2 reward optimization run directory."""
+        base_dir    = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(base_dir)
+        reward_file  = os.path.join(project_root, "dashboard_active_reward_run.txt")
+        if os.path.exists(reward_file):
+            try:
+                with open(reward_file, "r", encoding="utf-8") as f:
+                    path = f.read().strip()
+                    if os.path.exists(path):
+                        return path
+            except Exception:
+                pass
         return None
 
 def run_server():

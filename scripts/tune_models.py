@@ -380,6 +380,7 @@ def train_qjc_trial(config):
                 "sinr": last_sinr
             })
 
+
 def _study_with_str_arch(study):
     """Return a copy of the Optuna study with architecture lists converted to
     string representations so that parallel_coordinate and slice_plot can hash them."""
@@ -463,9 +464,13 @@ def short_trial_dirname_creator(trial):
     return f"trial_{trial.trial_id}"
 
 def main():
-    parser = argparse.ArgumentParser(description="Distributed Hyperparameter Tuning with Ray & Optuna")
-    parser.add_argument("--algo", type=str, default="PPO", choices=["PPO", "DQN", "PPO-LSTM", "QJC"], help="Algorithm to tune")
-    parser.add_argument("--phase", type=int, default=1, choices=[1, 2], help="Optimization Phase (1: Model parameters, 2: Reward parameters)")
+    parser = argparse.ArgumentParser(
+        description="Phase 1: Per-Algorithm Model Hyperparameter Search (PPO, DQN, PPO-LSTM, QJC).\n"
+                    "For Phase 2 (Joint Reward Optimization), use: python scripts/tune_reward.py"
+    )
+    parser.add_argument("--algo", type=str, default="PPO",
+                        choices=["PPO", "DQN", "PPO-LSTM", "QJC"],
+                        help="Algorithm to tune")
     parser.add_argument("--num-samples", type=int, default=30, help="Total number of trials to sample")
     parser.add_argument("--iterations", type=int, default=1000, help="Training iterations per trial (each trial runs for this many algo.train() calls)")
     parser.add_argument("--num-workers", type=int, default=14, help="Environment workers per trial (Ultra 9 core optimization)")
@@ -524,17 +529,18 @@ def main():
         
     # 3. Define Optuna Search Space and Search Alg
     optuna_search = OptunaSearch(metric="objective", mode="max")
-    
-    # Load previously tuned configs if Phase 2
+
+    # Load existing tuned_configs (to avoid overwriting other algos)
     tuned_configs = {}
     tuned_cfg_path = os.path.join(PROJECT_ROOT, "confs", "tuned_configs.json")
-    if args.phase == 2 and os.path.exists(tuned_cfg_path):
-        with open(tuned_cfg_path, "r", encoding="utf-8") as f:
-            tuned_configs = json.load(f)
-            
-    # Set search space values
-    if args.phase == 1:
-        # Phase 1: Model Hyperparameters
+    if os.path.exists(tuned_cfg_path):
+        try:
+            with open(tuned_cfg_path, "r", encoding="utf-8") as f:
+                tuned_configs = json.load(f)
+        except:
+            pass
+
+    # Phase 1: Model Hyperparameters
         # Architecture search space:
         # Homogeneous: all layers same size
         # Expanding:   small → large (feature extraction)
@@ -595,61 +601,9 @@ def main():
                 "temp_xi": tune.uniform(1.0, 10.0),
                 "mu_offset": tune.uniform(1.0, 2.0)
             }
-    else:
-        # Phase 2: Reward Parameters
-        # Optimize W_SUCCESS and W_COST. Models use their tuned Phase 1 parameters
-        search_space = {
-            "W_SUCCESS": tune.uniform(0.5, 0.95),
-            "W_COST": tune.loguniform(0.005, 0.1)
-        }
-        
-    # Constant parameters shared in trials
-    trial_constant_config = {
-        "algo": args.algo,
-        "phase": args.phase,
-        "iterations": args.iterations,
-        "num_workers": args.num_workers,
-        "num_gpus": 0.5 if args.use_gpu and args.algo != "QJC" else 0, # allow sharing RTX 3060
-        "env_config": {
-            "W_SUCCESS": EnvConfig.W_SUCCESS,
-            "W_TRACKING": EnvConfig.W_TRACKING,
-            "W_COST": EnvConfig.W_COST
-        }
-    }
-    
-    # Inject Phase 1 tuned configs in Phase 2
-    if args.phase == 2:
-        algo_key = args.algo.lower().replace("-", "_")
-        if algo_key in tuned_configs:
-            print(f"Injecting tuned model parameters from Phase 1: {tuned_configs[algo_key]}")
-            trial_constant_config.update(tuned_configs[algo_key])
-            
-    # Assemble final config space
-    full_config = {**trial_constant_config, **search_space}
-    
-    # Setup Early Stopping Scheduler for RL algorithms (ASHA)
-    # Tabular QJC trains fast enough, so scheduler is not necessary
-    scheduler = None
-    if args.algo != "QJC":
-        scheduler = ASHAScheduler(
-            metric="objective",
-            mode="max",
-            max_t=args.iterations,
-            grace_period=max(500, args.iterations // 2),  # Each trial runs at least 500 iters before early stopping
-            reduction_factor=2
-        )
-        
-    # 4. Run Optimization Study
-    trainable = train_qjc_trial if args.algo == "QJC" else train_rllib_trial
-    
-    print(f"\n==================================================")
-    print(f" Starting Optuna Search: {args.algo} (Phase {args.phase})")
-    print(f" Total Trials: {args.num_samples} | Iterations: {args.iterations}")
-    print(f" Output Location: {run_dir}")
-    print(f"==================================================\n")
-    
-    # Start Tune Run
-    # Link run results to active run folder for dashboard serving
+    # Phase 1 — Per-Algorithm Model Hyperparameter Search
+    # ---------------------------------------------------------------------------
+
     opt_local_dir = os.path.join(run_dir, "tune_results")
     
     # Define trial resource allocations to prevent placement group conflicts
@@ -697,25 +651,21 @@ def main():
     with open(os.path.join(optuna_dir, "best_params.json"), "w", encoding="utf-8") as f:
         json.dump(best_results, f, indent=4)
         
-    # Save Phase 1 results to tuned_configs.json for Phase 2 use
-    if args.phase == 1:
-        # Create configs folder if not exists
-        os.makedirs(os.path.dirname(tuned_cfg_path), exist_ok=True)
-        # Load existing
-        current_tuned = {}
-        if os.path.exists(tuned_cfg_path):
-            try:
-                with open(tuned_cfg_path, "r", encoding="utf-8") as f:
-                    current_tuned = json.load(f)
-            except:
-                pass
-        
-        # Update with new tuned params
-        algo_key = args.algo.lower().replace("-", "_")
-        current_tuned[algo_key] = best_trial.params
-        with open(tuned_cfg_path, "w", encoding="utf-8") as f:
-            json.dump(current_tuned, f, indent=4)
-        print(f"Saved tuned configurations to: {tuned_cfg_path}")
+    # Save Phase 1 results to tuned_configs.json (for tune_reward.py Phase 2 use)
+    os.makedirs(os.path.dirname(tuned_cfg_path), exist_ok=True)
+    current_tuned = {}
+    if os.path.exists(tuned_cfg_path):
+        try:
+            with open(tuned_cfg_path, "r", encoding="utf-8") as f:
+                current_tuned = json.load(f)
+        except:
+            pass
+    algo_key = args.algo.lower().replace("-", "_")
+    current_tuned[algo_key] = best_trial.params
+    with open(tuned_cfg_path, "w", encoding="utf-8") as f:
+        json.dump(current_tuned, f, indent=4)
+    print(f"[OK] Saved tuned configurations to: {tuned_cfg_path}")
+    print(f"     When PPO, DQN and QJC are all done, run: python scripts/tune_reward.py")
         
     # Save all trials database
     trials_data = []
