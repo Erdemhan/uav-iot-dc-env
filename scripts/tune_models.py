@@ -473,7 +473,8 @@ def main():
                         help="Algorithm to tune")
     parser.add_argument("--num-samples", type=int, default=30, help="Total number of trials to sample")
     parser.add_argument("--iterations", type=int, default=1000, help="Training iterations per trial (each trial runs for this many algo.train() calls)")
-    parser.add_argument("--num-workers", type=int, default=14, help="Environment workers per trial (Ultra 9 core optimization)")
+    parser.add_argument("--num-workers",  type=int,  default=10,
+                        help="Env runners per trial. 10 workers × 100 steps = train_batch_size=1000 exactly. 11 CPUs total (1 learner + 10 runners) per machine, STRICT_PACK.")
     parser.add_argument("--use-gpu", type=bool, default=True, help="Use RTX 3060 GPU for network updates")
     args = parser.parse_args()
     
