@@ -7,33 +7,27 @@ class OptConfig:
     Modify this file to adjust param boundaries, choices, and neural network architectures.
     """
     # --- Neural Network Architecture Choices (Phase 1) ---
-    ARCH_CHOICES = [
-        # Shallow (1 layer)
-        [128],
-        [256],
-        [512],
-        # Homogeneous 2-layer
-        [128, 128],
-        [256, 256],
-        [512, 512],
-        # Expanding 2-layer
-        [128, 256],
-        [256, 512],
-        # Shrinking 2-layer (funnel)
-        [256, 128],
-        [512, 256],
-        # Homogeneous 3-layer
-        [128, 128, 128],
-        [256, 256, 256],
-        [512, 512, 512],
-        # Expanding 3-layer
-        [128, 256, 512],
-        # Shrinking 3-layer
-        [512, 256, 128],
-        # Bottleneck 3-layer
-        [256, 128, 256],
-        [512, 256, 512],
-    ]
+    # Programmatically generated choices for all 1, 2, and 3-layer networks of [128, 256, 512]
+    # Includes all 39 possible permutations (e.g., [128, 512], [512, 128], [128, 512, 128], etc.)
+    ARCH_CHOICES = []
+
+    # Helper generator to run during class setup
+    @staticmethod
+    def _generate_choices():
+        options = [128, 256, 512]
+        choices = []
+        for o1 in options:
+            choices.append([o1])
+        for o1 in options:
+            for o2 in options:
+                choices.append([o1, o2])
+        for o1 in options:
+            for o2 in options:
+                for o3 in options:
+                    choices.append([o1, o2, o3])
+        return choices
+
+
 
     # --- Shared RL (PPO, DQN, PPO-LSTM) Search Space bounds ---
     RL_LR_MIN = 1e-5
@@ -45,8 +39,8 @@ class OptConfig:
     DQN_TARGET_UPDATE_FREQ = [200, 500, 1000, 2000]
 
     # --- PPO-LSTM-Specific ---
-    PPOLSTM_CELL_SIZE = [128, 256, 512]
-    PPOLSTM_MAX_SEQ_LEN = [10, 20, 30]
+    PPOLSTM_CELL_SIZE = [16, 32, 64, 128]
+    PPOLSTM_MAX_SEQ_LEN = [5, 10, 20]
 
 
     # --- QJC Search Space bounds ---
@@ -64,3 +58,7 @@ class OptConfig:
     REWARD_W_SUCCESS_MAX = 0.95
     REWARD_W_COST_MIN = 0.005
     REWARD_W_COST_MAX = 0.1
+
+# Populate ARCH_CHOICES statically at load-time (out of class scope to maintain indentation)
+OptConfig.ARCH_CHOICES = OptConfig._generate_choices()
+
