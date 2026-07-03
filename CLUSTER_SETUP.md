@@ -118,19 +118,24 @@ Canlı sonuç paneli: `http://localhost:5000/opt.html` adresinden izlenir.
 
 ## ADIM 5 — Phase 1: Model HPO Başlat (Sadece Head'de)
 
+> [!TIP]
+> **Aynı Anda Çalıştırmak İçin:**
+> Head makinesinde **3 ayrı terminal açın** ve her algoritmayı kendi terminalinde paralel olarak başlatın.
+> `--max-concurrent 4` argümanı sayesinde her algoritma cluster'dan en fazla 4 makine (trial) kapatır. Toplamda 12 makinenin tamamı PPO, DQN ve PPO-LSTM arasında eşit olarak (4 + 4 + 4) paylaşılır.
+
 ```powershell
 .\.venv\Scripts\Activate.ps1
 
-# 1. PPO hiperpametre aramasını başlat (4 makinede paralel çalışır)
-python scripts/tune_models.py --algo PPO --num-samples 30 --iterations 1000 --num-workers 10 --use-gpu True
+# Terminal 1: PPO hiperpametre aramasını başlat (4 makinede paralel çalışır)
+python scripts/tune_models.py --algo PPO --num-samples 30 --iterations 1000 --num-workers 10 --use-gpu True --max-concurrent 4
 
-# 2. DQN hiperparametre aramasını başlat (4 makinede paralel çalışır)
-python scripts/tune_models.py --algo DQN --num-samples 30 --iterations 1000 --num-workers 10 --use-gpu True
+# Terminal 2: DQN hiperparametre aramasını başlat (4 makinede paralel çalışır)
+python scripts/tune_models.py --algo DQN --num-samples 30 --iterations 1000 --num-workers 10 --use-gpu True --max-concurrent 4
 
-# 3. PPO-LSTM hiperparametre aramasını başlat (4 makinede paralel çalışır)
-python scripts/tune_models.py --algo PPO-LSTM --num-samples 30 --iterations 1000 --num-workers 10 --use-gpu True
+# Terminal 3: PPO-LSTM hiperparametre aramasını başlat (4 makinede paralel çalışır)
+python scripts/tune_models.py --algo PPO-LSTM --num-samples 30 --iterations 1000 --num-workers 10 --use-gpu True --max-concurrent 4
 
-# 4. Baseline QJC Optimizasyonu (Çok hızlı olduğu için doğrudan lokalde çalıştırılabilir)
+# Terminal 4 (veya Lokal): Baseline QJC (Çok hızlı olduğu için doğrudan kendi bilgisayarınızda da çalıştırabilirsiniz)
 python scripts/tune_models.py --algo QJC --num-samples 30 --iterations 1000
 ```
 
@@ -139,6 +144,7 @@ python scripts/tune_models.py --algo QJC --num-samples 30 --iterations 1000
 > - Her deneme `STRICT_PACK` stratejisi ile **tam 1 makinede** (11 CPU, 1 GPU) izole çalışır.
 > - ASHA erken durdurucu devrededir; kötü denemeler 500. iterasyondan sonra kesilir.
 > - QJC tabular tabanlı olduğu için son derece hızlı biter, isterseniz Ray cluster'ı kapatıp lokalde de saniyeler içinde koşturabilirsiniz.
+
 
 
 ## ADIM 6 — Phase 2: Ödül Ağırlığı Optimizasyonu (Phase 1 Bittikten Sonra)
