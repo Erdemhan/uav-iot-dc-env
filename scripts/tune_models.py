@@ -30,6 +30,8 @@ sys.path.append(PROJECT_ROOT)
 from simulation.pettingzoo_env import UAV_IoT_PZ_Env
 from confs.env_config import EnvConfig
 from confs.model_config import GlobalConfig
+from confs.opt_config import OptConfig
+
 
 # Evaluation Constants
 SEEDS = range(100, 130) # Seeds 100 to 129
@@ -544,66 +546,35 @@ def main():
             pass
 
     # Phase 1: Model Hyperparameters
-        # Architecture search space:
-        # Homogeneous: all layers same size
-        # Expanding:   small → large (feature extraction)
-        # Shrinking:   large → small (compression/funnel)
-        # Bottleneck:  wide → narrow → wide
-        ARCH_CHOICES = [
-            # --- Shallow (1 layer) ---
-            [128],
-            [256],
-            [512],
-            # --- Homogeneous 2-layer ---
-            [128, 128],
-            [256, 256],
-            [512, 512],
-            # --- Expanding 2-layer ---
-            [128, 256],
-            [256, 512],
-            # --- Shrinking 2-layer (funnel) ---
-            [256, 128],
-            [512, 256],
-            # --- Homogeneous 3-layer ---
-            [128, 128, 128],
-            [256, 256, 256],
-            [512, 512, 512],
-            # --- Expanding 3-layer ---
-            [128, 256, 512],
-            # --- Shrinking 3-layer ---
-            [512, 256, 128],
-            # --- Bottleneck 3-layer ---
-            [256, 128, 256],
-            [512, 256, 512],
-        ]
         if args.algo == "PPO":
             search_space = {
-                "lr": tune.loguniform(1e-5, 1e-3),
-                "gamma": tune.uniform(0.85, 0.99),
-                "architecture": tune.choice(ARCH_CHOICES)
+                "lr": tune.loguniform(OptConfig.PPO_LR_MIN, OptConfig.PPO_LR_MAX),
+                "gamma": tune.uniform(OptConfig.PPO_GAMMA_MIN, OptConfig.PPO_GAMMA_MAX),
+                "architecture": tune.choice(OptConfig.ARCH_CHOICES)
             }
         elif args.algo == "DQN":
             search_space = {
-                "lr": tune.loguniform(1e-5, 1e-3),
-                "gamma": tune.uniform(0.85, 0.99),
-                "architecture": tune.choice(ARCH_CHOICES),
-                "target_network_update_freq": tune.choice([200, 500, 1000, 2000])
+                "lr": tune.loguniform(OptConfig.DQN_LR_MIN, OptConfig.DQN_LR_MAX),
+                "gamma": tune.uniform(OptConfig.DQN_GAMMA_MIN, OptConfig.DQN_GAMMA_MAX),
+                "architecture": tune.choice(OptConfig.ARCH_CHOICES),
+                "target_network_update_freq": tune.choice(OptConfig.DQN_TARGET_UPDATE_FREQ)
             }
         elif args.algo == "PPO-LSTM":
             search_space = {
-                "lr": tune.loguniform(1e-5, 5e-4),
-                "gamma": tune.uniform(0.85, 0.99),
-                "architecture": tune.choice(ARCH_CHOICES),
-                "lstm_cell_size": tune.choice([128, 256, 512]),
-                "max_seq_len": tune.choice([10, 20, 30])
+                "lr": tune.loguniform(OptConfig.PPOLSTM_LR_MIN, OptConfig.PPOLSTM_LR_MAX),
+                "gamma": tune.uniform(OptConfig.PPOLSTM_GAMMA_MIN, OptConfig.PPOLSTM_GAMMA_MAX),
+                "architecture": tune.choice(OptConfig.ARCH_CHOICES),
+                "lstm_cell_size": tune.choice(OptConfig.PPOLSTM_CELL_SIZE),
+                "max_seq_len": tune.choice(OptConfig.PPOLSTM_MAX_SEQ_LEN)
             }
         elif args.algo == "QJC":
             search_space = {
-                "tau_0": tune.loguniform(1e-5, 1e-3),
-                "gamma": tune.uniform(0.85, 0.99),
-                "temp_xi": tune.uniform(1.0, 10.0),
-                "mu_offset": tune.uniform(1.0, 2.0)
+                "tau_0": tune.loguniform(OptConfig.QJC_TAU_0_MIN, OptConfig.QJC_TAU_0_MAX),
+                "gamma": tune.uniform(OptConfig.QJC_GAMMA_MIN, OptConfig.QJC_GAMMA_MAX),
+                "temp_xi": tune.uniform(OptConfig.QJC_TEMP_XI_MIN, OptConfig.QJC_TEMP_XI_MAX),
+                "mu_offset": tune.uniform(OptConfig.QJC_MU_OFFSET_MIN, OptConfig.QJC_MU_OFFSET_MAX)
             }
+
     # Phase 1 — Per-Algorithm Model Hyperparameter Search
     # ---------------------------------------------------------------------------
 
