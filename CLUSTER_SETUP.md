@@ -31,9 +31,11 @@ ipconfig
 # "IPv4 Address" satırındaki adres (örn: 192.168.1.50)
 ```
 
-### 1.2 Ray Head Node'u Başlat
+### 1.2 Ray Head Node'u Başlat (Sadece Koordinatör)
 ```powershell
-ray start --head --port=6379 --dashboard-host=0.0.0.0
+# --num-cpus=0 --num-gpus=0 → Ray bu makineye hiçbir trial/env-runner yerleştirmez
+# Tüm hesaplama yükü worker'lara gider; sen sadece yönetirsin.
+ray start --head --port=6379 --dashboard-host=0.0.0.0 --num-cpus=0 --num-gpus=0
 ```
 Çıktıda şunu göreceksin:
 ```
@@ -127,8 +129,8 @@ ray status
 Node status
 ---------------------------------------------------------------
 Healthy:
- 1 node(s) with resources: {'CPU': 22.0, 'GPU': 1.0}   ← Head
- 29 node(s) with resources: {'CPU': 22.0, 'GPU': 1.0}  ← Workers
+ 1 node(s) with resources: {'CPU': 0.0, 'GPU': 0.0}    ← Head (koordinatör, çalışmaz)
+ 29 node(s) with resources: {'CPU': 22.0, 'GPU': 1.0}  ← Workers (tüm yük burada)
 ```
 
 Ayrıca Ray Dashboard: `http://localhost:8265` adresinden de izlenebilir.

@@ -486,11 +486,15 @@ def main():
     }
     
     try:
-        # Connect to existing cluster
+        # Connect to existing cluster.
+        # Head node is started with --num-cpus=0 --num-gpus=0, so Ray will
+        # NOT schedule any trial trainable or env-runner on the head machine.
+        # All compute work goes to worker nodes automatically.
         ray.init(address="auto", runtime_env=runtime_env)
         print("[OK] Connected to active Ray head node successfully!")
     except Exception as e:
         print(f"[WARN] Ray address='auto' connection failed: {e}. Starting local Ray instance...")
+        # Fallback: single-machine mode (head becomes a worker too in this case)
         ray.init(runtime_env=runtime_env)
         
     # 2. Setup run directory and paths
