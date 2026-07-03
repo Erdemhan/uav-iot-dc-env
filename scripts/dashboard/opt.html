@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UAV-IoT Karıştırma Optimizasyon Paneli</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0f1d;
+            --bg-secondary: #121829;
+            --bg-tertiary: #1b233d;
+            --accent-primary: #00f2fe;
+            --accent-secondary: #4facfe;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --border: rgba(255, 255, 255, 0.08);
+            --glow: rgba(0, 242, 254, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem;
+            overflow-x: hidden;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header-title h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-title p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .status-badge {
+            background: rgba(0, 242, 254, 0.1);
+            border: 1px solid var(--accent-primary);
+            color: var(--accent-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 0 15px var(--glow);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.6; }
+            50% { transform: scale(1.3); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.6; }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .stat-card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(0, 242, 254, 0.3);
+        }
+
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(to bottom, var(--accent-primary), var(--accent-secondary));
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        .panel-card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2rem;
+        }
+
+        .tabs-header {
+            display: flex;
+            gap: 1rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 2rem;
+            padding-bottom: 0.5rem;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background-color: rgba(255, 255, 255, 0.03);
+        }
+
+        .tab-btn.active {
+            color: var(--accent-primary);
+            background-color: rgba(0, 242, 254, 0.08);
+            box-shadow: inset 0 0 10px rgba(0, 242, 254, 0.05);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Table Styling */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-weight: 600;
+            padding: 1rem 1.5rem;
+            font-size: 0.95rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 1rem 1.5rem;
+            font-size: 0.9rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+            vertical-align: middle;
+        }
+
+        tr:hover td {
+            background-color: rgba(255, 255, 255, 0.02);
+            color: var(--text-primary);
+        }
+
+        .badge {
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-completed {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .badge-pruned {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .badge-running {
+            background-color: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        /* Plot Viewer */
+        .plot-viewer-container {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 2rem;
+            min-height: 500px;
+        }
+
+        .plot-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            border-right: 1px solid var(--border);
+            padding-right: 1.5rem;
+        }
+
+        .plot-sidebar-btn {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: left;
+            font-weight: 500;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .plot-sidebar-btn:hover {
+            color: var(--text-primary);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .plot-sidebar-btn.active {
+            background: linear-gradient(135deg, rgba(0, 242, 254, 0.1), rgba(79, 172, 254, 0.1));
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+            box-shadow: 0 0 10px rgba(0, 242, 254, 0.1);
+        }
+
+        .plot-display {
+            background-color: #ffffff; /* Plots look best on white background */
+            border-radius: 16px;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative;
+            min-height: 450px;
+        }
+
+        .plot-img {
+            max-width: 100%;
+            max-height: 600px;
+            object-fit: contain;
+            border-radius: 8px;
+            display: block;
+        }
+
+        .spinner {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(0, 242, 254, 0.1);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s infinite linear;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .no-data-msg {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            text-align: center;
+            padding: 3rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title">
+            <h1 id="panel-title">UAV-IoT Optimizasyon Raporu</h1>
+            <p id="panel-subtitle">Yükleniyor...</p>
+        </div>
+        <div class="status-badge">
+            <div class="status-dot" id="status-dot"></div>
+            <span id="status-text">Bağlanıyor...</span>
+        </div>
+    </header>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Toplam Deneme</div>
+            <div class="stat-value" id="stat-total">-</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">En Yüksek Skor (JSR/Reward)</div>
+            <div class="stat-value" id="stat-best" style="color: var(--accent-primary);">-</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Tamamlanan</div>
+            <div class="stat-value" id="stat-completed" style="color: var(--success);">-</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Budanan (Pruned)</div>
+            <div class="stat-value" id="stat-pruned" style="color: var(--danger);">-</div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="panel-card">
+            <div class="tabs-header">
+                <button class="tab-btn active" onclick="switchMainTab('trials')">Deneme Listesi</button>
+                <button class="tab-btn" onclick="switchMainTab('plots')">Optimizasyon Grafikleri</button>
+            </div>
+
+            <!-- Tab 1: Trials Table -->
+            <div id="tab-trials" class="tab-content active">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Durum</th>
+                                <th>Skor (Objective)</th>
+                                <th>Parametreler</th>
+                                <th>Süre (Saniye)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trials-tbody">
+                            <tr>
+                                <td colspan="5" class="no-data-msg">Kayıtlı deneme verisi aranıyor...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 2: Plots Viewer -->
+            <div id="tab-plots" class="tab-content">
+                <div class="plot-viewer-container">
+                    <div class="plot-sidebar">
+                        <button class="plot-sidebar-btn active" onclick="loadPlot('param_importances')">Parametre Önemi</button>
+                        <button class="plot-sidebar-btn" onclick="loadPlot('optimization_history')">Gelişim Geçmişi</button>
+                        <button class="plot-sidebar-btn" onclick="loadPlot('parallel_coordinate')">Çok Boyutlu İlişki</button>
+                        <button class="plot-sidebar-btn" onclick="loadPlot('slice_plot')">Dilim Grafiği</button>
+                    </div>
+                    <div class="plot-display">
+                        <div class="spinner" id="plot-spinner"></div>
+                        <img src="" alt="Optimizasyon Grafiği" class="plot-img" id="plot-image" style="display: none;" onload="onPlotLoaded()">
+                        <div id="plot-error" class="no-data-msg" style="display: none; color: var(--danger); background-color: var(--bg-secondary); width: 100%; height: 100%; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                            Grafik henüz oluşturulmadı veya yüklenemedi.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentActivePlot = 'param_importances';
+        let isPolling = true;
+        let pollTimer = null;
+
+        function switchMainTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            if (tabName === 'plots') {
+                loadPlot(currentActivePlot);
+            }
+        }
+
+        function loadPlot(plotName) {
+            currentActivePlot = plotName;
+            document.querySelectorAll('.plot-sidebar-btn').forEach(btn => btn.classList.remove('active'));
+            
+            // Find button and make active
+            const btn = Array.from(document.querySelectorAll('.plot-sidebar-btn')).find(b => b.getAttribute('onclick').includes(plotName));
+            if (btn) btn.classList.add('active');
+
+            const spinner = document.getElementById('plot-spinner');
+            const img = document.getElementById('plot-image');
+            const errorDiv = document.getElementById('plot-error');
+
+            spinner.style.display = 'block';
+            img.style.display = 'none';
+            errorDiv.style.display = 'none';
+
+            // Cache bust timestamp
+            const timestamp = new Date().getTime();
+            img.src = `/api/plots/optuna/${plotName}.png?t=${timestamp}`;
+        }
+
+        function onPlotLoaded() {
+            document.getElementById('plot-spinner').style.display = 'none';
+            document.getElementById('plot-image').style.display = 'block';
+            document.getElementById('plot-error').style.display = 'none';
+        }
+
+        document.getElementById('plot-image').onerror = function() {
+            document.getElementById('plot-spinner').style.display = 'none';
+            document.getElementById('plot-image').style.display = 'none';
+            document.getElementById('plot-error').style.display = 'flex';
+        };
+
+        async function fetchMetadata() {
+            try {
+                const response = await fetch('/api/metadata');
+                const metadata = await response.json();
+                if (metadata && metadata.algo) {
+                    document.getElementById('panel-title').innerText = `${metadata.algo} Optimizasyon Raporu`;
+                    document.getElementById('panel-subtitle').innerText = `Deney Klasörü: artifacts/tune_${metadata.algo.toLowerCase().replace('-', '_')}_phase${metadata.phase}_${metadata.timestamp}`;
+                }
+            } catch (e) {
+                console.error("Error loading metadata", e);
+            }
+        }
+
+        async function pollData() {
+            try {
+                const response = await fetch('/api/optuna');
+                const data = await response.json();
+                
+                if (!data || Object.keys(data).length === 0 || !data.trials || data.trials.length === 0) {
+                    // Update connection state
+                    document.getElementById('status-text').innerText = "Veri Yok";
+                    document.getElementById('status-dot').style.backgroundColor = "var(--danger)";
+                    document.getElementById('status-dot').style.animation = "none";
+                    return;
+                }
+
+                // Update Stats
+                const trials = data.trials;
+                const bestVal = data.best_value;
+                const bestNum = data.best_trial_number;
+                
+                document.getElementById('stat-total').innerText = trials.length;
+                document.getElementById('stat-best').innerText = bestVal !== null ? `${bestVal.toFixed(2)}%` : '-';
+                
+                let completed = 0;
+                let pruned = 0;
+                let running = 0;
+                
+                trials.forEach(t => {
+                    if (t.state === "TrialState.COMPLETE" || t.state === "COMPLETE") completed++;
+                    else if (t.state === "TrialState.PRUNED" || t.state === "PRUNED") pruned++;
+                    else running++;
+                });
+
+                document.getElementById('stat-completed').innerText = completed;
+                document.getElementById('stat-pruned').innerText = pruned;
+
+                // Connection status dot update
+                const statusDot = document.getElementById('status-dot');
+                const statusText = document.getElementById('status-text');
+
+                if (running > 0) {
+                    statusText.innerText = "Optimizasyon Devam Ediyor";
+                    statusDot.style.backgroundColor = "var(--warning)";
+                    statusDot.style.animation = "pulse 1.5s infinite";
+                } else {
+                    statusText.innerText = "Optimizasyon Tamamlandı";
+                    statusDot.style.backgroundColor = "var(--success)";
+                    statusDot.style.animation = "none";
+                    // Stop polling if completed
+                    isPolling = false;
+                    clearInterval(pollTimer);
+                }
+
+                // Re-draw Table
+                const tbody = document.getElementById('trials-tbody');
+                tbody.innerHTML = '';
+
+                // Sort trials descending (highest trial number first)
+                const sortedTrials = [...trials].reverse();
+                
+                sortedTrials.forEach(trial => {
+                    const row = document.createElement('tr');
+                    
+                    // State Badge
+                    let stateClass = 'badge-completed';
+                    let stateText = 'COMPLETE';
+                    if (trial.state.includes("PRUNED")) {
+                        stateClass = 'badge-pruned';
+                        stateText = 'PRUNED';
+                    } else if (trial.state.includes("RUNNING")) {
+                        stateClass = 'badge-running';
+                        stateText = 'RUNNING';
+                    }
+
+                    // Parameters string formatting
+                    let paramsStr = [];
+                    for (let [k, v] of Object.entries(trial.params)) {
+                        if (typeof v === 'number' && !Number.isInteger(v)) {
+                            paramsStr.push(`${k}: <b>${v.toExponential(3)}</b>`);
+                        } else {
+                            paramsStr.push(`${k}: <b>${v}</b>`);
+                        }
+                    }
+
+                    row.innerHTML = `
+                        <td>#${trial.number}</td>
+                        <td><span class="badge ${stateClass}">${stateText}</span></td>
+                        <td style="font-weight: 600; color: ${trial.number === bestNum ? 'var(--accent-primary)' : 'var(--text-primary)'}">
+                            ${trial.value !== null ? trial.value.toFixed(2) + '%' : '-'}
+                        </td>
+                        <td>${paramsStr.join(', ')}</td>
+                        <td>${trial.duration_seconds ? trial.duration_seconds.toFixed(0) : '-'}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                // Update Plot if tab is active
+                if (document.getElementById('tab-plots').classList.contains('active')) {
+                    // Avoid reloading image every single poll if no new trials finished, 
+                    // but simple timestamp refresh does job
+                    loadPlot(currentActivePlot);
+                }
+
+            } catch (e) {
+                console.error("Error polling trials data", e);
+            }
+        }
+
+        // Initialize
+        fetchMetadata();
+        pollData();
+        
+        // Poll every 5 seconds
+        pollTimer = setInterval(pollData, 5000);
+    </script>
+</body>
+</html>
