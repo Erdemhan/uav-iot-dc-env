@@ -211,6 +211,65 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                 self.wfile.write(b"<h1>opt.html not found!</h1>")
             return
 
+        # Serve active Optuna trial progress (Ray Tune progress.csv per trial)
+        if path == "/api/active_trials":
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.end_headers()
+
+            active_trials = []
+            tune_results_dir = os.path.join(run_dir, "tune_results", "optuna_study")
+            if os.path.isdir(tune_results_dir):
+                for trial_folder in sorted(os.listdir(tune_results_dir)):
+                    trial_path = os.path.join(tune_results_dir, trial_folder)
+                    if not os.path.isdir(trial_path):
+                        continue
+                    progress_csv = os.path.join(trial_path, "progress.csv")
+                    if not os.path.exists(progress_csv):
+                        continue
+                    try:
+                        with open(progress_csv, "r", encoding="utf-8") as f:
+                            reader = csv.DictReader(f)
+                            rows = list(reader)
+                        if not rows:
+                            continue
+                        last = rows[-1]
+                        current_iter = int(float(last.get("training_iteration", 0) or 0))
+                        objective = last.get("objective", None)
+                        jsr = last.get("jsr", None)
+                        if objective not in (None, ""):
+                            objective = float(objective)
+                        else:
+                            objective = None
+                        if jsr not in (None, ""):
+                            jsr = float(jsr)
+                        else:
+                            jsr = None
+                        # Read total_iterations from params json if exists
+                        params_path = os.path.join(trial_path, "params.json")
+                        total_iters = None
+                        if os.path.exists(params_path):
+                            try:
+                                with open(params_path, "r", encoding="utf-8") as pf:
+                                    p = json.load(pf)
+                                    total_iters = p.get("iterations")
+                            except:
+                                pass
+                        active_trials.append({
+                            "trial_id": trial_folder,
+                            "current_iteration": current_iter,
+                            "total_iterations": total_iters,
+                            "objective": objective,
+                            "jsr": jsr,
+                            "num_rows": len(rows)
+                        })
+                    except Exception:
+                        pass
+
+            self.wfile.write(json.dumps({"trials": active_trials}).encode("utf-8"))
+            return
+
         # Serve Optuna results JSON
         if path == "/api/optuna":
             self.send_response(200)
