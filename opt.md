@@ -9,19 +9,23 @@ Bu rapor, laboratuvardaki 30 adet bilgisayardan oluşan yerel bir Ray kümesi ü
 
 ## 1. Donanım ve Paralelleştirme Stratejisi
 
-Mevcut eğitim süreleri tek bilgisayarda (kısıtlı kaynak kullanımı ile) yaklaşık 7-8 saattir. Bu süreyi laboratuvar donanımının tamamını kullanarak optimize edeceğiz:
+Mevcut eğitim süreleri tek bilgisayarda (kısıtlı kaynak kullanımı ile) yaklaşık 3-6 saattir. Bu süreyi laboratuvar donanımını en verimli şekilde kullanarak optimize edeceğiz:
 
 1. **CPU Dağıtımı (`num_workers`)**:
-   - Intel Ultra 9 işlemcilerin yüksek çekirdek sayısından yararlanarak her deneme için `num_workers = 14` olarak ayarlanacaktır. Simülasyon veri toplama süreci CPU üzerinde 14 paralel kanaldan yürütülecektir.
+   * Her deneme için `num_workers = 10` olarak ayarlanmıştır. Simülasyon veri toplama süreci CPU üzerinde 10 paralel kanaldan yürütülecektir.
+   * `rollout_fragment_length = 100` (tam 1 episode) olduğu için her worker tam 1 episode toplar ve train batch boyutuyla (1000 step) kusursuz eşleşir.
+
 2. **GPU Hızlandırması (`use_gpu`)**:
-   - RTX 3060 ekran kartlarının CUDA çekirdekleri sinir ağı (PPO, DQN, PPO-LSTM) güncellemeleri için aktif edilecektir (`use_gpu = True`).
-   - Her deneme GPU'nun yarısını (`num_gpus = 0.5`) kullanacak; böylece bir bilgisayar iki denemeyi paralel destekleyebilecektir.
-   - **GPU olmayan makinelerde otomatik CPU fallback**: `torch.cuda.is_available()` kontrolü ile CUDA yoksa uyarı verilerek CPU'ya geçiş yapılır.
-3. **Hız Kazancı Tahmini**:
-   - Çekirdek sayısının artırılması ve GPU desteği sayesinde tek bir tam eğitim süresinin **1.5 saat veya daha az bir süreye** düşmesi beklenmektedir.
-4. **Dağıtık Ölçekleme (30 PC)**:
-   - 30 bilgisayarlık Ray kümesinde aynı anda **30 bağımsız deneme paralel olarak koşturulacaktır.**
-   - 90 denemeden oluşan bir arama süreci, sadece **3 turda (yaklaşık 3.5 - 4.5 saat)** tamamen sonlanacaktır.
+   * RTX 3060/3080ti ekran kartlarının CUDA çekirdekleri aktif edilecektir (`use_gpu = True`).
+   * VRAM ve kaynak çakışmasını (OOM hatalarını) önlemek için her denemeye tam 1.0 GPU (`num_gpus = 1.0`) atanır.
+
+3. **Fiziksel İzolasyon (`STRICT_PACK`)**:
+   * PlacementGroupFactory'de `strategy="STRICT_PACK"` kullanılarak bir denemeye ait tüm süreçler (1 learner + 10 env runner = 11 CPU) **aynı fiziksel bilgisayara** kilitlenir.
+   * Bu sayede makineler arası ağ (network) trafiği sıfıra iner ve eğitim hızlanır. Kalan 11 thread izole boşta kalır.
+
+4. **Dağıtık Ölçekleme ve Süre (12 PC)**:
+   * 12 bilgisayarlık Ray kümesinde aynı anda **12 bağımsız deneme paralel olarak koşturulabilir.**
+   * Faz 1 ve Faz 2 optimizasyonları 12 bilgisayarın gücüyle sadece **~2.8 günde** tamamen sonlanır.
 
 ---
 
@@ -93,7 +97,9 @@ Faz 1'de bulunan en iyi model parametreleri dondurulacaktır. Bu aşamada, her a
   - `W_success`: `0.5` ile `0.95` arasında sürekli (JSR önceliği)
   - `W_cost`: `0.005` ile `0.1` arasında sürekli (Güç koruma önceliği)
   - `W_tracking`: Dinamik olarak `1.0 - W_success` hesaplanacaktır.
-* **Adillik Garantisi**: Tüm modeller kendi en optimum parametreleriyle bu ortak ödülü çözmeye çalışacağı için, elde edilen karşılaştırma sonuçları akademik olarak **%100 adil ve hatasız** olacaktır.
+* **Algoritma Bağımsız Ortak Optimizasyon (YENİ)**:
+  * Faz 2, her algoritma için ayrı ayrı değil, **PPO + DQN + QJC algoritmalarının ortalama JSR** değerini en yüksek yapacak tek bir ödül ağırlık seti bulmak için ortak çalışır.
+  * Böylece tüm modeller kendi en optimum Faz 1 parametreleriyle bu ortak ödülü çözmeye çalışır. Elde edilen karşılaştırma sonuçları akademik olarak **%100 adil ve hatasız** olur.
 
 ---
 
@@ -148,12 +154,12 @@ Optimizasyon sonuçlarını hem canlı takip etmek, hem kalıcı arşivlemek hem
    - **Not**: `architecture` parametresi liste tipinde olduğundan (örn. `[128, 256, 512]`), `parallel_coordinate` ve `slice_plot` grafikleri çizilirken liste değerleri otomatik olarak string'e dönüştürülür; bu sayede Optuna'nın hash kısıtlaması aşılmaktadır.
 
 3. **Web Arayüz Entegrasyonu (Dashboard)**:
-   - `dashboard_server.py` sunucusu `/opt.html` adresinde yeni bir rapor sayfası sunar.
+   - `dashboard_server.py` sunucusu `/opt.html` (Faz 1) ve `/reward_opt.html` (Faz 2) adreslerinde canli raporlama sunar.
    - Bu sayfa diskteki JSON ve PNG dosyalarını okuyarak 5 saniyelik polling ile canlı güncellenir:
      - Toplam/tamamlanan/budanan deneme sayıları
      - En yüksek skora göre sıralanabilir interaktif deneme tablosu
      - Optuna grafikleri sekme geçişli olarak görüntüleme
-   - Dashboard yeni bir run başlatıldığında `dashboard_active_run.txt` dosyası güncellenerek otomatik olarak o run'ı hedefler.
+   - Dashboard yeni bir run başlatıldığında `dashboard_active_run.txt` (Faz 1) ve `dashboard_active_reward_run.txt` (Faz 2) dosyaları üzerinden otomatik olarak o run'ı hedefler.
 
 ---
 
@@ -164,20 +170,24 @@ Optimizasyon sonuçlarını hem canlı takip etmek, hem kalıcı arşivlemek hem
 .\.venv\Scripts\Activate.ps1
 
 # PPO Phase 1 — Model Hiperparametreleri
-python scripts/tune_models.py --algo PPO --num-samples 30 --iterations 100 --num-workers 14 --use-gpu True
-
-# PPO Phase 2 — Reward Ağırlıkları (Phase 1 tamamlandıktan sonra)
-python scripts/tune_models.py --algo PPO --phase 2 --num-samples 20 --iterations 100 --num-workers 14 --use-gpu True
+python scripts/tune_models.py --algo PPO --num-samples 30 --iterations 1000 --num-workers 10 --use-gpu True
 
 # DQN Phase 1
-python scripts/tune_models.py --algo DQN --num-samples 30 --iterations 100 --num-workers 14 --use-gpu True
+python scripts/tune_models.py --algo DQN --num-samples 30 --iterations 1000 --num-workers 10 --use-gpu True
+
+# PPO-LSTM Phase 1
+python scripts/tune_models.py --algo PPO-LSTM --num-samples 30 --iterations 1000 --num-workers 10 --use-gpu True
 
 # QJC (Baseline)
-python scripts/tune_models.py --algo QJC --num-samples 30 --iterations 100
+python scripts/tune_models.py --algo QJC --num-samples 30 --iterations 1000
+
+# Phase 2 — Reward Ağırlıkları (Tüm Phase 1'ler bittikten sonra)
+python scripts/tune_reward.py --num-samples 20 --iterations 500 --num-workers 10 --use-gpu True
 
 # Dashboard (ayrı terminalde)
 python scripts/dashboard_server.py
-# → http://localhost:8000/opt.html
+# → Phase 1 İzleme: http://localhost:5000/opt.html
+# → Phase 2 İzleme: http://localhost:5000/reward_opt.html
 ```
 
 ---
@@ -186,10 +196,12 @@ python scripts/dashboard_server.py
 
 | Dosya | Durum | Açıklama |
 |---|---|---|
-| `scripts/tune_models.py` | ✅ Tamamlandı | Optuna TPE + ASHA Scheduler, PlacementGroupFactory, 30-seed eval, architecture kategorik arama |
+| `scripts/tune_models.py` | ✅ Tamamlandı | Optuna TPE + ASHA Scheduler, PlacementGroupFactory, 30-seed eval, architecture kategorik arama (Phase 1) |
+| `scripts/tune_reward.py` | ✅ Tamamlandı | PPO, DQN ve QJC'nin ortak ortalama JSR skorunu en iyi yapan W_SUCCESS ve W_COST arama scripti (Phase 2) |
 | `scripts/setup_worker.ps1` | ✅ Tamamlandı | Worker bilgisayar otomatik kurulum scripti (venv + pip + ray join) |
-| `scripts/dashboard/opt.html` | ✅ Tamamlandı | Canlı Optuna trial izleme paneli, grafik görüntüleyici |
-| `scripts/dashboard_server.py` | ✅ Tamamlandı | `/api/optuna`, `/api/plots/optuna/`, `/opt.html` endpoint'leri eklendi |
-| `scripts/dashboard/index.html` | ✅ Tamamlandı | Header'a "Optimization Panel" butonu eklendi |
-| `confs/tuned_configs.json` | ⏳ Run sonrası oluşur | Faz 1 en iyi parametrelerinin kalıcı konfigürasyon dosyası |
+| `scripts/dashboard/opt.html` | ✅ Tamamlandı | Canlı Phase 1 Optuna trial izleme paneli, grafik görüntüleyici |
+| `scripts/dashboard/reward_opt.html` | ✅ Tamamlandı | Canlı Phase 2 Optuna trial izleme paneli, algoritmik JSR kırılımı |
+| `scripts/dashboard_server.py` | ✅ Tamamlandı | `/api/optuna`, `/api/reward_opt`, `/opt.html`, `/reward_opt.html` endpoint'leri eklendi |
+| `scripts/dashboard/index.html` | ✅ Tamamlandı | Header'a "Optimization Panel" butonları eklendi |
+| `confs/tuned_configs.json` | ⏳ Run sonrası oluşur | Faz 1 en iyi parametrelerinin ve Faz 2 reward ağırlıklarının kalıcı konfigürasyon dosyası |
 | `CLUSTER_SETUP.md` | ✅ Tamamlandı | Lab küme kurulum kılavuzu |

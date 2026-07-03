@@ -9,16 +9,16 @@
 ┌────────────────────────────────────────────────┐
 │  SEN (Head Node)                               │
 │  IP: 192.168.X.X                               │
-│  • tune_models.py çalıştırır                   │
-│  • Optuna denemeleri yönetir                   │
-│  • Dashboard: http://localhost:8000/opt.html   │
+│  • tune_models.py ve tune_reward.py çalıştırır │
+│  • Optuna denemelerini yönetir                   │
+│  • Dashboard: http://localhost:5000/opt.html   │
 └────────────────┬───────────────────────────────┘
                  │ Ray Protocol (port 6379)
      ┌───────────┼───────────┐
      ▼           ▼           ▼
-  Worker 1    Worker 2  ... Worker 29
+  Worker 1    Worker 2  ... Worker 12
   (CPU+GPU)  (CPU+GPU)      (CPU+GPU)
-  Denemeleri paralel çalıştırır
+  Denemeleri paralel çalıştırır (STRICT_PACK ile her trial 1 makinede izole)
 ```
 
 ---
@@ -130,10 +130,11 @@ Node status
 ---------------------------------------------------------------
 Healthy:
  1 node(s) with resources: {'CPU': 0.0, 'GPU': 0.0}    ← Head (koordinatör, çalışmaz)
- 29 node(s) with resources: {'CPU': 22.0, 'GPU': 1.0}  ← Workers (tüm yük burada)
+ 12 node(s) with resources: {'CPU': 22.0, 'GPU': 1.0}  ← Workers (tüm yük burada)
 ```
 
 Ayrıca Ray Dashboard: `http://localhost:8265` adresinden de izlenebilir.
+Canlı sonuç paneli: `http://localhost:5000/opt.html` adresinden izlenir.
 
 ---
 
@@ -143,10 +144,10 @@ Ayrıca Ray Dashboard: `http://localhost:8265` adresinden de izlenebilir.
 .\.venv\Scripts\Activate.ps1
 
 # PPO — Model Hiperparametreleri (30 trial × 1000 iterasyon)
-python scripts/tune_models.py --algo PPO --num-samples 30 --iterations 1000 --num-workers 14 --use-gpu True
+python scripts/tune_models.py --algo PPO --num-samples 30 --iterations 1000 --num-workers 10 --use-gpu True
 
 # DQN — Model Hiperparametreleri
-python scripts/tune_models.py --algo DQN --num-samples 30 --iterations 1000 --num-workers 14 --use-gpu True
+python scripts/tune_models.py --algo DQN --num-samples 30 --iterations 1000 --num-workers 10 --use-gpu True
 
 # QJC (Baseline) — Tabular Model Hiperparametreleri
 python scripts/tune_models.py --algo QJC --num-samples 30 --iterations 1000
@@ -155,7 +156,9 @@ python scripts/tune_models.py --algo QJC --num-samples 30 --iterations 1000
 > **Phase 1 bütçesi:**
 > - Her trial → `iterations=1000` training adımı
 > - ASHA: ilk 500 iterasyon garantili çalışır, sonrası erken kesilebilir
-> - Her algo bağımsız çalıştırılır; sonuçlar `confs/tuned_configs.json`'a kaydedilir
+> - Her trial `STRICT_PACK` ile **tek bir makinede** (11 CPU, 1 GPU) izole şekilde çalışır.
+> - Sonuçlar `confs/tuned_configs.json`'a kaydedilir.
+
 
 ---
 
@@ -168,7 +171,7 @@ python scripts/tune_models.py --algo QJC --num-samples 30 --iterations 1000
 ```powershell
 # Phase 2 — AYRI script, AYRI dashboard
 # W_SUCCESS ve W_COST'u 3 algoritmanın ortalamasına göre optimize eder
-python scripts/tune_reward.py --num-samples 20 --iterations 500 --num-workers 14 --use-gpu True
+python scripts/tune_reward.py --num-samples 20 --iterations 500 --num-workers 10 --use-gpu True
 ```
 
 **Phase 2 dashboard'unu aç:**
@@ -181,8 +184,10 @@ python scripts/dashboard_server.py
 > **Phase 2 bütçesi:**
 > - Her trial içinde PPO + DQN + QJC **sıralı** eğitilir
 > - Objective = mean(JSR_ppo, JSR_dqn, JSR_qjc)
+> - Her trial yine `STRICT_PACK` ile tek bir makinede çalıştırılır (11 CPU, 1 GPU).
 > - ASHA yok — her trial tam çalışır
 > - Sonuç `confs/tuned_configs.json["reward"]`'a kaydedilir
+
 
 
 ---
@@ -194,7 +199,8 @@ python scripts/dashboard_server.py
 python scripts/dashboard_server.py
 
 # Tarayıcıda aç:
-# http://localhost:8000/opt.html
+# Phase 1 İzleme: http://localhost:5000/opt.html
+# Phase 2 İzleme: http://localhost:5000/reward_opt.html
 ```
 
 ---
