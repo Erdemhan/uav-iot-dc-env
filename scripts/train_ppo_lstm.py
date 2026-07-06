@@ -107,7 +107,7 @@ if __name__ == "__main__":
         .framework("torch")
         .debugging(seed=GlobalConfig.RANDOM_SEED)
         .env_runners(
-            num_env_runners=PPOLSTMConfig.NUM_WORKERS, 
+            num_env_runners=GlobalConfig.NUM_WORKERS, 
             rollout_fragment_length=PPOLSTMConfig.ROLLOUT_FRAGMENT_LENGTH
         )
         .training(
@@ -133,7 +133,7 @@ if __name__ == "__main__":
         # Use Old API Stack to match others
         .api_stack(enable_rl_module_and_learner=False,
                    enable_env_runner_and_connector_v2=False)
-        .resources(num_gpus=1 if PPOLSTMConfig.USE_GPU else 0)
+        .resources(num_gpus=1 if GlobalConfig.USE_GPU else 0)
         .debugging(log_level="WARN")
     )
     

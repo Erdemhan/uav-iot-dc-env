@@ -290,10 +290,11 @@ class UAV_IoT_PZ_Env(ParallelEnv):
         reward_jam_success = float(jammed_count) * EnvConfig.W_SUCCESS
         reward_energy_cost = jam_total_power_cost * EnvConfig.W_COST
         
-        # Dense Tracking Reward: Jammer matches the channel of the closest UAV
+        # Dense Tracking Reward: Jammer matches the channel of the closest UAV only during active data collection
         reward_tracking = 0.0
         closest_uav = min(self.uavs, key=lambda uav: np.linalg.norm(uav.position - self.attacker.position))
-        if self.attacker.current_channel == closest_uav.current_channel and self.attacker.jamming_power > 0.01:
+        reachable_count = sum(1 for n in self.nodes if n.connection_status != 1)
+        if reachable_count > 0 and self.attacker.current_channel == closest_uav.current_channel and self.attacker.jamming_power > 0.01:
             reward_tracking = EnvConfig.W_TRACKING
         
         jammer_reward = reward_jam_success + reward_tracking - reward_energy_cost

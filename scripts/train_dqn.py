@@ -119,7 +119,7 @@ if __name__ == "__main__":
         .debugging(seed=GlobalConfig.RANDOM_SEED)
         # FAIRNESS: Match PPO's worker count and fragment length for equal sampling
         .env_runners(
-            num_env_runners=DQNHyperparams.NUM_WORKERS,
+            num_env_runners=GlobalConfig.NUM_WORKERS,
             rollout_fragment_length=DQNHyperparams.ROLLOUT_FRAGMENT_LENGTH
         ) 
         .training(
@@ -151,7 +151,7 @@ if __name__ == "__main__":
         .api_stack(enable_rl_module_and_learner=False,
                    enable_env_runner_and_connector_v2=False)
         # FAIRNESS: Match PPO's GPU usage
-        .resources(num_gpus=1 if DQNHyperparams.USE_GPU else 0)
+        .resources(num_gpus=1 if GlobalConfig.USE_GPU else 0)
         .debugging(log_level="WARN")
         .experimental(_validate_config=False)
     )

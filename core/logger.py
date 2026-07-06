@@ -61,3 +61,60 @@ class SimulationLogger:
         """Write remaining data on close."""
         self.flush()
         print(f"[SimulationLogger] Logs saved to {self.log_dir}.")
+
+
+class ProcessLogger:
+    """
+    Handles logging of subprocess stdout/stderr streams.
+    Classifies lines and optionally writes them to a file.
+    """
+    def __init__(self, log_file_path: str = None):
+        self.log_file_path = log_file_path
+        if log_file_path:
+            os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+            # Clear log file on startup
+            try:
+                with open(self.log_file_path, "w", encoding="utf-8") as f:
+                    pass
+            except Exception:
+                pass
+            
+    def process_line(self, raw_line: str, stream_type: str = "stdout") -> tuple[str, str]:
+        """
+        Processes a raw line from a stream:
+        Classifies it and writes it to a file if configured.
+        Returns (prefix, clean_line).
+        """
+        clean_line = raw_line.strip()
+        if not clean_line:
+            return "", ""
+            
+        lower_line = clean_line.lower()
+        
+        if stream_type == "stderr":
+            if any(k in lower_line for k in ["error", "fail", "exception", "critical", "traceback"]):
+                prefix = "[ERROR]"
+            elif any(k in lower_line for k in ["warning", "warn", "deprecation"]):
+                prefix = "[WARN]"
+            else:
+                prefix = "[INFO]"
+        else:
+            # Stdout is usually info, unless it explicitly logs errors
+            if any(k in lower_line for k in ["error", "exception", "critical", "traceback"]):
+                prefix = "[ERROR]"
+            elif any(k in lower_line for k in ["warning", "warn"]):
+                prefix = "[WARN]"
+            else:
+                prefix = "[INFO]"
+                
+        formatted = f"{prefix} {clean_line}"
+        
+        if self.log_file_path:
+            try:
+                with open(self.log_file_path, "a", encoding="utf-8") as f:
+                    f.write(formatted + "\n")
+            except Exception:
+                pass
+                
+        return prefix, clean_line
+

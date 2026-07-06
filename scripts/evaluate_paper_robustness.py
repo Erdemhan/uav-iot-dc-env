@@ -24,7 +24,7 @@ from confs.opt_config import OptConfig
 SEEDS = OptConfig.EVAL_SEEDS
 
 ALGOS = ["Baseline", "PPO", "DQN", "PPO-LSTM"]
-METRICS = ["JSR", "Track_Reachable", "Power", "SINR", "Tracking_Acc", "Power_Gap", "Channel_Gap"]
+METRICS = ["JSR", "Track_Reachable", "Power", "SINR", "Tracking_Acc", "Power_Gap", "Channel_Gap", "Power_Active", "Power_Idle"]
 
 def env_creator(config):
     return ParallelPettingZooEnv(UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS))
@@ -114,6 +114,10 @@ def evaluate_algo(algo_name, run_dir):
         ep_tracking_all = 0
         ep_tracking_reachable = 0
         ep_power_sum = 0
+        ep_power_active_sum = 0
+        ep_power_active_steps = 0
+        ep_power_idle_sum = 0
+        ep_power_idle_steps = 0
         ep_sinr_sum = 0
         ep_sinr_count = 0
         
@@ -171,7 +175,14 @@ def evaluate_algo(algo_name, run_dir):
                     ep_tracking_reachable += 1
                 
             # 3. Power
-            ep_power_sum += infos["jammer_0"]["jammer_cost"]
+            current_power = infos["jammer_0"]["jammer_cost"]
+            ep_power_sum += current_power
+            if reachable_count > 0:
+                ep_power_active_sum += current_power
+                ep_power_active_steps += 1
+            else:
+                ep_power_idle_sum += current_power
+                ep_power_idle_steps += 1
             
             # 4. SINR
             step_sinr_sum = 0
@@ -196,6 +207,8 @@ def evaluate_algo(algo_name, run_dir):
         val_power_gap = val_track_reach - val_jsr
         val_channel_gap = 100.0 - val_track_reach
         val_power = ep_power_sum / steps if steps > 0 else 0.0
+        val_power_active = ep_power_active_sum / ep_power_active_steps if ep_power_active_steps > 0 else 0.0
+        val_power_idle = ep_power_idle_sum / ep_power_idle_steps if ep_power_idle_steps > 0 else 0.0
         val_sinr = ep_sinr_sum / ep_sinr_count if ep_sinr_count > 0 else 0.0
         
         results["JSR"].append(val_jsr)
@@ -204,6 +217,8 @@ def evaluate_algo(algo_name, run_dir):
         results["Power_Gap"].append(val_power_gap)
         results["Channel_Gap"].append(val_channel_gap)
         results["Power"].append(val_power)
+        results["Power_Active"].append(val_power_active)
+        results["Power_Idle"].append(val_power_idle)
         results["SINR"].append(val_sinr)
         
     return results
@@ -244,7 +259,9 @@ def main():
             print(f"  > Track (Reachable): {np.mean(res['Track_Reachable']):.1f}%")
             print(f"  > Power Gap: {np.mean(res['Power_Gap']):.1f}%")
             print(f"  > Channel Gap: {np.mean(res['Channel_Gap']):.1f}%")
-            print(f"  > Power: {np.mean(res['Power']):.3f} W")
+            print(f"  > Power (Overall Avg): {np.mean(res['Power']):.3f} W")
+            print(f"  > Power (Active Collection): {np.mean(res['Power_Active']):.3f} W")
+            print(f"  > Power (Idle / Transit): {np.mean(res['Power_Idle']):.3f} W")
             print(f"  > SINR: {np.mean(res['SINR']):.2f} dB")
             
     ray.shutdown()
@@ -267,19 +284,21 @@ def plot_comparison(results, output_dir):
     import seaborn as sns
     sns.set_style("whitegrid")
     
-    # We will plot JSR, Track_Reachable, Power_Gap, and Channel_Gap in 2x2 grid
-    plot_metrics = ["JSR", "Track_Reachable", "Power_Gap", "Channel_Gap"]
+    # Metrics list
+    plot_metrics = ["JSR", "Track_Reachable", "Power_Gap", "Channel_Gap", "Power"]
     metric_titles = {
         "JSR": "Jamming Success Rate (JSR)",
         "Track_Reachable": "Channel Tracking Accuracy",
         "Power_Gap": "Power Loss (Power Gap)",
-        "Channel_Gap": "Channel Loss (Channel Gap)"
+        "Channel_Gap": "Channel Loss (Channel Gap)",
+        "Power": "Overall Average Power"
     }
     metric_ylabels = {
         "JSR": "Success (%)",
         "Track_Reachable": "Accuracy (%)",
         "Power_Gap": "Loss (%)",
-        "Channel_Gap": "Loss (%)"
+        "Channel_Gap": "Loss (%)",
+        "Power": "Power (W)"
     }
     
     means = {}
@@ -296,9 +315,9 @@ def plot_comparison(results, output_dir):
                 means[m].append(0)
                 stds[m].append(0)
             
-    # Plot
-    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-    fig.suptitle(f"Algorithm Robustness Analysis (30 Random Seeds)", fontsize=20, fontweight='bold', y=0.98)
+    # Plot 2x3 Grid
+    fig, axes = plt.subplots(2, 3, figsize=(22, 12))
+    fig.suptitle(f"Algorithm Robustness Analysis (30 Random Seeds)", fontsize=22, fontweight='bold', y=0.98)
     
     colors = ['#7f8c8d', '#2ecc71', '#e74c3c', '#9b59b6'] # Baseline(Gray), PPO(Green), DQN(Red), LSTM(Purple)
     algo_labels = ["Baseline (QJC)", "PPO (Proposed)", "DQN", "PPO-LSTM"]
@@ -315,14 +334,59 @@ def plot_comparison(results, output_dir):
         # Add values on top
         for bar, err in zip(bars, stds[metric_key]):
             height = bar.get_height()
-            label = f"{height:.1f}" if abs(height) > 0.1 else f"{height:.3f}"
-            ax.text(bar.get_x() + bar.get_width()/2., height + err + (height*0.03),
+            label = f"{height:.3f}" if metric_key == "Power" else f"{height:.1f}"
+            ax.text(bar.get_x() + bar.get_width()/2., height + err + (height*0.02 + 0.002 if metric_key == "Power" else height*0.02),
                     label, ha='center', va='bottom', fontsize=11, fontweight='bold')
 
+    # Draw individual bar plots
     plot_bar(axes[0, 0], "JSR", metric_titles["JSR"], metric_ylabels["JSR"])
     plot_bar(axes[0, 1], "Track_Reachable", metric_titles["Track_Reachable"], metric_ylabels["Track_Reachable"])
+    plot_bar(axes[0, 2], "Power", metric_titles["Power"], metric_ylabels["Power"])
+    
     plot_bar(axes[1, 0], "Power_Gap", metric_titles["Power_Gap"], metric_ylabels["Power_Gap"])
     plot_bar(axes[1, 1], "Channel_Gap", metric_titles["Channel_Gap"], metric_ylabels["Channel_Gap"])
+    
+    # Active vs Idle Power Grouped Bar Chart (bottom right)
+    ax_power = axes[1, 2]
+    x_indices = np.arange(len(ALGOS))
+    bar_width = 0.35
+    
+    active_means = []
+    active_stds = []
+    idle_means = []
+    idle_stds = []
+    
+    for algo in ALGOS:
+        if algo in results:
+            active_means.append(np.mean(results[algo]["Power_Active"]))
+            active_stds.append(np.std(results[algo]["Power_Active"]))
+            idle_means.append(np.mean(results[algo]["Power_Idle"]))
+            idle_stds.append(np.std(results[algo]["Power_Idle"]))
+        else:
+            active_means.append(0)
+            active_stds.append(0)
+            idle_means.append(0)
+            idle_stds.append(0)
+            
+    bars_active = ax_power.bar(x_indices - bar_width/2, active_means, bar_width, yerr=active_stds, capsize=4,
+                         color="#e74c3c", alpha=0.9, edgecolor='black', linewidth=1.2, label="Active Collection")
+    bars_idle = ax_power.bar(x_indices + bar_width/2, idle_means, bar_width, yerr=idle_stds, capsize=4,
+                       color="#3498db", alpha=0.9, edgecolor='black', linewidth=1.2, label="Idle / Transit")
+                       
+    ax_power.set_title("Active vs. Idle Power Comparison", fontsize=14, fontweight='bold', pad=15)
+    ax_power.set_ylabel("Power (W)", fontsize=12)
+    ax_power.set_xticks(x_indices)
+    ax_power.set_xticklabels(algo_labels, fontsize=11, rotation=15)
+    ax_power.legend(fontsize=10, loc="upper right")
+    ax_power.grid(axis='y', linestyle='--', alpha=0.6)
+    
+    # Add values on top of bars
+    for bar in bars_active:
+        h = bar.get_height()
+        ax_power.text(bar.get_x() + bar.get_width()/2., h + 0.005, f"{h:.3f}", ha='center', va='bottom', fontsize=9, fontweight='bold')
+    for bar in bars_idle:
+        h = bar.get_height()
+        ax_power.text(bar.get_x() + bar.get_width()/2., h + 0.005, f"{h:.3f}", ha='center', va='bottom', fontsize=9, fontweight='bold')
     
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     out_plot = os.path.join(output_dir, "comparison_robustness.png")

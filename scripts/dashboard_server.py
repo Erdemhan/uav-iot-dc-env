@@ -457,13 +457,35 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                 else:
                     elapsed = time.time() - DashboardState.start_time
             
+            # Read use_gpu from GlobalConfig
+            use_gpu = False
+            try:
+                from confs.model_config import GlobalConfig
+                use_gpu = GlobalConfig.USE_GPU
+            except Exception:
+                pass
+
             # Gather progress data
             response_data = {
                 "timestamp": DashboardState.timestamp,
                 "stage": DashboardState.stage,
                 "elapsed_time": elapsed,
+                "use_gpu": use_gpu,
                 "algorithms": {}
             }
+            
+            # Read status.json from disk first (cross-process sync)
+            disk_status = None
+            status_file = os.path.join(run_dir, "status.json")
+            if os.path.exists(status_file):
+                try:
+                    with open(status_file, "r", encoding="utf-8") as sf:
+                        disk_status = json.load(sf)
+                except Exception:
+                    pass
+            
+            if disk_status:
+                response_data["stage"] = disk_status.get("stage", response_data["stage"])
             
             trainer = DashboardState.current_trainer
             
@@ -491,14 +513,20 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                 csv_path = config["csv_finder"]()
                 history, reward, steps = config["parser"](csv_path)
                 
-                # Fetch memory stats if ParallelTrainer is active
                 status = "PENDING"
                 progress = 0
                 current_iteration = 0
                 total_iterations = 100
                 logs = []
                 
-                if trainer:
+                if disk_status and "algorithms" in disk_status and name in disk_status["algorithms"]:
+                    algo_disk = disk_status["algorithms"][name]
+                    status = algo_disk.get("status", "PENDING")
+                    progress = algo_disk.get("progress", 0)
+                    current_iteration = algo_disk.get("current_iteration", 0)
+                    total_iterations = algo_disk.get("total_iterations", 100)
+                    logs = algo_disk.get("logs", [])
+                elif trainer:
                     status = trainer.status.get(name, "PENDING")
                     progress = trainer.progress.get(name, 0)
                     current_iteration = trainer.iterations.get(name, 0)
@@ -594,6 +622,19 @@ def start_dashboard(run_dir, timestamp):
     DashboardState.stage = "TRAINING"
     DashboardState.start_time = time.time()
     DashboardState.end_time = None
+    
+    # Update active run file so get_active_run_dir() resolves to the correct path
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(base_dir)
+        active_file = os.path.join(project_root, "dashboard_active_run.txt")
+        # Ensure path is absolute and clean
+        abs_run_dir = os.path.abspath(run_dir)
+        with open(active_file, "w", encoding="utf-8") as f:
+            f.write(abs_run_dir)
+        print(f"[DASHBOARD] Updated active run directory to: {abs_run_dir}")
+    except Exception as e:
+        print(f"[DASHBOARD] Warning: Could not write dashboard_active_run.txt: {e}")
     
     server_thread = threading.Thread(target=run_server)
     server_thread.daemon = True

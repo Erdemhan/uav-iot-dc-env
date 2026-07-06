@@ -297,6 +297,8 @@
                         <th style="color: #e67e22;">Power Loss (Gap)</th>
                         <th style="color: #ef4444;">Channel Loss (Gap)</th>
                         <th style="color: #ff7b00;">Avg Power</th>
+                        <th style="color: #f1c40f;">Active Power</th>
+                        <th style="color: #2ecc71;">Idle Power</th>
                         <th style="color: #a855f7;">Avg SINR</th>
                     </tr>
                 </thead>
@@ -329,6 +331,8 @@
                 const powerGap = getStats(algoData.Power_Gap);
                 const channelGap = getStats(algoData.Channel_Gap);
                 const power = getStats(algoData.Power);
+                const powerActive = getStats(algoData.Power_Active);
+                const powerIdle = getStats(algoData.Power_Idle);
                 const sinr = getStats(algoData.SINR);
 
                 const row = document.createElement('tr');
@@ -338,8 +342,10 @@
                     <td class="font-mono">${trackReach.mean.toFixed(1)}% ± ${trackReach.std.toFixed(1)}%</td>
                     <td class="font-mono">${powerGap.mean.toFixed(1)}% ± ${powerGap.std.toFixed(1)}%</td>
                     <td class="font-mono">${channelGap.mean.toFixed(1)}% ± ${channelGap.std.toFixed(1)}%</td>
-                    <td class="font-mono">${power.mean.toFixed(3)} W ± ${power.std.toFixed(3)} W</td>
-                    <td class="font-mono">${sinr.mean.toFixed(2)} dB ± ${sinr.std.toFixed(2)} dB</td>
+                    <td class="font-mono">${power.mean.toFixed(3)} W</td>
+                    <td class="font-mono">${powerActive.mean.toFixed(3)} W</td>
+                    <td class="font-mono">${powerIdle.mean.toFixed(3)} W</td>
+                    <td class="font-mono">${sinr.mean.toFixed(2)} dB</td>
                 `;
                 tbody.appendChild(row);
             });
