@@ -1,0 +1,110 @@
+# setup_host_wsl.ps1
+# Automates WSL2 installation, Mirrored Networking configuration, and Windows Firewall rules for Ray Cluster.
+# Run this script on the Windows Host side as Administrator before starting WSL2.
+
+# Ensure the script runs with Administrator privileges
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) {
+    Write-Warning "This script requires Administrator privileges. Relaunching as Admin..."
+    Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+    Exit
+}
+
+Write-Host "==================================================" -ForegroundColor Cyan
+Write-Host "   Ray Cluster - Windows Host Setup for WSL2      " -ForegroundColor Cyan
+Write-Host "==================================================" -ForegroundColor Cyan
+
+# 1. Configure Windows Firewall Port Rules
+Write-Host "`n[1/3] Configuring Windows Defender Firewall rules..." -ForegroundColor Yellow
+$ports = @(
+    @{ Name="Ray Head"; Port="6379" },
+    @{ Name="Ray Dashboard"; Port="8265" },
+    @{ Name="Ray Workers"; Port="10001-10100" }
+)
+
+foreach ($rule in $ports) {
+    $ruleName = $rule.Name
+    $localPort = $rule.Port
+    
+    # Check if rule already exists
+    $existing = Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue
+    if ($existing) {
+        Write-Host "Firewall rule '$ruleName' already exists. Skipping." -ForegroundColor Green
+    } else {
+        try {
+            New-NetFirewallRule -DisplayName $ruleName -Direction Inbound -Action Allow -Protocol TCP -LocalPort $localPort -ErrorAction Stop | Out-Null
+            Write-Host "Successfully created firewall rule '$ruleName' (Port: $localPort)." -ForegroundColor Green
+        } catch {
+            Write-Error "Failed to create firewall rule '$ruleName': $_"
+        }
+    }
+}
+
+# 2. Configure WSL2 Mirrored Networking (.wslconfig)
+Write-Host "`n[2/3] Configuring WSL2 Mirrored Networking..." -ForegroundColor Yellow
+$wslConfigPath = Join-Path $env:USERPROFILE ".wslconfig"
+$configContent = @"
+[wsl2]
+networkingMode=mirrored
+"@
+
+$needsWrite = $true
+if (Test-Path $wslConfigPath) {
+    $currentContent = Get-Content $wslConfigPath -Raw
+    if ($currentContent -match "networkingMode\s*=\s*mirrored") {
+        Write-Host ".wslconfig is already configured for mirrored networking." -ForegroundColor Green
+        $needsWrite = $false
+    } else {
+        Write-Host "Appending mirrored networking setting to existing .wslconfig..." -ForegroundColor Cyan
+        # Check if [wsl2] section exists
+        if ($currentContent -match "\[wsl2\]") {
+            # Add under [wsl2] section
+            $newContent = $currentContent -replace "\[wsl2\]", "[wsl2]`nnetworkingMode=mirrored"
+            Set-Content -Path $wslConfigPath -Value $newContent -Force
+        } else {
+            # Add entire section at the end
+            Add-Content -Path $wslConfigPath -Value "`n[wsl2]`nnetworkingMode=mirrored" -Force
+        }
+    }
+} else {
+    Write-Host "Creating new .wslconfig with mirrored networking enabled..." -ForegroundColor Cyan
+    Set-Content -Path $wslConfigPath -Value $configContent -Force
+}
+
+if ($needsWrite) {
+    Write-Host "Successfully configured mirrored networking in: $wslConfigPath" -ForegroundColor Green
+    # Terminate active WSL instances to force reloading config
+    wsl --shutdown
+    Write-Host "WSL instances shut down to apply new network settings." -ForegroundColor Cyan
+}
+
+# 3. Check and Install WSL2 (Ubuntu)
+Write-Host "`n[3/3] Checking WSL2 and Ubuntu installation..." -ForegroundColor Yellow
+$wslInstalled = $false
+try {
+    $wslCheck = wsl --status 2>&1
+    $wslInstalled = $true
+} catch {}
+
+if (-not $wslInstalled) {
+    Write-Host "WSL2 is not installed. Initiating installation of WSL2 and Ubuntu..." -ForegroundColor Cyan
+    Write-Host "This process may prompt for Windows restart after completion." -ForegroundColor Yellow
+    wsl --install -d Ubuntu
+    Write-Host "`n[IMPORTANT] WSL2 installation started. Please restart your PC to complete installation, then rerun this script." -ForegroundColor Red
+} else {
+    # Check if Ubuntu distribution is installed
+    $distList = wsl --list --quiet 2>&1
+    if ($distList -match "Ubuntu") {
+        Write-Host "WSL2 and Ubuntu are already installed." -ForegroundColor Green
+    } else {
+        Write-Host "Ubuntu distribution not found. Installing Ubuntu..." -ForegroundColor Cyan
+        wsl --install -d Ubuntu
+        Write-Host "Ubuntu installation initiated. Complete the user registration in the Ubuntu window." -ForegroundColor Yellow
+    }
+}
+
+Write-Host "`n==================================================" -ForegroundColor Green
+Write-Host "   Windows Host configuration completed!          " -ForegroundColor Green
+Write-Host "==================================================" -ForegroundColor Green
+Write-Host "Please ensure you have restarted your PC if WSL2 was newly installed." -ForegroundColor Yellow
+Read-Host "Press Enter to exit..."

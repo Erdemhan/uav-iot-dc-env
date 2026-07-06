@@ -6,13 +6,13 @@ class EnvConfig:
     Separated from physical/system parameters.
     """
     # Scenario
-    NUM_NODES = 30
-    NUM_UAVS = 2
-    AREA_SIZE = 1000.0 # m
+    NUM_NODES = 15
+    NUM_UAVS = 1
+    AREA_SIZE = 500.0 # m
     
     # Attacker
-    ATTACKER_POS_X = 500.0 # Absolute or relative logic can be used in env
-    ATTACKER_POS_Y = 500.0 
+    ATTACKER_POS_X = 250.0 # Absolute or relative logic can be used in env
+    ATTACKER_POS_Y = 250.0 
     MAX_JAMMING_POWER = 1.0 # Watts (Industrial Standard: 30 dBm)
 
     # Transmission Power (Scenario specific)
