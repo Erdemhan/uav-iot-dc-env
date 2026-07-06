@@ -510,6 +510,12 @@
                 </div>
             </div>
             <div class="header-status-area" style="display: flex; align-items: center; gap: 12px;">
+                <div style="display: flex; align-items: center; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); padding: 4px 8px; border-radius: 8px; margin-right: 8px;">
+                    <label for="run-select" style="font-size: 11px; color: var(--text-secondary); margin-right: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Run:</label>
+                    <select id="run-select" onchange="changeActiveRun()" style="background: none; color: var(--text-primary); border: none; font-weight: 600; outline: none; cursor: pointer; min-width: 180px; font-size: 12px;">
+                        <option value="">Loading...</option>
+                    </select>
+                </div>
                 <a href="/opt.html" target="_blank" class="stage-badge" style="background: rgba(0, 242, 254, 0.15); border: 1px solid rgba(0, 242, 254, 0.3); color: #00f2fe; text-decoration: none; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(0, 242, 254, 0.3)'" onmouseout="this.style.background='rgba(0, 242, 254, 0.15)'">
                     <i class="fa-solid fa-chart-line"></i>
                     <span>Optimization Panel</span>
@@ -726,6 +732,7 @@
     </div>
 
     <script>
+        let selectedRunId = '';
         // Set up the Chart.js
         const ctx = document.getElementById('rewardChart').getContext('2d');
         
@@ -1130,7 +1137,7 @@
         let metadataLoaded = false;
         async function fetchUpdates() {
             try {
-                const response = await fetch('/api/progress');
+                const response = await fetch(`/api/progress?run=${selectedRunId}`);
                 if (!response.ok) throw new Error('API request failed');
                 const data = await response.json();
 
@@ -1258,7 +1265,7 @@
 
         async function fetchMetadata() {
             try {
-                const response = await fetch('/api/metadata');
+                const response = await fetch(`/api/metadata?run=${selectedRunId}`);
                 if (response.ok) {
                     const meta = await response.json();
                     window.experimentMetadata = meta;
@@ -1276,9 +1283,63 @@
             }
         }
 
-        // Start Polling
-        fetchUpdates();
-        setInterval(fetchUpdates, 1500);
+        async function fetchRunList() {
+            try {
+                const response = await fetch('/api/list_runs');
+                const data = await response.json();
+                const select = document.getElementById('run-select');
+                select.innerHTML = '';
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                let queryRun = urlParams.get('run');
+                
+                const trainingRuns = (data.runs || []).filter(r => r.type === 'training');
+                
+                if (trainingRuns.length === 0) {
+                    select.innerHTML = '<option value="">No Runs Found</option>';
+                    return;
+                }
+                
+                trainingRuns.forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r.id;
+                    opt.innerText = r.id.replace("training/", "") + ` (${r.date_str})`;
+                    select.appendChild(opt);
+                });
+                
+                if (queryRun && trainingRuns.some(r => r.id === queryRun)) {
+                    selectedRunId = queryRun;
+                } else {
+                    selectedRunId = trainingRuns[0].id;
+                }
+                select.value = selectedRunId;
+            } catch(e) {
+                console.error('Error loading run list:', e);
+            }
+        }
+
+        async function changeActiveRun() {
+            selectedRunId = document.getElementById('run-select').value;
+            const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?run=' + selectedRunId;
+            window.history.pushState({path:newUrl}, '', newUrl);
+            
+            // Clear current chart datasets
+            rewardChart.data.datasets.forEach(ds => { ds.data = []; });
+            rewardChart.update('none');
+            
+            metadataLoaded = false;
+            await fetchMetadata();
+            await fetchUpdates();
+        }
+
+        async function initDashboard() {
+            await fetchRunList();
+            await fetchMetadata();
+            await fetchUpdates();
+            setInterval(fetchUpdates, 1500);
+        }
+
+        initDashboard();
     </script>
 </body>
 </html>

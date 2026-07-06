@@ -1,4 +1,4 @@
-ray[rllib]>=2.53.0
+ray[default,rllib]>=2.53.0
 pettingzoo==1.24.3
 gymnasium
 torch

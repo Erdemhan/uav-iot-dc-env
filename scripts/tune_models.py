@@ -535,7 +535,7 @@ def main():
     from datetime import datetime
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     run_name = f"tune_{args.algo.lower().replace('-', '_')}_phase{args.phase}_{timestamp}"
-    run_dir = os.path.join(PROJECT_ROOT, "artifacts", run_name)
+    run_dir = os.path.join(PROJECT_ROOT, "artifacts", "tune", run_name)
     os.makedirs(run_dir, exist_ok=True)
     
     # Write metadata to log folder
@@ -555,6 +555,13 @@ def main():
     }
     with open(os.path.join(run_dir, "metadata.json"), "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=4)
+        
+    # Start HPO Dashboard
+    try:
+        from scripts.dashboard_server import start_dashboard, stop_dashboard
+        start_dashboard(run_dir, timestamp, page="opt.html")
+    except Exception as e:
+        print(f"[WARN] Could not start dashboard server: {e}")
         
     # 3. Define Optuna Search Space and Search Alg
     optuna_search = OptunaSearch(metric="objective", mode="max")
@@ -628,7 +635,22 @@ def main():
         from ray.tune import PlacementGroupFactory
         bundles = [{"CPU": 1, "GPU": 1 if args.use_gpu else 0}] + [{"CPU": 1}] * args.num_workers
         trial_resources = PlacementGroupFactory(bundles, strategy="STRICT_PACK")
-    
+    optuna_dir = os.path.join(run_dir, "optuna")
+    os.makedirs(optuna_dir, exist_ok=True)
+
+    from ray.tune import Callback
+    class OptunaPlotCallback(Callback):
+        def __init__(self, search_alg, plots_dir):
+            self.search_alg = search_alg
+            self.plots_dir = plots_dir
+        def on_trial_complete(self, *args, **kwargs):
+            try:
+                st = self.search_alg.study if hasattr(self.search_alg, "study") else self.search_alg._ot_study
+                if st:
+                    save_optuna_visualizations(st, self.plots_dir)
+            except Exception as e:
+                print(f"[DASHBOARD] Warning during on_trial_complete callback: {e}")
+
     analysis = tune.run(
         trainable,
         config=full_config,
@@ -640,14 +662,13 @@ def main():
         storage_path=opt_local_dir,
         name="optuna_study",
         trial_dirname_creator=short_trial_dirname_creator,
+        callbacks=[OptunaPlotCallback(optuna_search, optuna_dir)],
         verbose=1
     )
 
     
     # 5. Extract Optuna Study and Save plots/data
     study = optuna_search.study if hasattr(optuna_search, "study") else optuna_search._ot_study
-    optuna_dir = os.path.join(run_dir, "optuna")
-    os.makedirs(optuna_dir, exist_ok=True)
     
     # Save Best Parameters
     best_trial = study.best_trial
@@ -706,7 +727,17 @@ def main():
     active_run_file = os.path.join(PROJECT_ROOT, "dashboard_active_run.txt")
     with open(active_run_file, "w", encoding="utf-8") as f:
         f.write(run_dir)
-    print(f"Set dashboard active run to: {run_dir}")
+    print("\n[DASHBOARD] HPO Dashboard is active. Press Ctrl+C to close the dashboard and exit...")
+    import time
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n[DASHBOARD] Shutting down...")
+    try:
+        stop_dashboard()
+    except:
+        pass
 
 if __name__ == "__main__":
     main()

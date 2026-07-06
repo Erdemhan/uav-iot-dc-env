@@ -296,7 +296,7 @@ def main():
     
     # Create timestamped run directory
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    run_dir = os.path.join("artifacts", timestamp)
+    run_dir = os.path.join("artifacts", "training", timestamp)
     
     # Create directory structure
     os.makedirs(os.path.join(run_dir, "baseline", "evaluation"), exist_ok=True)

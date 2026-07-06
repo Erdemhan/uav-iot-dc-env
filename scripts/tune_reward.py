@@ -391,7 +391,7 @@ def main():
     from datetime import datetime
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     run_name  = f"tune_reward_phase2_{timestamp}"
-    run_dir   = os.path.join(PROJECT_ROOT, "artifacts", run_name)
+    run_dir   = os.path.join(PROJECT_ROOT, "artifacts", "tune", run_name)
     os.makedirs(run_dir, exist_ok=True)
 
     metadata = {
@@ -409,6 +409,13 @@ def main():
 
     with open(os.path.join(run_dir, "metadata.json"), "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=4)
+
+    # Start Joint Reward HPO Dashboard
+    try:
+        from scripts.dashboard_server import start_dashboard, stop_dashboard
+        start_dashboard(run_dir, timestamp, page="reward_opt.html")
+    except Exception as e:
+        print(f"[WARN] Could not start dashboard server: {e}")
 
     # -- Search Space --
     search_space = {
@@ -447,7 +454,21 @@ def main():
     print(f" Trials:      {args.num_samples} | Iterations/algo: {args.iterations}")
     print(f" Output:      {run_dir}")
     print(f"==================================================\n")
+    optuna_dir = os.path.join(run_dir, "optuna")
+    os.makedirs(optuna_dir, exist_ok=True)
 
+    from ray.tune import Callback
+    class OptunaPlotCallback(Callback):
+        def __init__(self, search_alg, plots_dir):
+            self.search_alg = search_alg
+            self.plots_dir = plots_dir
+        def on_trial_complete(self, *args, **kwargs):
+            try:
+                st = self.search_alg.study if hasattr(self.search_alg, "study") else self.search_alg._ot_study
+                if st:
+                    save_optuna_visualizations(st, self.plots_dir)
+            except Exception as e:
+                print(f"[DASHBOARD] Warning during on_trial_complete callback: {e}")
 
     analysis = tune.run(
         train_reward_trial,
@@ -459,14 +480,13 @@ def main():
         storage_path=opt_local_dir,
         name="optuna_study",
         trial_dirname_creator=short_trial_dirname_creator,
+        callbacks=[OptunaPlotCallback(optuna_search, optuna_dir)],
         verbose=1
     )
 
     # -- Extract and save results --
     study = (optuna_search.study if hasattr(optuna_search, "study")
              else optuna_search._ot_study)
-    optuna_dir = os.path.join(run_dir, "optuna")
-    os.makedirs(optuna_dir, exist_ok=True)
 
     best_trial = study.best_trial
     print(f"\n==================================================")
@@ -525,6 +545,18 @@ def main():
         f.write(run_dir)
     print(f"[OK] Dashboard active reward run set to: {run_dir}")
     print(f"     Open: http://localhost:5000/reward_opt.html")
+
+    print("\n[DASHBOARD] Reward Dashboard is active. Press Ctrl+C to close the dashboard and exit...")
+    import time
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n[DASHBOARD] Shutting down...")
+    try:
+        stop_dashboard()
+    except:
+        pass
 
 
 if __name__ == "__main__":

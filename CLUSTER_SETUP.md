@@ -56,11 +56,25 @@ ipconfig
 # "IPv4 Address" satırındaki yerel ağ adresini not edin (örn: 192.168.1.50)
 ```
 
-### 2.2. WSL Ubuntu Terminaline Giriş Yapın
+### 2.2. WSL Ubuntu Terminaline Giriş Yapın ve Bağımlılıkları Kurun
 Başlat menüsünden veya terminalden Ubuntu'yu açın:
 ```bash
 wsl
 ```
+Ray Dashboard'un (web arayüzünün) koordinatör bilgisayarda (Head Node) sorunsuz çalışabilmesi için python sanal ortamında hem `rllib` hem de `default` (dashboard sunucusu) paketlerinin kurulu olması gerekir. Eğer koordinatör bilgisayarda kurulumu yeni yapıyorsanız:
+```bash
+# Proje dizininize gidin (Örn: WSL ev dizininde)
+cd ~/uav-iot-dc-env
+
+# Sanal ortamı oluşturun ve aktifleştirin
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Ray Dashboard ve RLlib paketlerini kurun
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+*(Not: `requirements.txt` dosyasında `ray[rllib]` tanımı `ray[default,rllib]` şeklinde güncellendiği için, dashboard web arayüzü ve sunucu bağımlılıkları otomatik olarak kurulacaktır).*
 
 ### 2.3. Ray Head Node'u Başlatın
 WSL2 terminali içinde koordinatör servisini başlatın:
