@@ -82,10 +82,13 @@ def parse_baseline_progress(csv_path):
     except Exception as e:
         pass
     return history, None, None
+def get_project_root():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.dirname(base_dir)
+
 def get_active_run_dir():
     """Dynamically get the active run directory. Supports both training runs and Optuna tuning runs."""
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(base_dir)
+    project_root = get_project_root()
     active_file = os.path.join(project_root, "dashboard_active_run.txt")
     if os.path.exists(active_file):
         try:
@@ -103,9 +106,71 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        path = self.path.split('?')[0]
-        run_dir = get_active_run_dir()
+        import urllib.parse
+        parsed_url = urllib.parse.urlparse(self.path)
+        path = parsed_url.path
+        query_params = urllib.parse.parse_qs(parsed_url.query)
+        run_param = query_params.get("run", [None])[0]
         
+        project_root = get_project_root()
+        if run_param:
+            # Prevent directory traversal
+            run_param = os.path.basename(run_param)
+            resolved_run_dir = os.path.join(project_root, "artifacts", run_param)
+            if os.path.exists(resolved_run_dir):
+                run_dir = resolved_run_dir
+                reward_run_dir = resolved_run_dir
+            else:
+                run_dir = get_active_run_dir()
+                reward_run_dir = self._get_reward_run_dir()
+        else:
+            run_dir = get_active_run_dir()
+            reward_run_dir = self._get_reward_run_dir()
+
+        # Serve list of runs
+        if path == "/api/list_runs":
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.end_headers()
+            
+            runs = []
+            artifacts_dir = os.path.join(project_root, "artifacts")
+            if os.path.isdir(artifacts_dir):
+                for item in os.listdir(artifacts_dir):
+                    item_path = os.path.join(artifacts_dir, item)
+                    if os.path.isdir(item_path):
+                        meta_path = os.path.join(item_path, "metadata.json")
+                        status_path = os.path.join(item_path, "status.json")
+                        if os.path.exists(meta_path) or os.path.exists(status_path):
+                            run_type = "training"
+                            algo_name = ""
+                            if os.path.exists(meta_path):
+                                try:
+                                    with open(meta_path, "r", encoding="utf-8") as f:
+                                        m = json.load(f)
+                                        algo_name = m.get("algo", "")
+                                        phase = m.get("phase", None)
+                                        if phase == 1:
+                                            run_type = "hpo"
+                                        elif phase == 2:
+                                            run_type = "reward"
+                                except:
+                                    pass
+                            
+                            mtime = os.path.getmtime(item_path)
+                            runs.append({
+                                "id": item,
+                                "type": run_type,
+                                "algo": algo_name,
+                                "mtime": mtime,
+                                "date_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime))
+                            })
+            # Sort by mtime descending
+            runs.sort(key=lambda x: x["mtime"], reverse=True)
+            self.wfile.write(json.dumps({"runs": runs}).encode("utf-8"))
+            return
+
         # Serve main index.html
         if path == "/" or path == "/index.html":
             self.send_response(200)

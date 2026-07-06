@@ -420,9 +420,17 @@
             <h1 id="panel-title">UAV-IoT Optimizasyon Raporu</h1>
             <p id="panel-subtitle">Yükleniyor...</p>
         </div>
-        <div class="status-badge">
-            <div class="status-dot" id="status-dot"></div>
-            <span id="status-text">Bağlanıyor...</span>
+        <div style="display: flex; gap: 1.5rem; align-items: center;">
+            <div style="display: flex; align-items: center;">
+                <label for="run-select" style="font-size: 0.85rem; color: var(--text-secondary); margin-right: 0.5rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Deney Seçin:</label>
+                <select id="run-select" onchange="changeActiveRun()" style="background-color: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; outline: none; cursor: pointer; min-width: 250px; font-size: 0.9rem; transition: border-color 0.3s ease;">
+                    <option value="">Yükleniyor...</option>
+                </select>
+            </div>
+            <div class="status-badge">
+                <div class="status-dot" id="status-dot"></div>
+                <span id="status-text">Bağlanıyor...</span>
+            </div>
         </div>
     </header>
 
@@ -504,6 +512,7 @@
     </div>
 
     <script>
+        let selectedRunId = '';
         let currentActivePlot = 'param_importances';
         let isPolling = true;
         let pollTimer = null;
@@ -538,7 +547,7 @@
 
             // Cache bust timestamp
             const timestamp = new Date().getTime();
-            img.src = `/api/plots/optuna/${plotName}.png?t=${timestamp}`;
+            img.src = `/api/plots/optuna/${plotName}.png?t=${timestamp}&run=${selectedRunId}`;
         }
 
         function onPlotLoaded() {
@@ -555,11 +564,11 @@
 
         async function fetchMetadata() {
             try {
-                const response = await fetch('/api/metadata');
+                const response = await fetch(`/api/metadata?run=${selectedRunId}`);
                 const metadata = await response.json();
                 if (metadata && metadata.algo) {
                     document.getElementById('panel-title').innerText = `${metadata.algo} Optimizasyon Raporu`;
-                    document.getElementById('panel-subtitle').innerText = `Deney Klasörü: artifacts/tune_${metadata.algo.toLowerCase().replace('-', '_')}_phase${metadata.phase}_${metadata.timestamp}`;
+                    document.getElementById('panel-subtitle').innerText = `Deney Klasörü: artifacts/${selectedRunId}`;
                 }
             } catch (e) {
                 console.error("Error loading metadata", e);
@@ -568,7 +577,7 @@
 
         async function pollData() {
             try {
-                const response = await fetch('/api/optuna');
+                const response = await fetch(`/api/optuna?run=${selectedRunId}`);
                 const data = await response.json();
                 
                 if (!data || Object.keys(data).length === 0 || !data.trials || data.trials.length === 0) {
@@ -612,9 +621,6 @@
                     statusText.innerText = "Optimizasyon Tamamlandı";
                     statusDot.style.backgroundColor = "var(--success)";
                     statusDot.style.animation = "none";
-                    // Stop polling if completed
-                    isPolling = false;
-                    clearInterval(pollTimer);
                 }
 
                 // Re-draw Table
@@ -662,8 +668,6 @@
 
                 // Update Plot if tab is active
                 if (document.getElementById('tab-plots').classList.contains('active')) {
-                    // Avoid reloading image every single poll if no new trials finished, 
-                    // but simple timestamp refresh does job
                     loadPlot(currentActivePlot);
                 }
 
@@ -674,13 +678,13 @@
 
         async function pollActiveTrials() {
             try {
-                const response = await fetch('/api/active_trials');
+                const response = await fetch(`/api/active_trials?run=${selectedRunId}`);
                 const data = await response.json();
                 const grid = document.getElementById('active-trials-grid');
                 const trials = data.trials || [];
 
                 if (trials.length === 0) {
-                    grid.innerHTML = '<div class="no-active-msg">Henüz aktif deneme yok veya optimizasyon başlamadı.</div>';
+                    grid.innerHTML = '<div class="no-active-msg">Henüz aktif deneme yok veya optimizasyon tamamlandı.</div>';
                     return;
                 }
 
@@ -718,13 +722,69 @@
             }
         }
 
-        // Initialize
-        fetchMetadata();
-        pollData();
-        pollActiveTrials();
-        
-        // Poll every 5 seconds
-        pollTimer = setInterval(() => { pollData(); pollActiveTrials(); }, 5000);
+        async function fetchRunList() {
+            try {
+                const response = await fetch('/api/list_runs');
+                const data = await response.json();
+                const select = document.getElementById('run-select');
+                select.innerHTML = '';
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                let queryRun = urlParams.get('run');
+                
+                const hpoRuns = (data.runs || []).filter(r => r.type === 'hpo');
+                
+                if (hpoRuns.length === 0) {
+                    select.innerHTML = '<option value="">Deney Bulunamadı</option>';
+                    return;
+                }
+                
+                hpoRuns.forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r.id;
+                    opt.innerText = `${r.algo} (${r.date_str})`;
+                    select.appendChild(opt);
+                });
+                
+                if (queryRun && hpoRuns.some(r => r.id === queryRun)) {
+                    selectedRunId = queryRun;
+                } else {
+                    selectedRunId = hpoRuns[0].id;
+                }
+                select.value = selectedRunId;
+            } catch(e) {
+                console.error('Error loading run list', e);
+            }
+        }
+
+        async function changeActiveRun() {
+            selectedRunId = document.getElementById('run-select').value;
+            const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?run=' + selectedRunId;
+            window.history.pushState({path:newUrl}, '', newUrl);
+            
+            await fetchMetadata();
+            await pollData();
+            await pollActiveTrials();
+            if (currentActivePlot) {
+                loadPlot(currentActivePlot);
+            }
+        }
+
+        // Initialize HPO dashboard
+        async function initDashboard() {
+            await fetchRunList();
+            await fetchMetadata();
+            await pollData();
+            await pollActiveTrials();
+            
+            // Poll every 5 seconds
+            pollTimer = setInterval(() => {
+                pollData();
+                pollActiveTrials();
+            }, 5000);
+        }
+
+        initDashboard();
     </script>
 </body>
 </html>

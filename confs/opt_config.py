@@ -17,14 +17,14 @@ class OptConfig:
         options = [128, 256, 512]
         choices = []
         for o1 in options:
-            choices.append([o1])
+            choices.append(f"{o1}")
         for o1 in options:
             for o2 in options:
-                choices.append([o1, o2])
+                choices.append(f"{o1},{o2}")
         for o1 in options:
             for o2 in options:
                 for o3 in options:
-                    choices.append([o1, o2, o3])
+                    choices.append(f"{o1},{o2},{o3}")
         return choices
 
 
