@@ -11,11 +11,11 @@
         "target_network_update_freq": 200
     },
     "ppo_lstm": {
-        "lr": 0.00040881008587329275,
-        "gamma": 0.9576673355805104,
+        "lr": 7.434458739771462e-05,
+        "gamma": 0.8615512851057706,
         "architecture": "256,128,256",
         "lstm_cell_size": 32,
-        "max_seq_len": 10
+        "max_seq_len": 20
     },
     "qjc": {
         "tau_0": 1.8979916635710294e-05,
