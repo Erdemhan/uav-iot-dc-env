@@ -39,12 +39,15 @@ Bu adımı otomatik olarak gerçekleştirmek için bir PowerShell betiği hazır
    ```powershell
    powershell -ExecutionPolicy Bypass -File scripts\setup_host_wsl.ps1
    ```
-3. Script; Windows Güvenlik Duvarı kurallarını otomatik açacak, `%USERPROFILE%\.wslconfig` dosyasını oluşturup Mirrored Networking modunu aktif edecek ve eğer sistemde kurulu değilse WSL2/Ubuntu kurulumunu başlatacaktır.
+3. Script; Windows Güvenlik Duvarı kurallarını otomatik açacak, `%USERPROFILE%\.wslconfig` dosyasını oluşturarak Mirrored Networking modunu aktif edecek ve **bilgisayarın toplam RAM miktarını otomatik algılayıp 3GB güvenli Windows payı çıkararak kalan tüm bellek limitini (örn. 32GB RAM için 29GB) WSL2'ye tahsis edecektir.** Bu sayede paralel RLlib işçilerinin (workers) bellek yetersizliğinden çökmesi (OOM) tamamen engellenir.
 4. **Not:** Eğer sistemde WSL2 ilk defa kurulduysa, script sizden bilgisayarı yeniden başlatmanızı isteyecektir. Yeniden başlattıktan sonra scripti bir kez daha çalıştırarak kurulumu tamamlayın.
 
 ---
 
 ## ADIM 2 — Koordinatör Bilgisayarda (Head Node) Yapılacaklar 
+
+> [!IMPORTANT]
+> **Dosya Sistemi Hızı ve Performans Uyarısı (Head Node İçin):** Proje dosyalarınızı doğrudan Windows dosya yolu üzerinden (`/mnt/c/...`) WSL2 içinde çalıştırırsanız, Windows ve Linux arasındaki disk geçişi sebebiyle eğitim hızı son derece yavaş olacaktır. **Eğitimlerin hızlı ve kararlı tamamlanması için proje klasörünü mutlaka WSL2'nin kendi yerel dosya sistemine (örneğin `/home/kullaniciadi/uav-iot-dc-env/` altına) kopyalayın veya orada yeniden klonlayın.** Tüm eğitim ve çalıştırma işlemlerini bu dizinde yapın.
 
 ### 2.1. IP Adresini Öğrenin
 Windows CMD veya PowerShell üzerinde IP adresinizi öğrenin:
@@ -75,6 +78,9 @@ To add another node to this Ray cluster, run:
 ---
 
 ## ADIM 3 — İşçi Bilgisayarlarda (Worker Nodes) Yapılacaklar
+
+> [!TIP]
+> **Neden WSL2 Ev Dizinine ( ~/ ) Taşıyoruz?** Betiği ve Python sanal ortamını (`.venv`) doğrudan WSL2'nin yerel Linux dosya sisteminde (`~/` yani `/home/kullaniciadi/`) çalıştırmak, Windows disk geçiş yavaşlığını önler ve disk okuma/yazma hızını maksimuma çıkararak eğitim performansını korur.
 
 İşçi bilgisayarlarda projenin tamamını Git üzerinden klonlamaya gerek yoktur. Ray'in `runtime_env` yapısı, kodları Head makinesinden Worker'lara otomatik olarak zipleyip taşır. İşçi bilgisayarlarda sadece `setup_worker_wsl.sh` scriptini çalıştırmamız yeterlidir.
 
