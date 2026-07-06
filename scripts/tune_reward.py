@@ -306,6 +306,9 @@ def train_reward_trial(config):
 # Optuna visualization (same as tune_models.py)
 # ---------------------------------------------------------------------------
 def save_optuna_visualizations(study, optuna_dir):
+    import optuna
+    import warnings
+    warnings.filterwarnings("ignore", category=optuna.exceptions.ExperimentalWarning)
     import optuna.visualization.matplotlib as vis_mpl
     os.makedirs(optuna_dir, exist_ok=True)
     for name, fn in [
@@ -314,7 +317,6 @@ def save_optuna_visualizations(study, optuna_dir):
     ]:
         try:
             fn(study)
-            plt.tight_layout()
             plt.savefig(os.path.join(optuna_dir, f"{name}.png"), dpi=300)
             plt.close()
         except Exception as e:

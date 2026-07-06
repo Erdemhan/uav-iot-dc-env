@@ -205,10 +205,13 @@ def train_rllib_trial(config):
     algo_name = config["algo"]
     lr = config["lr"]
     gamma = config["gamma"]
-    # Architecture is either a pre-defined list or legacy num_layers+layer_size
+    # Architecture is either a pre-defined string ("256,256"), list/tuple, or legacy
     architecture = config.get("architecture", None)
     if architecture is not None:
-        fcnet_hiddens = list(architecture)
+        if isinstance(architecture, str):
+            fcnet_hiddens = [int(x) for x in architecture.split(",")]
+        else:
+            fcnet_hiddens = list(architecture)
     else:
         # Legacy fallback
         num_layers = config.get("num_layers", 2)
@@ -435,6 +438,10 @@ def _study_with_str_arch(study):
 
 def save_optuna_visualizations(study, optuna_dir):
     """Draw and save Optuna study visualization plots using Matplotlib backend"""
+    import optuna
+    import warnings
+    # Silence Optuna experimental warnings
+    warnings.filterwarnings("ignore", category=optuna.exceptions.ExperimentalWarning)
     import optuna.visualization.matplotlib as vis_mpl
     os.makedirs(optuna_dir, exist_ok=True)
     
@@ -444,7 +451,6 @@ def save_optuna_visualizations(study, optuna_dir):
     # 1. Optimization History
     try:
         vis_mpl.plot_optimization_history(study)
-        plt.tight_layout()
         plt.savefig(os.path.join(optuna_dir, "optimization_history.png"), dpi=300)
         plt.close()
     except Exception as e:
@@ -454,7 +460,6 @@ def save_optuna_visualizations(study, optuna_dir):
     # 2. Parameter Importance
     try:
         vis_mpl.plot_param_importances(study)
-        plt.tight_layout()
         plt.savefig(os.path.join(optuna_dir, "param_importances.png"), dpi=300)
         plt.close()
     except Exception as e:
@@ -464,7 +469,6 @@ def save_optuna_visualizations(study, optuna_dir):
     # 3. Parallel Coordinate (uses str-arch study to avoid unhashable list)
     try:
         vis_mpl.plot_parallel_coordinate(study_str)
-        plt.tight_layout()
         plt.savefig(os.path.join(optuna_dir, "parallel_coordinate.png"), dpi=300)
         plt.close()
     except Exception as e:
@@ -474,7 +478,6 @@ def save_optuna_visualizations(study, optuna_dir):
     # 4. Slice Plot (uses str-arch study to avoid unhashable list)
     try:
         vis_mpl.plot_slice(study_str)
-        plt.tight_layout()
         plt.savefig(os.path.join(optuna_dir, "slice_plot.png"), dpi=300)
         plt.close()
     except Exception as e:
@@ -499,6 +502,7 @@ def main():
                         help="Env runners per trial. 10 workers × 100 steps = train_batch_size=1000 exactly. 11 CPUs total (1 learner + 10 runners) per machine, STRICT_PACK.")
     parser.add_argument("--use-gpu", type=bool, default=True, help="Use RTX 3060 GPU for network updates")
     parser.add_argument("--max-concurrent", type=int, default=0, help="Maximum concurrent trials for this algorithm. 0 for unlimited.")
+    parser.add_argument("--phase", type=int, default=1, help="Tuning phase (default: 1)")
     args = parser.parse_args()
 
     
@@ -566,38 +570,51 @@ def main():
             pass
 
     # Phase 1: Model Hyperparameters
-        if args.algo == "PPO":
-            search_space = {
-                "lr": tune.loguniform(OptConfig.RL_LR_MIN, OptConfig.RL_LR_MAX),
-                "gamma": tune.uniform(OptConfig.RL_GAMMA_MIN, OptConfig.RL_GAMMA_MAX),
-                "architecture": tune.choice(OptConfig.ARCH_CHOICES)
-            }
-        elif args.algo == "DQN":
-            search_space = {
-                "lr": tune.loguniform(OptConfig.RL_LR_MIN, OptConfig.RL_LR_MAX),
-                "gamma": tune.uniform(OptConfig.RL_GAMMA_MIN, OptConfig.RL_GAMMA_MAX),
-                "architecture": tune.choice(OptConfig.ARCH_CHOICES),
-                "target_network_update_freq": tune.choice(OptConfig.DQN_TARGET_UPDATE_FREQ)
-            }
-        elif args.algo == "PPO-LSTM":
-            search_space = {
-                "lr": tune.loguniform(OptConfig.RL_LR_MIN, OptConfig.RL_LR_MAX),
-                "gamma": tune.uniform(OptConfig.RL_GAMMA_MIN, OptConfig.RL_GAMMA_MAX),
-                "architecture": tune.choice(OptConfig.ARCH_CHOICES),
-                "lstm_cell_size": tune.choice(OptConfig.PPOLSTM_CELL_SIZE),
-                "max_seq_len": tune.choice(OptConfig.PPOLSTM_MAX_SEQ_LEN)
-            }
+    if args.algo == "PPO":
+        search_space = {
+            "lr": tune.loguniform(OptConfig.RL_LR_MIN, OptConfig.RL_LR_MAX),
+            "gamma": tune.uniform(OptConfig.RL_GAMMA_MIN, OptConfig.RL_GAMMA_MAX),
+            "architecture": tune.choice(OptConfig.ARCH_CHOICES)
+        }
+    elif args.algo == "DQN":
+        search_space = {
+            "lr": tune.loguniform(OptConfig.RL_LR_MIN, OptConfig.RL_LR_MAX),
+            "gamma": tune.uniform(OptConfig.RL_GAMMA_MIN, OptConfig.RL_GAMMA_MAX),
+            "architecture": tune.choice(OptConfig.ARCH_CHOICES),
+            "target_network_update_freq": tune.choice(OptConfig.DQN_TARGET_UPDATE_FREQ)
+        }
+    elif args.algo == "PPO-LSTM":
+        search_space = {
+            "lr": tune.loguniform(OptConfig.RL_LR_MIN, OptConfig.RL_LR_MAX),
+            "gamma": tune.uniform(OptConfig.RL_GAMMA_MIN, OptConfig.RL_GAMMA_MAX),
+            "architecture": tune.choice(OptConfig.ARCH_CHOICES),
+            "lstm_cell_size": tune.choice(OptConfig.PPOLSTM_CELL_SIZE),
+            "max_seq_len": tune.choice(OptConfig.PPOLSTM_MAX_SEQ_LEN)
+        }
+    elif args.algo == "QJC":
+        search_space = {
+            "tau_0": tune.loguniform(OptConfig.QJC_TAU_0_MIN, OptConfig.QJC_TAU_0_MAX),
+            "gamma": tune.uniform(OptConfig.QJC_GAMMA_MIN, OptConfig.QJC_GAMMA_MAX),
+            "temp_xi": tune.uniform(OptConfig.QJC_TEMP_XI_MIN, OptConfig.QJC_TEMP_XI_MAX),
+            "mu_offset": tune.uniform(OptConfig.QJC_MU_OFFSET_MIN, OptConfig.QJC_MU_OFFSET_MAX)
+        }
 
-        elif args.algo == "QJC":
-            search_space = {
-                "tau_0": tune.loguniform(OptConfig.QJC_TAU_0_MIN, OptConfig.QJC_TAU_0_MAX),
-                "gamma": tune.uniform(OptConfig.QJC_GAMMA_MIN, OptConfig.QJC_GAMMA_MAX),
-                "temp_xi": tune.uniform(OptConfig.QJC_TEMP_XI_MIN, OptConfig.QJC_TEMP_XI_MAX),
-                "mu_offset": tune.uniform(OptConfig.QJC_MU_OFFSET_MIN, OptConfig.QJC_MU_OFFSET_MAX)
-            }
+    # Combine search space with static configs
+    full_config = {
+        "algo": args.algo,
+        "iterations": args.iterations,
+        "phase": args.phase,
+        "num_workers": args.num_workers,
+        "num_gpus": 1 if args.use_gpu else 0,
+        "env_config": {
+            "W_SUCCESS": EnvConfig.W_SUCCESS,
+            "W_TRACKING": EnvConfig.W_TRACKING,
+            "W_COST": EnvConfig.W_COST
+        }
+    }
+    full_config.update(search_space)
 
-    # Phase 1 — Per-Algorithm Model Hyperparameter Search
-    # ---------------------------------------------------------------------------
+    trainable = train_qjc_trial if args.algo == "QJC" else train_rllib_trial
 
     opt_local_dir = os.path.join(run_dir, "tune_results")
     
@@ -617,7 +634,7 @@ def main():
         config=full_config,
         resources_per_trial=trial_resources,
         search_alg=optuna_search,
-        scheduler=scheduler,
+        scheduler=None,
         num_samples=args.num_samples,
         max_concurrent_trials=args.max_concurrent if args.max_concurrent > 0 else None,
         storage_path=opt_local_dir,
