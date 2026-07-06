@@ -40,34 +40,36 @@ foreach ($rule in $ports) {
     }
 }
 
-# 2. Configure WSL2 Mirrored Networking (.wslconfig)
-Write-Host "`n[2/3] Configuring WSL2 Mirrored Networking..." -ForegroundColor Yellow
+# 2. Configure WSL2 Mirrored Networking & RAM Limits (.wslconfig)
+Write-Host "`n[2/3] Configuring WSL2 Mirrored Networking and RAM allocation..." -ForegroundColor Yellow
 $wslConfigPath = Join-Path $env:USERPROFILE ".wslconfig"
+
+# Calculate safe maximum RAM for WSL2 (Total RAM - 3GB for Windows host stability)
+$physicalMem = (Get-CimInstance Win32_PhysicalMemory | Measure-Object -Property Capacity -Sum).Sum
+$totalGb = [Math]::Floor($physicalMem / 1GB)
+$wslGb = $totalGb - 3
+if ($wslGb -lt 4) { $wslGb = 4 }
+
+Write-Host "System RAM: ${totalGb}GB detected. Allocating ${wslGb}GB to WSL2 (saving 3GB for Windows stability)." -ForegroundColor Cyan
+
 $configContent = @"
 [wsl2]
 networkingMode=mirrored
+memory=${wslGb}GB
 "@
 
 $needsWrite = $true
 if (Test-Path $wslConfigPath) {
     $currentContent = Get-Content $wslConfigPath -Raw
-    if ($currentContent -match "networkingMode\s*=\s*mirrored") {
-        Write-Host ".wslconfig is already configured for mirrored networking." -ForegroundColor Green
+    if ($currentContent -match "networkingMode\s*=\s*mirrored" -and $currentContent -match "memory\s*=\s*${wslGb}GB") {
+        Write-Host ".wslconfig is already configured with mirrored networking and ${wslGb}GB RAM." -ForegroundColor Green
         $needsWrite = $false
     } else {
-        Write-Host "Appending mirrored networking setting to existing .wslconfig..." -ForegroundColor Cyan
-        # Check if [wsl2] section exists
-        if ($currentContent -match "\[wsl2\]") {
-            # Add under [wsl2] section
-            $newContent = $currentContent -replace "\[wsl2\]", "[wsl2]`nnetworkingMode=mirrored"
-            Set-Content -Path $wslConfigPath -Value $newContent -Force
-        } else {
-            # Add entire section at the end
-            Add-Content -Path $wslConfigPath -Value "`n[wsl2]`nnetworkingMode=mirrored" -Force
-        }
+        Write-Host "Updating .wslconfig with optimal networking and memory settings..." -ForegroundColor Cyan
+        Set-Content -Path $wslConfigPath -Value $configContent -Force
     }
 } else {
-    Write-Host "Creating new .wslconfig with mirrored networking enabled..." -ForegroundColor Cyan
+    Write-Host "Creating new .wslconfig with mirrored networking and ${wslGb}GB RAM..." -ForegroundColor Cyan
     Set-Content -Path $wslConfigPath -Value $configContent -Force
 }
 
