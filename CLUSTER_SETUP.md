@@ -1,215 +1,199 @@
-# Dağıtık Ray Cluster Kurulum Kılavuzu
-## UAV-IoT Hiper-Parametre Optimizasyonu — Lab Bilgisayarları
+# Dağıtık Ray Cluster Kurulum Kılavuzu (WSL2 Mimarisi)
+## UAV-IoT Hiper-Parametre Optimizasyonu — Lab Bilgisayarları (Windows + WSL2)
 
 ---
 
 ## Mimari Özet
 
+Windows işletim sistemlerinde dağıtık Ray kümesinin (multi-node cluster) doğrudan çalıştırılması resmi olarak desteklenmemekte ve bellek yönetimi (shared memory), süreç çatallama (forking) gibi konularda kararsızlıklara neden olmaktadır. Akademik düzeyde güvenilir, kararlı ve tekrarlanabilir (reproducible) sonuçlar elde etmek için laboratuvardaki bilgisayarlarda **WSL2 (Windows Subsystem for Linux - Ubuntu)** altyapısı tercih edilmiştir.
+
+Makinelerin birbirleriyle haberleşebilmesi için WSL2 üzerinde **Mirrored Networking** (Aynalanmış Ağ Modu) aktifleştirilmektedir. Bu sayede WSL2, ana bilgisayarın (Windows) fiziksel ağ kartını doğrudan kullanır ve ağda Windows IP adresiyle görünür.
+
 ```
-┌────────────────────────────────────────────────┐
-│  SEN (Head Node)                               │
-│  IP: 192.168.X.X                               │
-│  • tune_models.py ve tune_reward.py çalıştırır │
-│  • Optuna denemelerini yönetir                   │
-│  • Dashboard: http://localhost:5000/opt.html   │
-└────────────────┬───────────────────────────────┘
-                 │ Ray Protocol (port 6379)
-     ┌───────────┼───────────┐
-     ▼           ▼           ▼
-  Worker 1    Worker 2  ... Worker 12
-  (CPU+GPU)  (CPU+GPU)      (CPU+GPU)
-  Denemeleri paralel çalıştırır (STRICT_PACK ile her trial 1 makinede izole)
+┌────────────────────────────────────────────────────────┐
+│  SEN (Head Node) - Windows + WSL2                      │
+│  Host IP: 192.168.X.X (Aynı IP WSL2 için de geçerli)   │
+│  • WSL2 Ubuntu üzerinde koordinasyon                   │
+│  • tune_models.py ve tune_reward.py çalıştırır        │
+│  • Dashboard: http://localhost:8265                    │
+│  • Canlı Sonuç Paneli: http://localhost:5000/opt.html  │
+└─────────────────────────┬──────────────────────────────┘
+                          │ Ray Protocol (port 6379)
+              ┌───────────┼───────────┐
+              ▼           ▼           ▼
+           Worker 1    Worker 2  ... Worker 12
+          (WSL2 Ubuntu)(WSL2 Ubuntu)(WSL2 Ubuntu)
+          Denemeleri paralel çalıştırır (STRICT_PACK ile her trial 1 makinede izole)
 ```
 
 ---
 
-## ADIM 1 — Kendi Bilgisayarında (Head Node) Yap
+## ADIM 1 — Ön Gereksinimler (Tüm Bilgisayarlarda Yapılacak)
 
-### 1.1 IP Adresini Öğren
+Laboratuvardaki **tüm bilgisayarlarda (hem Head hem Worker'larda)** WSL2 kurulumu, Mirrored Networking yapılandırması ve Güvenlik Duvarı kurallarının ayarlanması gerekmektedir.
+
+Bu adımı otomatik olarak gerçekleştirmek için bir PowerShell betiği hazırlanmıştır:
+
+1. Windows PowerShell terminalini **Yönetici Olarak (Run as Administrator)** açın.
+2. Proje dizinine giderek aşağıdaki komutu çalıştırın:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts\setup_host_wsl.ps1
+   ```
+3. Script; Windows Güvenlik Duvarı kurallarını otomatik açacak, `%USERPROFILE%\.wslconfig` dosyasını oluşturup Mirrored Networking modunu aktif edecek ve eğer sistemde kurulu değilse WSL2/Ubuntu kurulumunu başlatacaktır.
+4. **Not:** Eğer sistemde WSL2 ilk defa kurulduysa, script sizden bilgisayarı yeniden başlatmanızı isteyecektir. Yeniden başlattıktan sonra scripti bir kez daha çalıştırarak kurulumu tamamlayın.
+
+---
+
+## ADIM 2 — Koordinatör Bilgisayarda (Head Node) Yapılacaklar 
+
+### 2.1. IP Adresini Öğrenin
+Windows CMD veya PowerShell üzerinde IP adresinizi öğrenin:
 ```powershell
 ipconfig
-# "IPv4 Address" satırındaki adres (örn: 192.168.1.50)
+# "IPv4 Address" satırındaki yerel ağ adresini not edin (örn: 192.168.1.50)
 ```
 
-### 1.2 Ray Head Node'u Başlat (Sadece Koordinatör)
-```powershell
-# --num-cpus=0 --num-gpus=0 → Ray bu makineye hiçbir trial/env-runner yerleştirmez
-# Tüm hesaplama yükü worker'lara gider; sen sadece yönetirsin.
+### 2.2. WSL Ubuntu Terminaline Giriş Yapın
+Başlat menüsünden veya terminalden Ubuntu'yu açın:
+```bash
+wsl
+```
+
+### 2.3. Ray Head Node'u Başlatın
+WSL2 terminali içinde koordinatör servisini başlatın:
+```bash
+# --num-cpus=0 --num-gpus=0 -> Koordinatör makinede trial çalıştırılmaz, tüm yük işçilere dağıtılır.
 ray start --head --port=6379 --dashboard-host=0.0.0.0 --num-cpus=0 --num-gpus=0
 ```
-Çıktıda şunu göreceksin:
-```
+Başarıyla çalıştığında konsolda şu çıktıyı göreceksiniz:
+```text
 Ray runtime started.
 To add another node to this Ray cluster, run:
-  ray start --address='192.168.1.50:6379'  ← Bu adresi worker'lara ver
-```
-
-### 1.3 Windows Firewall Portlarını Aç (Yönetici olarak PowerShell'de)
-```powershell
-netsh advfirewall firewall add rule name="Ray Head" protocol=TCP dir=in localport=6379 action=allow
-netsh advfirewall firewall add rule name="Ray Dashboard" protocol=TCP dir=in localport=8265 action=allow
-netsh advfirewall firewall add rule name="Ray Workers" protocol=TCP dir=in localport=10001-10100 action=allow
+  ray start --address='192.168.1.50:6379'
 ```
 
 ---
 
-## ADIM 2 — Her Worker Bilgisayarda Yap
+## ADIM 3 — İşçi Bilgisayarlarda (Worker Nodes) Yapılacaklar
 
-> [!NOTE]
-> **Git Klonlamaya Gerek Yoktur!**
-> Ray, kodların dağıtımını otomatik olarak `runtime_env` (çalışma ortamı) ile Head node'dan Worker'lara zipleyip taşır.
-> Worker makinelerde sadece Python, PyTorch ve Ray'in kurulu olması yeterlidir.
+İşçi bilgisayarlarda projenin tamamını Git üzerinden klonlamaya gerek yoktur. Ray'in `runtime_env` yapısı, kodları Head makinesinden Worker'lara otomatik olarak zipleyip taşır. İşçi bilgisayarlarda sadece `setup_worker_wsl.sh` scriptini çalıştırmamız yeterlidir.
 
-İşçileri (Worker) kurmak için iki yöntemden birini seçebilirsiniz:
+Bu scripti işçi bilgisayarın WSL2 (Ubuntu) ortamına aktarıp çalıştırmak için aşağıdaki yöntemlerden birini seçebilirsiniz:
 
-### Yöntem A: Otomatik Script İle (Önerilen)
-1. Head makinesindeki `scripts/setup_worker.ps1` dosyasını bir flash bellek veya yerel ağ üzerinden worker makineye kopyalayın (herhangi bir geçici klasöre, örn: Masaüstü).
-2. Worker makinede PowerShell'i açıp o klasöre gidin ve çalıştırın:
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File setup_worker.ps1
+### Yöntem A: Windows Üzerinden Kopyalama (Flash Bellek veya Ağ Paylaşımı)
+1. Head (ana) bilgisayardaki `scripts/setup_worker_wsl.sh` dosyasını bir flash bellek veya ağ üzerinden işçi bilgisayardaki Windows ortamına kopyalayın (Örn: `C:\` dizinine veya Masaüstüne).
+2. İşçi bilgisayarda WSL Ubuntu terminalini açın:
+   ```bash
+   wsl
    ```
-3. Script sizden Head IP'sini isteyecek, otomatik sanal ortamı kuracak, bağımlılıkları yükleyecek ve Ray'e bağlanacaktır.
+3. WSL2, Windows disklerinizi `/mnt/` altında otomatik olarak görür. Dosyayı kendi WSL2 ev dizininize kopyalayın:
+   ```bash
+   # Eğer Windows C:\ dizinine kopyaladıysanız:
+   cp /mnt/c/setup_worker_wsl.sh ~/
+   
+   # Eğer Masaüstüne kopyaladıysanız (KullaniciAdi kısmını güncelleyin):
+   # cp /mnt/c/Users/KullaniciAdi/Desktop/setup_worker_wsl.sh ~/
+   ```
+4. Ev dizinine gidip betiği çalıştırın:
+   ```bash
+   cd ~/
+   chmod +x setup_worker_wsl.sh
+   ./setup_worker_wsl.sh
+   ```
 
 ---
 
-### Yöntem B: Manuel Kurulum (Script Kullanmadan)
-Eğer script kullanmak istemiyorsanız, worker makinede boş bir klasör oluşturup şu komutları çalıştırın:
-
-1. **Sanal Ortamı Kur ve Aktifleştir:**
-   ```powershell
-   python -m venv .venv
-   .\.venv\Scripts\Activate.ps1
-   python -m pip install --upgrade pip
+### Yöntem B: Doğrudan WSL2 Terminalinde Dosya Oluşturma (En Hızlı Yöntem)
+Herhangi bir dosya taşıma işlemiyle uğraşmak istemiyorsanız:
+1. İşçi bilgisayarda WSL Ubuntu terminalini açın (`wsl`).
+2. Ev dizininizde boş bir betik dosyası açın:
+   ```bash
+   nano ~/setup_worker_wsl.sh
+   ```
+3. Projedeki `scripts/setup_worker_wsl.sh` dosyasının içeriğini kopyalayın ve terminale yapıştırın. `Ctrl+O` ardından `Enter` ile kaydedip `Ctrl+X` ile çıkın.
+4. Betiği çalıştırın:
+   ```bash
+   chmod +x ~/setup_worker_wsl.sh
+   ~/setup_worker_wsl.sh
    ```
 
-2. **Gerekli Kütüphaneleri Kur:**
-   ```powershell
-   pip install "ray[rllib]>=2.53.0" pettingzoo==1.24.3 gymnasium torch numpy<2.0.0 pandas matplotlib seaborn optuna plotly
+---
+
+### Yöntem C: Windows Gezgini (Explorer) ile Sürükle-Bırak
+1. İşçi bilgisayarda WSL Ubuntu terminalini açın:
+   ```bash
+   wsl
    ```
-   *(RTX 3060/3080ti için CUDA PyTorch kurmak isterseniz: `pip install torch --index-url https://download.pytorch.org/whl/cu121`)*
-
-3. **Ray Cluster'a Katıl (Worker olarak):**
-   ```powershell
-   # HEAD_IP = ADIM 1.1'de öğrendiğin IP
-   ray start --address="192.168.1.50:6379" --num-cpus=22 --num-gpus=1
+2. Terminale şu komutu yazarak Ubuntu ev dizinini Windows Dosya Gezgini'nde açın:
+   ```bash
+   explorer.exe .
+   ```
+3. Açılan Windows klasörü içine `setup_worker_wsl.sh` dosyasını sürükleyip bırakın.
+4. WSL2 terminaline dönüp betiği çalıştırın:
+   ```bash
+   chmod +x setup_worker_wsl.sh
+   ./setup_worker_wsl.sh
    ```
 
+---
 
-## ADIM 4 — Kümenin Hazır Olduğunu Kontrol Et (Head'de)
+## ADIM 4 — Kümenin Hazır Olduğunu Kontrol Edin (Head'de)
 
-```powershell
+Koordinatör makinenin WSL terminalinde küme durumunu doğrulayın:
+```bash
 ray status
 ```
-
-Örnek çıktı:
-```
-======== Autoscaler status ========
-Node status
----------------------------------------------------------------
-Healthy:
- 1 node(s) with resources: {'CPU': 0.0, 'GPU': 0.0}    ← Head (koordinatör, çalışmaz)
- 12 node(s) with resources: {'CPU': 22.0, 'GPU': 1.0}  ← Workers (tüm yük burada)
-```
-
-Ayrıca Ray Dashboard: `http://localhost:8265` adresinden de izlenebilir.
-Canlı sonuç paneli: `http://localhost:5000/opt.html` adresinden izlenir.
+Ayrıca, tarayıcınızdan `http://localhost:8265` adresine giderek Ray Dashboard üzerinden bağlı işçileri ve kaynak durumlarını (CPU/GPU) canlı izleyebilirsiniz.
 
 ---
 
-## ADIM 5 — Phase 1: Model HPO Başlat (Sadece Head'de)
+## ADIM 5 — Phase 1 ve Phase 2 Optimizasyonlarını Başlatma (Head WSL'de)
 
-> [!TIP]
-> **Aynı Anda Çalıştırmak İçin:**
-> Head makinesinde **3 ayrı terminal açın** ve her algoritmayı kendi terminalinde paralel olarak başlatın.
-> `--max-concurrent 4` argümanı sayesinde her algoritma cluster'dan en fazla 4 makine (trial) kapatır. Toplamda 12 makinenin tamamı PPO, DQN ve PPO-LSTM arasında eşit olarak (4 + 4 + 4) paylaşılır.
+Sanal ortamı aktifleştirdikten sonra optimizasyon scriptlerini koordinatör terminalinden normal şekilde çalıştırabilirsiniz:
 
-```powershell
-.\.venv\Scripts\Activate.ps1
+```bash
+source .venv/bin/activate
 
-# Terminal 1: PPO hiperpametre aramasını başlat (4 makinede paralel çalışır)
+# Phase 1: Model HPO (Örnek PPO araması)
 python scripts/tune_models.py --algo PPO --num-samples 30 --iterations 1000 --num-workers 10 --use-gpu True --max-concurrent 4
 
-# Terminal 2: DQN hiperparametre aramasını başlat (4 makinede paralel çalışır)
-python scripts/tune_models.py --algo DQN --num-samples 30 --iterations 1000 --num-workers 10 --use-gpu True --max-concurrent 4
-
-# Terminal 3: PPO-LSTM hiperparametre aramasını başlat (4 makinede paralel çalışır)
-python scripts/tune_models.py --algo PPO-LSTM --num-samples 30 --iterations 1000 --num-workers 10 --use-gpu True --max-concurrent 4
-
-# Terminal 4 (veya Lokal): Baseline QJC (Çok hızlı olduğu için doğrudan kendi bilgisayarınızda da çalıştırabilirsiniz)
-python scripts/tune_models.py --algo QJC --num-samples 30 --iterations 1000
-```
-
-> **Phase 1 bütçesi ve kuralları:**
-> - Her algoritma için tam **30 deneme (trial)** yapılır.
-> - Her deneme `STRICT_PACK` stratejisi ile **tam 1 makinede** (11 CPU, 1 GPU) izole çalışır.
-> - ASHA erken durdurucu devrededir; kötü denemeler 500. iterasyondan sonra kesilir.
-> - QJC tabular tabanlı olduğu için son derece hızlı biter, isterseniz Ray cluster'ı kapatıp lokalde de saniyeler içinde koşturabilirsiniz.
-
-
-
-## ADIM 6 — Phase 2: Ödül Ağırlığı Optimizasyonu (Phase 1 Bittikten Sonra)
-
-> [!IMPORTANT]
-> Phase 2'yi başlatmadan önce PPO, DQN ve QJC için Phase 1'in **tamamlanmış** olması gerekir.
-> `confs/tuned_configs.json` içinde `ppo`, `dqn`, `qjc` anahtarları mevcut olmalıdır.
-
-```powershell
-# Phase 2 — AYRI script, AYRI dashboard
-# W_SUCCESS ve W_COST'u 3 algoritmanın ortalamasına göre optimize eder
+# Phase 2: Ödül Ağırlığı Optimizasyonu (Tüm Phase 1 tamamlandıktan sonra)
 python scripts/tune_reward.py --num-samples 20 --iterations 500 --num-workers 10 --use-gpu True
 ```
 
-**Phase 2 dashboard'unu aç:**
-```powershell
-# Ayrı terminalde:
-python scripts/dashboard_server.py
-# http://localhost:5000/reward_opt.html
-```
-
-> **Phase 2 bütçesi:**
-> - Her trial içinde PPO + DQN + QJC **sıralı** eğitilir
-> - Objective = mean(JSR_ppo, JSR_dqn, JSR_qjc)
-> - Her trial yine `STRICT_PACK` ile tek bir makinede çalıştırılır (11 CPU, 1 GPU).
-> - ASHA yok — her trial tam çalışır
-> - Sonuç `confs/tuned_configs.json["reward"]`'a kaydedilir
-
-
-
 ---
 
-## Optimizasyon Sonucunu İzle
+## Sorun Giderme (WSL2 Özel)
 
-```powershell
-# Ayrı bir terminal'de dashboard'u başlat:
-python scripts/dashboard_server.py
-
-# Tarayıcıda aç:
-# Phase 1 İzleme: http://localhost:5000/opt.html
-# Phase 2 İzleme: http://localhost:5000/reward_opt.html
-```
-
----
-
-## Sorun Giderme
-
-| Sorun | Çözüm |
-|---|---|
-| `Could not find any running Ray instance` | Head'de `ray start --head --port=6379` çalıştırıldığından emin ol |
-| Worker bağlanamıyor | Firewall portlarını (6379) kontrol et; aynı ağda mı? |
-| `CUDA: False` çıkıyor | `--index-url cu121` ile PyTorch'u yeniden kur, NVIDIA sürücüsünü güncelle |
-| `ExecutionPolicy` hatası | `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` çalıştır |
-| Worker beklenmedik kapandı | `ray start --address=...` komutunu tekrar çalıştır |
-| Script yetki hatası | PowerShell'i **Yönetici olarak** aç |
-| `git clone` hatası | Git kurulu değilse: https://git-scm.com/download/win |
+| Sorun | Neden | Çözüm |
+|---|---|---|
+| `Connection timed out` veya `Worker unable to connect` | Güvenlik duvarı engeli veya Mirrored Networking'in aktif olmaması. | 1. `wsl --shutdown` komutu ile WSL'i yeniden başlatın.<br>2. Windows host üzerinde firewall portlarının açık olduğunu denetleyin.<br>3. Windows IP'sini pingleyebildiğinizden emin olun. |
+| GPU'lar WSL içinde görünmüyor | NVIDIA CUDA WSL sürücüsünün eksik veya güncel olmaması. | Windows tarafında güncel NVIDIA Game Ready / Studio Driver kurulu olmalıdır. WSL içinde `nvidia-smi` komutunu çalıştırarak GPU algılamasını doğrulayın. |
+| `.wslconfig` dosyası algılanmıyor | Dosyanın uzantısının `.txt` olarak kalmış olması. | Windows dosya ayarlarından "Dosya adı uzantılarını göster" seçeneğini açıp dosya adının tam olarak `.wslconfig` olduğunu (sonunda `.txt` olmadığını) doğrulayın. |
+| `Out of memory` veya yetersiz kaynak hatası | WSL'in çok fazla bellek tüketmesi. | `%USERPROFILE%\.wslconfig` içinde WSL'e maksimum bellek sınırı koyabilirsiniz (örn: `memory=16GB`). |
 
 ---
 
 ## Oturum Sonu
 
-```powershell
-# Her worker'da çalıştır (PC kapatmadan önce):
+Küme çalışmasını sonlandırmak için:
+```bash
+# Her worker makinede:
 ray stop
 
-# Head'de çalıştır:
+# Head makinesinde:
 ray stop
 ```
+
+---
+
+## ADIM 7 — Temizlik ve Kaldırma (İşiniz Bittiğinde)
+
+Çalışma tamamlandıktan sonra, laboratuvar bilgisayarlarını eski orijinal durumuna döndürmek, açılan portları kapatmak ve WSL2/Ubuntu kurulumlarını kaldırmak için aşağıdaki adımları izleyin:
+
+1. Windows PowerShell terminalini **Yönetici Olarak** açın.
+2. Proje dizinine giderek şu komutu çalıştırın:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts\cleanup_host_wsl.ps1
+   ```
+3. Script; açılan güvenlik duvarı kurallarını silecek, `.wslconfig` içindeki ağ yapılandırmasını temizleyecek ve isteğinize bağlı olarak Ubuntu dağıtımını tamamen kaldırarak disk alanı boşaltacaktır.

@@ -105,30 +105,27 @@ Faz 1'de bulunan en iyi model parametreleri dondurulacaktır. Bu aşamada, her a
 
 ## 3. Dağıtık Altyapı ve Bağlantı Kurulumu
 
-Laboratuvardaki 30 bilgisayarı birbirine bağlamak için ayrıntılı kurulum adımları `CLUSTER_SETUP.md` dosyasında belgelenmiştir. Özet:
+Laboratuvardaki bilgisayarları birbirine bağlamak için ayrıntılı kurulum adımları `CLUSTER_SETUP.md` dosyasında belgelenmiştir. Özet:
 
-### A. Ana Bilgisayarda (Head Node) Yapılacaklar:
-1. IP adresini öğren: `ipconfig`
-2. Firewall portlarını aç (6379, 8265, 10001-10100)
-3. Ray Head'i başlat:
-   ```powershell
-   ray start --head --port=6379 --dashboard-host=0.0.0.0
+### A. Ana Bilgisayarda (Head Node) Yapılacaklar (WSL2):
+1. IP adresini öğren: `ipconfig` (Windows host IP'si, Mirrored Networking sayesinde WSL2 için de geçerlidir)
+2. Firewall portlarını aç (6379, 8265, 10001-10100) ve `.wslconfig` ayarını yap.
+3. WSL2 Ubuntu terminalini açıp Ray Head'i başlat:
+   ```bash
+   ray start --head --port=6379 --dashboard-host=0.0.0.0 --num-cpus=0 --num-gpus=0
    ```
 
-### B. İşçi Bilgisayarlarda (Worker Nodes - Diğer 29 PC) Yapılacaklar:
-1. Projeyi Git ile indir:
-   ```powershell
-   git clone https://github.com/<KULLANICI_ADI>/uav-iot-dc-env.git
-   cd uav-iot-dc-env
+### B. İşçi Bilgisayarlarda (Worker Nodes) Yapılacaklar (WSL2):
+1. WSL2 Ubuntu terminalini açın.
+2. Otomatik kurulum scriptini kopyalayıp çalıştırın (sanal ortamı kurar, bağımlılıkları yükler ve kümesine katılır):
+   ```bash
+   chmod +x scripts/setup_worker_wsl.sh
+   ./scripts/setup_worker_wsl.sh
    ```
-2. Otomatik kurulum scriptini çalıştır (Python kurulumu, `.venv`, kütüphaneler, bağlantı):
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File scripts\setup_worker.ps1
-   ```
-   Script Head Node IP'sini sorar ve `ray start --address=<IP>:6379 --num-cpus=22 --num-gpus=1` ile kümeye katılır.
+   Script Head Node IP'sini sorar ve Ray'i başlatıp küme bağlantısını kurar.
 
-3. Küme durumunu kontrol et (Head'de):
-   ```powershell
+3. Küme durumunu kontrol et (Head WSL2'de):
+   ```bash
    ray status
    ```
 
