@@ -123,13 +123,10 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             # Use normcase to handle drive letter case mismatch (c: vs C:) on Windows
             if os.path.normcase(resolved_run_dir).startswith(os.path.normcase(artifacts_dir)) and os.path.exists(resolved_run_dir):
                 run_dir = resolved_run_dir
-                reward_run_dir = resolved_run_dir
             else:
                 run_dir = get_active_run_dir()
-                reward_run_dir = self._get_reward_run_dir()
         else:
             run_dir = get_active_run_dir()
-            reward_run_dir = self._get_reward_run_dir()
 
         # Serve list of runs
         if path == "/api/list_runs":
@@ -298,208 +295,6 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(f.read().encode("utf-8"))
             else:
                 self.wfile.write(b"<h1>opt.html not found!</h1>")
-            return
-
-        # ------------------------------------------------------------------ #
-        # Phase 2 — Reward Optimization Dashboard routes                      #
-        # ------------------------------------------------------------------ #
-
-        # Serve reward_opt.html
-        if path == "/reward_opt.html":
-            self.send_response(200)
-            self.send_header("Content-type", "text/html")
-            self.end_headers()
-            base_dir  = os.path.dirname(os.path.abspath(__file__))
-            html_path = os.path.join(base_dir, "dashboard", "reward_opt.html")
-            if os.path.exists(html_path):
-                with open(html_path, "r", encoding="utf-8") as f:
-                    self.wfile.write(f.read().encode("utf-8"))
-            else:
-                self.wfile.write(b"<h1>reward_opt.html not found!</h1>")
-            return
-
-        # Serve Phase 2 metadata
-        if path == "/api/reward_metadata":
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
-            self.end_headers()
-            metadata_path   = os.path.join(reward_run_dir, "metadata.json")
-            if reward_run_dir and os.path.exists(metadata_path):
-                with open(metadata_path, "r", encoding="utf-8") as f:
-                    self.wfile.write(f.read().encode("utf-8"))
-            else:
-                self.wfile.write(json.dumps({}).encode("utf-8"))
-            return
-
-        # Serve Phase 2 completed trials + best params
-        if path == "/api/reward_opt":
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
-            self.end_headers()
-            response_data  = {"trials": [], "best_value": None, "best_params": None, "num_samples": None}
-
-            if reward_run_dir:
-                trials_path = os.path.join(reward_run_dir, "optuna", "optuna_trials.json")
-                best_path   = os.path.join(reward_run_dir, "optuna", "best_params.json")
-                meta_path   = os.path.join(reward_run_dir, "metadata.json")
-
-                if os.path.exists(trials_path):
-                    try:
-                        with open(trials_path, "r", encoding="utf-8") as f:
-                            response_data["trials"] = json.load(f)
-                    except Exception:
-                        pass
-                else:
-                    # Dynamic scan fallback to show running/completed trials before optuna_trials.json is saved
-                    tune_results_dir = os.path.join(reward_run_dir, "tune_results", "optuna_study")
-                    if os.path.isdir(tune_results_dir):
-                        trials_list = []
-                        best_val = -float("inf")
-                        best_params = None
-                        
-                        try:
-                            folders = sorted(os.listdir(tune_results_dir), key=lambda x: os.path.getmtime(os.path.join(tune_results_dir, x)))
-                            for idx, folder in enumerate(folders):
-                                trial_path = os.path.join(tune_results_dir, folder)
-                                if not os.path.isdir(trial_path):
-                                    continue
-                                progress_csv = os.path.join(trial_path, "progress.csv")
-                                params_path = os.path.join(trial_path, "params.json")
-                                
-                                if not os.path.exists(progress_csv):
-                                    continue
-                                    
-                                try:
-                                    params = {}
-                                    if os.path.exists(params_path):
-                                        with open(params_path, "r", encoding="utf-8") as pf:
-                                            params = json.load(pf)
-                                    
-                                    with open(progress_csv, "r", encoding="utf-8") as f:
-                                        reader = csv.DictReader(f)
-                                        rows = list(reader)
-                                    if not rows:
-                                        continue
-                                    
-                                    last = rows[-1]
-                                    objective = last.get("objective", None)
-                                    if objective not in (None, ""):
-                                        objective = float(objective)
-                                    else:
-                                        objective = None
-                                        
-                                    elapsed = last.get("time_total_s", None)
-                                    if elapsed not in (None, ""):
-                                        elapsed = float(elapsed)
-                                    else:
-                                        elapsed = 0.0
-                                        
-                                    cur_iter = int(float(last.get("training_iteration", 0) or 0))
-                                    total_iters = params.get("iterations", 100) if isinstance(params, dict) else 100
-                                    
-                                    display_params = {}
-                                    skip_keys = ["iterations", "num_workers", "num_gpus", "ppo_params", "dqn_params", "ppo_lstm_params", "qjc_params"]
-                                    if isinstance(params, dict):
-                                        for k, v in params.items():
-                                            if k not in skip_keys:
-                                                display_params[k] = v
-                                                
-                                    is_done = last.get("done", "False") == "True" or cur_iter >= total_iters
-                                    state = "TrialState.COMPLETE" if is_done else "TrialState.RUNNING"
-                                    
-                                    trials_list.append({
-                                        "number": idx,
-                                        "value": objective,
-                                        "state": state,
-                                        "params": display_params,
-                                        "duration_seconds": elapsed
-                                    })
-                                    
-                                    if objective is not None and objective > best_val:
-                                        best_val = objective
-                                        best_params = display_params
-                                except Exception:
-                                    pass
-                            
-                            response_data["trials"] = trials_list
-                            if best_params is not None:
-                                response_data["best_value"] = best_val
-                                response_data["best_params"] = best_params
-                        except Exception:
-                            pass
-
-                if os.path.exists(best_path):
-                    try:
-                        with open(best_path, "r", encoding="utf-8") as f:
-                            best = json.load(f)
-                            response_data["best_value"]  = best.get("best_value")
-                            response_data["best_params"] = best.get("params")
-                    except Exception:
-                        pass
-                if os.path.exists(meta_path):
-                    try:
-                        with open(meta_path, "r", encoding="utf-8") as f:
-                            response_data["num_samples"] = json.load(f).get("num_samples")
-                    except Exception:
-                        pass
-
-            self.wfile.write(json.dumps(response_data).encode("utf-8"))
-            return
-
-        # Serve Phase 2 active trial progress (progress.csv per trial)
-        if path == "/api/active_reward_trials":
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
-            self.end_headers()
-
-            active_trials  = []
-            if reward_run_dir:
-                tune_dir = os.path.join(reward_run_dir, "tune_results", "optuna_study")
-                if os.path.isdir(tune_dir):
-                    for folder in sorted(os.listdir(tune_dir)):
-                        trial_path = os.path.join(tune_dir, folder)
-                        if not os.path.isdir(trial_path):
-                            continue
-                        csv_path = os.path.join(trial_path, "progress.csv")
-                        if not os.path.exists(csv_path):
-                            continue
-                        try:
-                            with open(csv_path, "r", encoding="utf-8") as f:
-                                rows = list(csv.DictReader(f))
-                            if not rows:
-                                continue
-                            last   = rows[-1]
-                            cur    = int(float(last.get("training_iteration", 0) or 0))
-                            # Read per-algo JSR and mean from reported columns
-                            def _flt(key):
-                                v = last.get(key, None)
-                                return float(v) if v not in (None, "") else None
-                            entry = {
-                                "trial_id":          folder,
-                                "current_iteration": cur,
-                                "total_iterations":  None,
-                                "jsr":          _flt("jsr"),
-                                "jsr_ppo":      _flt("jsr_ppo"),
-                                "jsr_dqn":      _flt("jsr_dqn"),
-                                "jsr_ppo_lstm": _flt("jsr_ppo_lstm"),
-                                "jsr_qjc":      _flt("jsr_qjc"),
-                            }
-
-                            params_path = os.path.join(trial_path, "params.json")
-                            if os.path.exists(params_path):
-                                try:
-                                    with open(params_path, "r", encoding="utf-8") as pf:
-                                        entry["total_iterations"] = json.load(pf).get("iterations")
-                                except Exception:
-                                    pass
-                            active_trials.append(entry)
-                        except Exception:
-                            pass
-
-            self.wfile.write(json.dumps({"trials": active_trials}).encode("utf-8"))
             return
 
         # Serve active Optuna trial progress (Ray Tune progress.csv per trial)
@@ -807,20 +602,7 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             return max(files, key=os.path.getmtime)
         return None
 
-    def _get_reward_run_dir(self):
-        """Return the active Phase 2 reward optimization run directory."""
-        base_dir    = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(base_dir)
-        reward_file  = os.path.join(project_root, "dashboard_active_reward_run.txt")
-        if os.path.exists(reward_file):
-            try:
-                with open(reward_file, "r", encoding="utf-8") as f:
-                    path = f.read().strip()
-                    if os.path.exists(path):
-                        return path
-            except Exception:
-                pass
-        return None
+
 
 def run_server():
     # Attempt to bind to 5000, increment if occupied

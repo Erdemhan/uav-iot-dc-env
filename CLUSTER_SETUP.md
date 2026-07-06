@@ -167,18 +167,18 @@ Ayrıca, tarayıcınızdan `http://localhost:8265` adresine giderek Ray Dashboar
 
 ---
 
-## ADIM 5 — Phase 1 ve Phase 2 Optimizasyonlarını Başlatma (Head WSL'de)
+## ADIM 5 — HPO ve Çoklu Senaryo Eğitimlerini Başlatma (Head WSL'de)
 
 Sanal ortamı aktifleştirdikten sonra optimizasyon scriptlerini koordinatör terminalinden normal şekilde çalıştırabilirsiniz:
 
 ```bash
 source .venv/bin/activate
 
-# Phase 1: Model HPO (Örnek PPO araması)
+# 1. Aşama: Model HPO (Örnek PPO araması)
 python scripts/tune_models.py --algo PPO --num-samples 30 --iterations 1000 --num-workers 10 --use-gpu True --max-concurrent 4
 
-# Phase 2: Ödül Ağırlığı Optimizasyonu (Tüm Phase 1 tamamlandıktan sonra)
-python scripts/tune_reward.py --num-samples 20 --iterations 500 --num-workers 10 --use-gpu True
+# 2. Aşama: Çoklu Senaryo Altında Eğitim ve Karşılaştırma (Tüm HPO'lar tamamlandıktan sonra)
+python scripts/run_experiments.py --parallel
 ```
 
 ---

@@ -488,10 +488,19 @@ def save_optuna_visualizations(study, optuna_dir):
 def short_trial_dirname_creator(trial):
     return f"trial_{trial.trial_id}"
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 def main():
     parser = argparse.ArgumentParser(
-        description="Phase 1: Per-Algorithm Model Hyperparameter Search (PPO, DQN, PPO-LSTM, QJC).\n"
-                    "For Phase 2 (Joint Reward Optimization), use: python scripts/tune_reward.py"
+        description="Model Hyperparameter Search (PPO, DQN, PPO-LSTM, QJC)."
     )
     parser.add_argument("--algo", type=str, default="PPO",
                         choices=["PPO", "DQN", "PPO-LSTM", "QJC"],
@@ -500,7 +509,7 @@ def main():
     parser.add_argument("--iterations", type=int, default=1000, help="Training iterations per trial (each trial runs for this many algo.train() calls)")
     parser.add_argument("--num-workers",  type=int,  default=10,
                         help="Env runners per trial. 10 workers × 100 steps = train_batch_size=1000 exactly. 11 CPUs total (1 learner + 10 runners) per machine, STRICT_PACK.")
-    parser.add_argument("--use-gpu", type=bool, default=True, help="Use RTX 3060 GPU for network updates")
+    parser.add_argument("--use-gpu", type=str2bool, default=True, help="Use RTX 3060 GPU for network updates")
     parser.add_argument("--max-concurrent", type=int, default=0, help="Maximum concurrent trials for this algorithm. 0 for unlimited.")
     parser.add_argument("--phase", type=int, default=1, help="Tuning phase (default: 1)")
     args = parser.parse_args()
@@ -686,7 +695,7 @@ def main():
     with open(os.path.join(optuna_dir, "best_params.json"), "w", encoding="utf-8") as f:
         json.dump(best_results, f, indent=4)
         
-    # Save Phase 1 results to tuned_configs.json (for tune_reward.py Phase 2 use)
+    # Save results to tuned_configs.json (for train.py/run_experiments.py use)
     os.makedirs(os.path.dirname(tuned_cfg_path), exist_ok=True)
     current_tuned = {}
     if os.path.exists(tuned_cfg_path):
@@ -700,7 +709,7 @@ def main():
     with open(tuned_cfg_path, "w", encoding="utf-8") as f:
         json.dump(current_tuned, f, indent=4)
     print(f"[OK] Saved tuned configurations to: {tuned_cfg_path}")
-    print(f"     When PPO, DQN and QJC are all done, run: python scripts/tune_reward.py")
+    print(f"     When PPO, DQN and QJC are all done, run the main experiments using: python scripts/run_experiments.py")
         
     # Save all trials database
     trials_data = []
