@@ -3,7 +3,7 @@
 **Durum**: ✅ Uygulama tamamlandı — Yerel doğrulama testleri başarılı  
 **Hedef Donanım**: 30 × [Intel Core Ultra 9 CPU (16 Cores/22 Threads) + NVIDIA RTX 3060 GPU]
 
-Bu rapor, laboratuvardaki 30 adet bilgisayardan oluşan yerel bir Ray kümesi üzerinde gerçekleştirilecek iki aşamalı (iki fazlı) hiperparametre ve ödül fonksiyonu arama sürecinin tüm detaylarını ve uygulama planını sunmaktadır.
+Bu rapor, laboratuvardaki 30 adet bilgisayardan oluşan yerel bir Ray kümesi üzerinde gerçekleştirilecek görev odaklı hiperparametre optimizasyonu ve çoklu senaryo değerlendirme sürecinin tüm detaylarını ve uygulama planını sunmaktadır.
 
 ---
 
@@ -29,14 +29,14 @@ Mevcut eğitim süreleri tek bilgisayarda (kısıtlı kaynak kullanımı ile) ya
 
 ---
 
-## 2. İki Aşamalı Optimizasyon Mimarisi ve Hedef (Objective) Fonksiyonları
+## 2. Optimizasyon Mimarisi ve Hedef (Objective) Fonksiyonu
 
-Karşılaştırmanın bilimsel geçerliliğini ve hakem savunmasını en üst düzeye çıkarmak için iki aşamalı bir optimizasyon metodu izlenecektir. Her denemenin (trial) sonunda, kararlılık ve dayanıklılığı garanti etmek adına **30 tohumlu dayanıklılık testi (30-seed robustness evaluation)** çalıştırılacak ve Optuna'ya döndürülecek skorlar bu 30 testin ortalamasından alınacaktır.
+Karşılaştırmanın bilimsel geçerliliğini ve hakem savunmasını en üst düzeye çıkarmak için bağımsız değişkenlerin izole edildiği bir yöntem izlenecektir. Ajanların öğrenme kararlılığı (öğrenme oranları ve ağ yapısı) karıştırıcının **birincil görevi (primary mission)** olan karıştırma öncelikli referans senaryo (`W_SUCCESS = 0.8`, `W_TRACKING = 0.2`, `W_COST = 0.03`) altında optimize edilir. Bulunan optimum parametreler dondurularak diğer senaryolarda sabit tutulur. Her denemenin (trial) sonunda, kararlılık ve dayanıklılığı garanti etmek adına **30 tohumlu dayanıklılık testi (30-seed robustness evaluation)** çalıştırılacak ve Optuna'ya döndürülecek skorlar bu 30 testin ortalamasından alınacaktır.
 
 ---
 
-### FAZ 1: Model Hiperparametrelerinin Birleşik Optimizasyonu
-Bu aşamada çevre ve ödül parametreleri sabitlenecektir (`W_SUCCESS = 0.8`, `W_TRACKING = 0.2`, `W_COST = 0.03`). Her algoritma için en iyi çalışan sinir ağı yapısı ve öğrenme hızları **birleşik (joint)** olarak aranacaktır.
+### Model Hiperparametrelerinin Birleşik Optimizasyonu (HPO)
+Bu aşamada çevre ve ödül parametreleri birincil görevi yansıtacak şekilde sabitlenecektir (`W_SUCCESS = 0.8`, `W_TRACKING = 0.2`, `W_COST = 0.03`). Her algoritma için en iyi çalışan sinir ağı yapısı ve öğrenme hızları **birleşik (joint)** olarak aranacaktır.
 
 * **Hedef (Objective) Fonksiyonu**: **30 tohum üzerindeki Ortalama Ödül (30-seed Mean Episode Reward)** değerini maksimize etmek.
 * **Nedeni**: Modelin hem İHA'yı iyi takip etmesini (Tracking), hem başarılı karıştırma yapmasını (JSR) hem de gereksiz güç harcamamasını (Power Cost) dengeli şekilde öğrenen en iyi sinir ağını bulabilmek için ödül fonksiyonunun tamamına odaklanılmalıdır.
@@ -86,20 +86,22 @@ Yeni tasarımda tek bir `architecture` kategorik parametresi kullanılmaktadır.
 
 ---
 
-### FAZ 2: Çok Amaçlı Ödül Fonksiyonu Optimizasyonu
-Faz 1'de bulunan en iyi model parametreleri dondurulacaktır. Bu aşamada, her algoritma kendi optimize edilmiş ayarlarını yükleyecek ve ortak çevre/ödül ağırlıkları aranacaktır:
+### Çoklu Operasyonel Senaryo Tasarımı ve Değerlendirmesi
+Ajanların değişen operasyonel hedeflere göre politikalarını nasıl uyarlayabildiğini (policy adaptability) analiz etmek ve akademik karşılaştırmayı daha zengin hale getirmek için 3 farklı görev senaryosu tasarlanmıştır:
 
 * **Ödül Yapısı**:
   `Reward = W_success * Jamming_Success + W_tracking * Tracking_Acc - W_cost * Power_Cost`
-* **Hedef (Objective) Fonksiyonu**: **30 tohum üzerindeki Ortalama Karıştırma Başarı Oranı (30-seed Mean Jamming Success Rate - JSR)** değerini maksimize etmek.
-* **Nedeni (Çok Kritik)**: Ağırlıklar (`W_success` ve `W_cost`) değiştikçe ödülün sayısal ölçeği bozulur ve farklı parametrelerin ödülleri birbiriyle kıyaslanamaz hale gelir. Bu yüzden ağırlık aramasında fiziksel metrik olan **JSR** başarısını hedef fonksiyon yapmak en adil ve tutarlı çözümdür.
-* **Aranacak Parametreler**:
-  - `W_success`: `0.5` ile `0.95` arasında sürekli (JSR önceliği)
-  - `W_cost`: `0.005` ile `0.1` arasında sürekli (Güç koruma önceliği)
-  - `W_tracking`: Dinamik olarak `1.0 - W_success` hesaplanacaktır.
-* **Algoritma Bağımsız Ortak Optimizasyon (YENİ)**:
-  * Faz 2, her algoritma için ayrı ayrı değil, **PPO + DQN + QJC algoritmalarının ortalama JSR** değerini en yüksek yapacak tek bir ödül ağırlık seti bulmak için ortak çalışır.
-  * Böylece tüm modeller kendi en optimum Faz 1 parametreleriyle bu ortak ödülü çözmeye çalışır. Elde edilen karşılaştırma sonuçları akademik olarak **%100 adil ve hatasız** olur.
+* **Senaryolar**:
+  - **Senaryo A: Saldırgan/Görev Öncelikli (Aggressive / Mission-First)**:
+    - *Tanım:* IoT ağının maksimum düzeyde sabote edilmesi hedeflenir.
+    - *Ağırlıklar:* `W_SUCCESS = 0.8`, `W_TRACKING = 0.2`, `W_COST = 0.03` (HPO'nun da yapıldığı referans senaryo).
+  - **Senaryo B: Dengeli Profil (Balanced Profile)**:
+    - *Tanım:* Karıştırma başarısı ile İHA batarya ömrü arasında orta yol hedeflenir.
+    - *Ağırlıklar:* `W_SUCCESS = 0.5`, `W_TRACKING = 0.3`, `W_COST = 0.2`
+  - **Senaryo C: Yeşil/Enerji Koruma Odaklı (Green / Energy-Saving)**:
+    - *Tanım:* İHA batarya ömrünü korumak birincil önceliktir. Karıştırıcı sadece başarı şansının çok yüksek olduğu durumlarda çalışır.
+    - *Ağırlıklar:* `W_SUCCESS = 0.2`, `W_TRACKING = 0.1`, `W_COST = 0.7`
+* **Neden Ağırlıklar Donduruluyor?**: Hiperparametrelerin (öğrenme parametreleri ve ağ yapısı) tüm senaryolarda sabit tutulması, elde edilen performans farkının **tamamen ve sadece değişen operasyonel senaryoya (ödül fonksiyonuna) bağlı olduğunu** kanıtlar. Bu yaklaşım bilimsel açıdan değişken izolasyonu için zorunludur.
 
 ---
 
@@ -178,13 +180,12 @@ python scripts/tune_models.py --algo PPO-LSTM --num-samples 30 --iterations 1000
 # QJC (Baseline)
 python scripts/tune_models.py --algo QJC --num-samples 30 --iterations 1000
 
-# Phase 2 — Reward Ağırlıkları (Tüm Phase 1'ler bittikten sonra)
-python scripts/tune_reward.py --num-samples 20 --iterations 500 --num-workers 10 --use-gpu True
+# Çoklu Senaryo Altında Eğitim ve Karşılaştırma (Tüm HPO'lar bittikten sonra)
+python scripts/run_experiments.py --parallel
 
 # Dashboard (ayrı terminalde)
 python scripts/dashboard_server.py
-# → Phase 1 İzleme: http://localhost:5000/opt.html
-# → Phase 2 İzleme: http://localhost:5000/reward_opt.html
+# → HPO İzleme: http://localhost:5000/opt.html
 ```
 
 ---
@@ -193,12 +194,11 @@ python scripts/dashboard_server.py
 
 | Dosya | Durum | Açıklama |
 |---|---|---|
-| `scripts/tune_models.py` | ✅ Tamamlandı | Optuna TPE + ASHA Scheduler, PlacementGroupFactory, 30-seed eval, architecture kategorik arama (Phase 1) |
-| `scripts/tune_reward.py` | ✅ Tamamlandı | PPO, DQN ve QJC'nin ortak ortalama JSR skorunu en iyi yapan W_SUCCESS ve W_COST arama scripti (Phase 2) |
-| `scripts/setup_worker.ps1` | ✅ Tamamlandı | Worker bilgisayar otomatik kurulum scripti (venv + pip + ray join) |
-| `scripts/dashboard/opt.html` | ✅ Tamamlandı | Canlı Phase 1 Optuna trial izleme paneli, grafik görüntüleyici |
-| `scripts/dashboard/reward_opt.html` | ✅ Tamamlandı | Canlı Phase 2 Optuna trial izleme paneli, algoritmik JSR kırılımı |
-| `scripts/dashboard_server.py` | ✅ Tamamlandı | `/api/optuna`, `/api/reward_opt`, `/opt.html`, `/reward_opt.html` endpoint'leri eklendi |
+| `scripts/tune_models.py` | ✅ Tamamlandı | Optuna TPE + ASHA Scheduler, PlacementGroupFactory, 30-seed HPO arama scripti |
+| `scripts/run_experiments.py` | ✅ Tamamlandı | Tüm algoritmaları paralel/ardışıl eğitip senaryolar altında değerlendiren ana script |
+| `scripts/setup_worker_wsl.sh` | ✅ Tamamlandı | Worker bilgisayar otomatik kurulum scripti (venv + pip + ray join) |
+| `scripts/dashboard/opt.html` | ✅ Tamamlandı | Canlı Optuna trial izleme paneli, grafik görüntüleyici |
+| `scripts/dashboard_server.py` | ✅ Tamamlandı | `/api/optuna`, `/opt.html` endpoint'leri eklendi |
 | `scripts/dashboard/index.html` | ✅ Tamamlandı | Header'a "Optimization Panel" butonları eklendi |
-| `confs/tuned_configs.json` | ⏳ Run sonrası oluşur | Faz 1 en iyi parametrelerinin ve Faz 2 reward ağırlıklarının kalıcı konfigürasyon dosyası |
+| `confs/tuned_configs.json` | ⏳ Run sonrası oluşur | Optimum hiperparametrelerin kalıcı konfigürasyon dosyası |
 | `CLUSTER_SETUP.md` | ✅ Tamamlandı | Lab küme kurulum kılavuzu |
