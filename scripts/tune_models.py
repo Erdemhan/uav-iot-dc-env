@@ -46,6 +46,8 @@ def run_30seeds_eval(algo_agent, algo_name, env_config, phase=1, lstm_cell_size=
     ep_jsrs = []
     ep_trackings = []
     ep_powers = []
+    ep_powers_active = []
+    ep_powers_idle = []
     ep_sinrs = []
     
     # Save active EnvConfig weights to compute correct physical reward
@@ -78,6 +80,10 @@ def run_30seeds_eval(algo_agent, algo_name, env_config, phase=1, lstm_cell_size=
         ep_reachable = 0
         ep_tracking_reachable = 0
         ep_power_sum = 0
+        ep_power_active_sum = 0
+        ep_power_active_steps = 0
+        ep_power_idle_sum = 0
+        ep_power_idle_steps = 0
         ep_sinr_sum = 0
         ep_sinr_count = 0
         ep_reward_sum = 0
@@ -137,7 +143,14 @@ def run_30seeds_eval(algo_agent, algo_name, env_config, phase=1, lstm_cell_size=
                     ep_tracking_reachable += 1
             
             # 3. Power
-            ep_power_sum += infos.get("jammer_0", {}).get("jammer_cost", 0)
+            current_power = infos.get("jammer_0", {}).get("jammer_cost", 0)
+            ep_power_sum += current_power
+            if reachable_count > 0:
+                ep_power_active_sum += current_power
+                ep_power_active_steps += 1
+            else:
+                ep_power_idle_sum += current_power
+                ep_power_idle_steps += 1
             
             # 4. SINR
             step_sinr_sum = 0
@@ -159,12 +172,16 @@ def run_30seeds_eval(algo_agent, algo_name, env_config, phase=1, lstm_cell_size=
         jsr = (ep_jammed / ep_reachable * 100.0) if ep_reachable > 0 else 0.0
         track = (ep_tracking_reachable / ep_reachable * 100.0) if ep_reachable > 0 else 0.0
         power = ep_power_sum / steps if steps > 0 else 0.0
+        power_active = (ep_power_active_sum / ep_power_active_steps) if ep_power_active_steps > 0 else 0.0
+        power_idle = (ep_power_idle_sum / ep_power_idle_steps) if ep_power_idle_steps > 0 else 0.0
         sinr = ep_sinr_sum / ep_sinr_count if ep_sinr_count > 0 else 0.0
         
         ep_rewards.append(ep_reward_sum)
         ep_jsrs.append(jsr)
         ep_trackings.append(track)
         ep_powers.append(power)
+        ep_powers_active.append(power_active)
+        ep_powers_idle.append(power_idle)
         ep_sinrs.append(sinr)
         
     objective = float(np.mean(ep_rewards)) if phase == 1 else float(np.mean(ep_jsrs))
@@ -175,6 +192,8 @@ def run_30seeds_eval(algo_agent, algo_name, env_config, phase=1, lstm_cell_size=
         "jsr": float(np.mean(ep_jsrs)),
         "tracking_acc": float(np.mean(ep_trackings)),
         "power": float(np.mean(ep_powers)),
+        "power_active": float(np.mean(ep_powers_active)),
+        "power_idle": float(np.mean(ep_powers_idle)),
         "sinr": float(np.mean(ep_sinrs))
     }
 

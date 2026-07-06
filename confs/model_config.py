@@ -6,7 +6,7 @@ class GlobalConfig:
     """
     RANDOM_SEED = 42            # Random seed for reproducibility
     FLATTEN_ACTIONS = True      # Flatten MultiDiscrete to Discrete for DQN compatibility
-    TRAIN_ITERATIONS = 5     # Number of training iterations
+    TRAIN_ITERATIONS = 3     # Number of training iterations
     TRAIN_BATCH_SIZE = 1000     # Steps collected per iteration (PPO/DQN)
     
     # Early Stopping Parameters
@@ -24,6 +24,10 @@ class GlobalConfig:
     CHECKPOINT_FREQ = 50                                     # Her N iterasyonda bir model yedekleme sıklığı
     KEEP_CHECKPOINTS_NUM = 3                                 # Disk üzerinde tutulacak en yüksek performanslı en iyi model sayısı
     CHECKPOINT_SCORE_ATTR = "env_runners/episode_reward_mean" # Checkpoint'leri sıralamak için kullanılan performans metriği
+
+    # Shared Resource Parameters
+    NUM_WORKERS = 5      # Number of parallel rollout workers
+    USE_GPU = False      # GPU enabled or disabled (e.g. GTX 3080 with CUDA 12.1)
 
     
 
@@ -54,10 +58,6 @@ class PPOConfig:
     
     # Model Architecture
     FCNET_HIDDENS = [256, 256]  # Fully connected hidden layers
-    
-    # Resources
-    NUM_WORKERS = 2      # Number of parallel rollout workers
-    USE_GPU = False        # GTX 3080 detected with CUDA 12.1
 
 class DQNConfig:
     """
@@ -82,11 +82,6 @@ class DQNConfig:
     
     # Model Architecture
     FCNET_HIDDENS = [256, 256]  # Fully connected hidden layers
-    
-    # Resources
-    NUM_WORKERS = 2      # Number of parallel rollout workers
-    
-    USE_GPU = False        # GTX 3080 detected with CUDA 12.1
 
 class PPOLSTMConfig:
     """
@@ -106,7 +101,3 @@ class PPOLSTMConfig:
     
     # Model Architecture
     FCNET_HIDDENS = [256, 256]
-    
-    # Resources
-    NUM_WORKERS = 2
-    USE_GPU = False

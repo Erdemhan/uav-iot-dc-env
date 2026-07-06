@@ -694,7 +694,7 @@
                     <div class="meta-list" style="margin-top: 10px;">
                         <div class="meta-item"><span class="meta-key">Host OS</span><span class="meta-val">Windows (WSL/Native)</span></div>
                         <div class="meta-item"><span class="meta-key">RL Stack</span><span class="meta-val">Ray RLLib 2.53.0</span></div>
-                        <div class="meta-item"><span class="meta-key">Device</span><span class="meta-val">CUDA (GPU Enabled)</span></div>
+                        <div class="meta-item"><span class="meta-key">Device</span><span class="meta-val" id="execution-device">CUDA (GPU Enabled)</span></div>
                     </div>
                 </div>
             </div>
@@ -1002,6 +1002,8 @@
                         <th style="padding: 8px 10px; font-weight: bold; color: #e67e22;">Power Loss (Gap)</th>
                         <th style="padding: 8px 10px; font-weight: bold; color: #e74c3c;">Channel Loss (Gap)</th>
                         <th style="padding: 8px 10px; font-weight: bold; color: #ff7b00;">Avg Power</th>
+                        <th style="padding: 8px 10px; font-weight: bold; color: #f1c40f;">Active Power</th>
+                        <th style="padding: 8px 10px; font-weight: bold; color: #2ecc71;">Idle Power</th>
                         <th style="padding: 8px 10px; font-weight: bold; color: #d946ef;">Avg SINR</th>
                     </tr>
                 `;
@@ -1033,6 +1035,8 @@
                     const powerGap = getStats(algoData.Power_Gap);
                     const channelGap = getStats(algoData.Channel_Gap);
                     const power = getStats(algoData.Power);
+                    const powerActive = getStats(algoData.Power_Active);
+                    const powerIdle = getStats(algoData.Power_Idle);
                     const sinr = getStats(algoData.SINR);
                     
                     const row = document.createElement('tr');
@@ -1047,8 +1051,10 @@
                         <td style="padding: 10px 10px; font-family: 'JetBrains Mono', monospace;">${trackReach.mean.toFixed(1)}% ± ${trackReach.std.toFixed(1)}%</td>
                         <td style="padding: 10px 10px; font-family: 'JetBrains Mono', monospace;">${powerGap.mean.toFixed(1)}% ± ${powerGap.std.toFixed(1)}%</td>
                         <td style="padding: 10px 10px; font-family: 'JetBrains Mono', monospace;">${channelGap.mean.toFixed(1)}% ± ${channelGap.std.toFixed(1)}%</td>
-                        <td style="padding: 10px 10px; font-family: 'JetBrains Mono', monospace;">${power.mean.toFixed(3)} W ± ${power.std.toFixed(3)} W</td>
-                        <td style="padding: 10px 10px; font-family: 'JetBrains Mono', monospace;">${sinr.mean.toFixed(2)} dB ± ${sinr.std.toFixed(2)} dB</td>
+                        <td style="padding: 10px 10px; font-family: 'JetBrains Mono', monospace;">${power.mean.toFixed(3)} W</td>
+                        <td style="padding: 10px 10px; font-family: 'JetBrains Mono', monospace;">${powerActive.mean.toFixed(3)} W</td>
+                        <td style="padding: 10px 10px; font-family: 'JetBrains Mono', monospace;">${powerIdle.mean.toFixed(3)} W</td>
+                        <td style="padding: 10px 10px; font-family: 'JetBrains Mono', monospace;">${sinr.mean.toFixed(2)} dB</td>
                     `;
                     tbody.appendChild(row);
                 });
@@ -1233,6 +1239,12 @@
                 }
                 
                 rewardChart.update('none'); // Update without full animation for smoothness
+
+                // Update Device element
+                const deviceEl = document.getElementById('execution-device');
+                if (deviceEl) {
+                    deviceEl.textContent = data.use_gpu ? "CUDA (GPU Enabled)" : "CPU (GPU Disabled)";
+                }
 
                 // 4. Fetch metadata parameters once
                 if (!metadataLoaded) {

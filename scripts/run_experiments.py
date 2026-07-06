@@ -14,6 +14,7 @@ from datetime import datetime
 from confs.model_config import GlobalConfig, QJCConfig, PPOConfig, DQNConfig, PPOLSTMConfig
 from confs.env_config import EnvConfig
 from confs.config import UAVConfig
+from core.logger import ProcessLogger
 from scripts.dashboard_server import start_dashboard, stop_dashboard, DashboardState
 
 # ANSI Colors for terminal output
@@ -42,15 +43,44 @@ class ParallelTrainer:
         self.debug = debug  # Debug mode for verbose output
         self.error_messages = {}  # Store error messages
         self.stdout_log = {}
+        self.loggers = {}    # ProcessLogger per algorithm
         self.is_finished = False
         # Update interval: use provided value, or default based on debug mode
         self.update_interval = update_interval if update_interval is not None else (10 if debug else 3)
+        self._save_status()
         
+    def _save_status(self):
+        """Save trainer status to status.json on disk for dashboard consumption"""
+        try:
+            status_file = os.path.join(self.run_dir, "status.json")
+            data = {
+                "stage": self.stage,
+                "is_finished": self.is_finished,
+                "algorithms": {}
+            }
+            for name in ["Baseline", "PPO", "DQN", "PPO-LSTM"]:
+                data["algorithms"][name] = {
+                    "status": self.status.get(name, "PENDING"),
+                    "progress": self.progress.get(name, 0),
+                    "current_iteration": self.iterations.get(name, 0),
+                    "total_iterations": self.total_iterations.get(name, 100),
+                    "error_messages": self.error_messages.get(name, []),
+                    "logs": self.stdout_log.get(name, [])
+                }
+            with open(status_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+        except Exception:
+            pass
+
     def start_training(self, name, command, output_dir):
         """Start a training process in background"""
         print(f"[{name}] Starting {self.stage.lower()}...")
         if self.debug:
             print(f"[{name}] Command: {command}")
+        
+        # Setup process logger
+        log_file = os.path.join(output_dir, "training.log")
+        self.loggers[name] = ProcessLogger(log_file)
         
         import os
         process_env = os.environ.copy()
@@ -77,6 +107,7 @@ class ParallelTrainer:
         self.total_iterations[name] = self.default_total
         self.error_messages[name] = []
         self.stdout_log[name] = []
+        self._save_status()
         
         # Start thread to monitor output
         thread = threading.Thread(target=self._monitor_output, args=(name, process))
@@ -89,31 +120,41 @@ class ParallelTrainer:
         stderr_thread.start()
         
     def _monitor_stderr(self, name, process):
-        """Monitor stderr for error messages"""
+        """Monitor stderr for warning/error/info messages using ProcessLogger"""
         try:
             for line in process.stderr:
-                clean_line = line.strip()
+                if name in self.loggers:
+                    prefix, clean_line = self.loggers[name].process_line(line, "stderr")
+                else:
+                    prefix, clean_line = "[ERROR]", line.strip()
+                
                 if clean_line:
-                    self.error_messages[name].append(clean_line)
+                    if prefix == "[ERROR]":
+                        self.error_messages[name].append(clean_line)
                     if name not in self.stdout_log:
                         self.stdout_log[name] = []
-                    self.stdout_log[name].append(f"[ERROR] {clean_line}")
+                    self.stdout_log[name].append(f"{prefix} {clean_line}")
                     if len(self.stdout_log[name]) > 50:
                         self.stdout_log[name].pop(0)
+                    self._save_status()
                 if self.debug:
-                    print(f"[{name} ERROR] {line.strip()}")
+                    print(f"[{name} STDERR] {line.strip()}")
         except Exception:
             pass
     
     def _monitor_output(self, name, process):
-        """Monitor process output and extract progress"""
+        """Monitor process output and extract progress using ProcessLogger"""
         try:
             for line in process.stdout:
-                clean_line = line.strip()
+                if name in self.loggers:
+                    prefix, clean_line = self.loggers[name].process_line(line, "stdout")
+                else:
+                    prefix, clean_line = "[INFO]", line.strip()
+                
                 if clean_line:
                     if name not in self.stdout_log:
                         self.stdout_log[name] = []
-                    self.stdout_log[name].append(clean_line)
+                    self.stdout_log[name].append(f"{prefix} {clean_line}")
                     if len(self.stdout_log[name]) > 50:
                         self.stdout_log[name].pop(0)
                 
@@ -127,6 +168,7 @@ class ParallelTrainer:
                         self.iterations[name] = current
                         self.total_iterations[name] = total
                         self.progress[name] = int((current / total) * 100)
+                        self._save_status()
                 else:
                     # PPO/DQN: Look for iteration count
                     match = re.search(r'iteration (\d+)', line, re.IGNORECASE)
@@ -135,6 +177,7 @@ class ParallelTrainer:
                         self.iterations[name] = current
                         self.total_iterations[name] = self.default_total
                         self.progress[name] = int((current / self.default_total) * 100)
+                        self._save_status()
                 
                 if self.debug:
                     print(f"[{name}] {line.strip()}")
@@ -147,10 +190,12 @@ class ParallelTrainer:
                 self.iterations[name] = self.total_iterations[name]
             else:
                 self.status[name] = "FAILED"
+            self._save_status()
                 
         except Exception as e:
             self.status[name] = "FAILED"
             self.error_messages[name].append(str(e))
+            self._save_status()
             if self.debug:
                 print(f"\n[{name}] Exception: {e}")
     
@@ -420,6 +465,9 @@ def main():
         print("\n[FAIL] Some training failed. Check logs for details.\n")
         failed = [n for n, s in trainer.status.items() if s == "FAILED"]
         print(f"Failed: {', '.join(failed)}\n")
+        trainer.stage = "FAILED"
+        trainer.is_finished = True
+        trainer._save_status()
         DashboardState.stage = "FAILED"
         DashboardState.end_time = time.time()
         return
@@ -429,16 +477,24 @@ def main():
     print("Running 30-seed Robustness Evaluation (30 random seeds)...")
     print("="*80 + "\n")
     
+    trainer.stage = "ROBUSTNESS"
+    trainer._save_status()
     DashboardState.stage = "ROBUSTNESS"
     DashboardState.current_trainer = None
     
     ret_robust = subprocess.call(f"{sys.executable} scripts/evaluate_paper_robustness.py --run-dir {run_dir}", shell=True)
     
     if ret_robust == 0:
+        trainer.stage = "COMPLETED"
+        trainer.is_finished = True
+        trainer._save_status()
         DashboardState.stage = "COMPLETED"
         DashboardState.end_time = time.time()
         print(f"\n[OK] Experiment & Robustness Evaluation Complete! Results in: {run_dir}\n")
     else:
+        trainer.stage = "FAILED"
+        trainer.is_finished = True
+        trainer._save_status()
         DashboardState.stage = "FAILED"
         DashboardState.end_time = time.time()
         print("\n[FAIL] Robustness evaluation failed.\n")
