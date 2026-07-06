@@ -18,6 +18,7 @@ class DashboardState:
     server_instance = None
     start_time = 0.0
     end_time = None
+    target_page = "index.html"
 
 def parse_rllib_progress(csv_path):
     history = []
@@ -114,10 +115,13 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         
         project_root = get_project_root()
         if run_param:
-            # Prevent directory traversal
-            run_param = os.path.basename(run_param)
-            resolved_run_dir = os.path.join(project_root, "artifacts", run_param)
-            if os.path.exists(resolved_run_dir):
+            # Normalize path delimiters for windows/linux and prevent directory traversal
+            clean_run_param = run_param.replace("\\", "/").strip("/")
+            resolved_run_dir = os.path.abspath(os.path.join(project_root, "artifacts", clean_run_param))
+            artifacts_dir = os.path.abspath(os.path.join(project_root, "artifacts"))
+            
+            # Use normcase to handle drive letter case mismatch (c: vs C:) on Windows
+            if os.path.normcase(resolved_run_dir).startswith(os.path.normcase(artifacts_dir)) and os.path.exists(resolved_run_dir):
                 run_dir = resolved_run_dir
                 reward_run_dir = resolved_run_dir
             else:
@@ -135,37 +139,57 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             
             runs = []
-            artifacts_dir = os.path.join(project_root, "artifacts")
-            if os.path.isdir(artifacts_dir):
-                for item in os.listdir(artifacts_dir):
-                    item_path = os.path.join(artifacts_dir, item)
-                    if os.path.isdir(item_path):
-                        meta_path = os.path.join(item_path, "metadata.json")
-                        status_path = os.path.join(item_path, "status.json")
-                        if os.path.exists(meta_path) or os.path.exists(status_path):
-                            run_type = "training"
-                            algo_name = ""
-                            if os.path.exists(meta_path):
-                                try:
-                                    with open(meta_path, "r", encoding="utf-8") as f:
-                                        m = json.load(f)
-                                        algo_name = m.get("algo", "")
-                                        phase = m.get("phase", None)
-                                        if phase == 1:
-                                            run_type = "hpo"
-                                        elif phase == 2:
-                                            run_type = "reward"
-                                except:
-                                    pass
-                            
-                            mtime = os.path.getmtime(item_path)
-                            runs.append({
-                                "id": item,
-                                "type": run_type,
-                                "algo": algo_name,
-                                "mtime": mtime,
-                                "date_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime))
-                            })
+            search_paths = [
+                ("training", os.path.join(project_root, "artifacts", "training")),
+                ("tune", os.path.join(project_root, "artifacts", "tune")),
+                ("legacy", os.path.join(project_root, "artifacts"))
+            ]
+            
+            seen_ids = set()
+            for run_group, folder_path in search_paths:
+                if not os.path.isdir(folder_path):
+                    continue
+                for item in os.listdir(folder_path):
+                    if run_group == "legacy" and item in ["training", "tune"]:
+                        continue
+                    item_path = os.path.join(folder_path, item)
+                    if not os.path.isdir(item_path):
+                        continue
+                        
+                    run_id = item
+                    if run_group != "legacy":
+                        run_id = f"{run_group}/{item}"
+                        
+                    if run_id in seen_ids:
+                        continue
+                        
+                    meta_path = os.path.join(item_path, "metadata.json")
+                    status_path = os.path.join(item_path, "status.json")
+                    if os.path.exists(meta_path) or os.path.exists(status_path):
+                        run_type = "training"
+                        algo_name = ""
+                        if os.path.exists(meta_path):
+                            try:
+                                with open(meta_path, "r", encoding="utf-8") as f:
+                                    m = json.load(f)
+                                    algo_name = m.get("algo", "")
+                                    phase = m.get("phase", None)
+                                    if phase == 1:
+                                        run_type = "hpo"
+                                    elif phase == 2:
+                                        run_type = "reward"
+                            except:
+                                pass
+                        
+                        mtime = os.path.getmtime(item_path)
+                        runs.append({
+                            "id": run_id,
+                            "type": run_type,
+                            "algo": algo_name,
+                            "mtime": mtime,
+                            "date_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime))
+                        })
+                        seen_ids.add(run_id)
             # Sort by mtime descending
             runs.sort(key=lambda x: x["mtime"], reverse=True)
             self.wfile.write(json.dumps({"runs": runs}).encode("utf-8"))
@@ -300,7 +324,6 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-type", "application/json")
             self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
             self.end_headers()
-            reward_run_dir  = self._get_reward_run_dir()
             metadata_path   = os.path.join(reward_run_dir, "metadata.json")
             if reward_run_dir and os.path.exists(metadata_path):
                 with open(metadata_path, "r", encoding="utf-8") as f:
@@ -315,7 +338,6 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-type", "application/json")
             self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
             self.end_headers()
-            reward_run_dir = self._get_reward_run_dir()
             response_data  = {"trials": [], "best_value": None, "best_params": None, "num_samples": None}
 
             if reward_run_dir:
@@ -329,6 +351,85 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                             response_data["trials"] = json.load(f)
                     except Exception:
                         pass
+                else:
+                    # Dynamic scan fallback to show running/completed trials before optuna_trials.json is saved
+                    tune_results_dir = os.path.join(reward_run_dir, "tune_results", "optuna_study")
+                    if os.path.isdir(tune_results_dir):
+                        trials_list = []
+                        best_val = -float("inf")
+                        best_params = None
+                        
+                        try:
+                            folders = sorted(os.listdir(tune_results_dir), key=lambda x: os.path.getmtime(os.path.join(tune_results_dir, x)))
+                            for idx, folder in enumerate(folders):
+                                trial_path = os.path.join(tune_results_dir, folder)
+                                if not os.path.isdir(trial_path):
+                                    continue
+                                progress_csv = os.path.join(trial_path, "progress.csv")
+                                params_path = os.path.join(trial_path, "params.json")
+                                
+                                if not os.path.exists(progress_csv):
+                                    continue
+                                    
+                                try:
+                                    params = {}
+                                    if os.path.exists(params_path):
+                                        with open(params_path, "r", encoding="utf-8") as pf:
+                                            params = json.load(pf)
+                                    
+                                    with open(progress_csv, "r", encoding="utf-8") as f:
+                                        reader = csv.DictReader(f)
+                                        rows = list(reader)
+                                    if not rows:
+                                        continue
+                                    
+                                    last = rows[-1]
+                                    objective = last.get("objective", None)
+                                    if objective not in (None, ""):
+                                        objective = float(objective)
+                                    else:
+                                        objective = None
+                                        
+                                    elapsed = last.get("time_total_s", None)
+                                    if elapsed not in (None, ""):
+                                        elapsed = float(elapsed)
+                                    else:
+                                        elapsed = 0.0
+                                        
+                                    cur_iter = int(float(last.get("training_iteration", 0) or 0))
+                                    total_iters = params.get("iterations", 100) if isinstance(params, dict) else 100
+                                    
+                                    display_params = {}
+                                    skip_keys = ["iterations", "num_workers", "num_gpus", "ppo_params", "dqn_params", "ppo_lstm_params", "qjc_params"]
+                                    if isinstance(params, dict):
+                                        for k, v in params.items():
+                                            if k not in skip_keys:
+                                                display_params[k] = v
+                                                
+                                    is_done = last.get("done", "False") == "True" or cur_iter >= total_iters
+                                    state = "TrialState.COMPLETE" if is_done else "TrialState.RUNNING"
+                                    
+                                    trials_list.append({
+                                        "number": idx,
+                                        "value": objective,
+                                        "state": state,
+                                        "params": display_params,
+                                        "duration_seconds": elapsed
+                                    })
+                                    
+                                    if objective is not None and objective > best_val:
+                                        best_val = objective
+                                        best_params = display_params
+                                except Exception:
+                                    pass
+                            
+                            response_data["trials"] = trials_list
+                            if best_params is not None:
+                                response_data["best_value"] = best_val
+                                response_data["best_params"] = best_params
+                        except Exception:
+                            pass
+
                 if os.path.exists(best_path):
                     try:
                         with open(best_path, "r", encoding="utf-8") as f:
@@ -355,7 +456,6 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
 
             active_trials  = []
-            reward_run_dir = self._get_reward_run_dir()
             if reward_run_dir:
                 tune_dir = os.path.join(reward_run_dir, "tune_results", "optuna_study")
                 if os.path.isdir(tune_dir):
@@ -478,14 +578,93 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                         response_data["trials"] = json.load(f)
                 except:
                     pass
-            if os.path.exists(best_path):
-                try:
-                    with open(best_path, "r", encoding="utf-8") as f:
-                        best = json.load(f)
-                        response_data["best_value"] = best.get("best_value")
-                        response_data["best_trial_number"] = best.get("best_trial_number")
-                except:
-                    pass
+                if os.path.exists(best_path):
+                    try:
+                        with open(best_path, "r", encoding="utf-8") as f:
+                            best = json.load(f)
+                            response_data["best_value"] = best.get("best_value")
+                            response_data["best_trial_number"] = best.get("best_trial_number")
+                    except:
+                        pass
+            else:
+                # Dynamic scan fallback to show running/completed trials before optuna_trials.json is saved
+                tune_results_dir = os.path.join(run_dir, "tune_results", "optuna_study")
+                if os.path.isdir(tune_results_dir):
+                    trials_list = []
+                    best_val = -float("inf")
+                    best_num = None
+                    
+                    try:
+                        # Sort folders by creation/mtime so trial indices are consistent
+                        folders = sorted(os.listdir(tune_results_dir), key=lambda x: os.path.getmtime(os.path.join(tune_results_dir, x)))
+                        for idx, folder in enumerate(folders):
+                            trial_path = os.path.join(tune_results_dir, folder)
+                            if not os.path.isdir(trial_path):
+                                continue
+                            progress_csv = os.path.join(trial_path, "progress.csv")
+                            params_path = os.path.join(trial_path, "params.json")
+                            
+                            if not os.path.exists(progress_csv):
+                                continue
+                                
+                            try:
+                                params = {}
+                                if os.path.exists(params_path):
+                                    with open(params_path, "r", encoding="utf-8") as pf:
+                                        params = json.load(pf)
+                                
+                                with open(progress_csv, "r", encoding="utf-8") as f:
+                                    reader = csv.DictReader(f)
+                                    rows = list(reader)
+                                if not rows:
+                                    continue
+                                
+                                last = rows[-1]
+                                objective = last.get("objective", None)
+                                if objective not in (None, ""):
+                                    objective = float(objective)
+                                else:
+                                    objective = None
+                                    
+                                elapsed = last.get("time_total_s", None)
+                                if elapsed not in (None, ""):
+                                    elapsed = float(elapsed)
+                                else:
+                                    elapsed = 0.0
+                                    
+                                cur_iter = int(float(last.get("training_iteration", 0) or 0))
+                                total_iters = params.get("iterations", 100) if isinstance(params, dict) else 100
+                                
+                                display_params = {}
+                                skip_keys = ["algo", "iterations", "phase", "num_workers", "num_gpus", "env_config"]
+                                if isinstance(params, dict):
+                                    for k, v in params.items():
+                                        if k not in skip_keys:
+                                            display_params[k] = v
+                                            
+                                is_done = last.get("done", "False") == "True" or cur_iter >= total_iters
+                                state = "TrialState.COMPLETE" if is_done else "TrialState.RUNNING"
+                                
+                                trials_list.append({
+                                    "number": idx,
+                                    "value": objective,
+                                    "state": state,
+                                    "params": display_params,
+                                    "duration_seconds": elapsed
+                                })
+                                
+                                if objective is not None and objective > best_val:
+                                    best_val = objective
+                                    best_num = idx
+                            except Exception:
+                                pass
+                        
+                        response_data["trials"] = trials_list
+                        if best_num is not None:
+                            response_data["best_value"] = best_val
+                            response_data["best_trial_number"] = best_num
+                    except Exception:
+                        pass
                     
             self.wfile.write(json.dumps(response_data).encode("utf-8"))
             return
@@ -668,7 +847,10 @@ def run_server():
         # Open in default browser after 1 second delay to ensure server is listening
         def open_browser():
             time.sleep(1.0)
-            webbrowser.open(f"http://localhost:{port}")
+            target = f"http://localhost:{port}"
+            if DashboardState.target_page and DashboardState.target_page != "index.html":
+                target += "/" + DashboardState.target_page
+            webbrowser.open(target)
             
         browser_thread = threading.Thread(target=open_browser)
         browser_thread.daemon = True
@@ -681,9 +863,10 @@ def run_server():
     else:
         print("\n[DASHBOARD ERROR] Could not bind HTTP server to a local port.\n")
 
-def start_dashboard(run_dir, timestamp):
+def start_dashboard(run_dir, timestamp, page="index.html"):
     DashboardState.run_dir = run_dir
     DashboardState.timestamp = timestamp
+    DashboardState.target_page = page
     DashboardState.stage = "TRAINING"
     DashboardState.start_time = time.time()
     DashboardState.end_time = None

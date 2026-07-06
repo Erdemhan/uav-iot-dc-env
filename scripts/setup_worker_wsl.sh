@@ -50,7 +50,7 @@ if [ -f "requirements.txt" ]; then
     pip install optuna plotly
 else
     echo -e "${YELLOW}[BİLGİ] requirements.txt bulunamadi. Temel Ray paketleri yukleniyor...${NC}"
-    pip install "ray[rllib]>=2.53.0" pettingzoo==1.24.3 gymnasium torch numpy<2.0.0 pandas matplotlib seaborn optuna plotly
+    pip install "ray[default,rllib]>=2.53.0" pettingzoo==1.24.3 gymnasium torch numpy<2.0.0 pandas matplotlib seaborn optuna plotly
 fi
 
 echo -e "${GREEN}[OK] Kutuphane kurulumlari tamamlandi!${NC}"

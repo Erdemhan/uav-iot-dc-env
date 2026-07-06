@@ -5,9 +5,9 @@
         "architecture": "256,512"
     },
     "dqn": {
-        "lr": 6.34122953699618e-05,
-        "gamma": 0.9394357828888396,
-        "architecture": "256,128,512",
-        "target_network_update_freq": 2000
+        "lr": 0.0001422367954150558,
+        "gamma": 0.8553845304957641,
+        "architecture": "128,512,128",
+        "target_network_update_freq": 1000
     }
 }
