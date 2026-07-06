@@ -451,7 +451,8 @@ def save_optuna_visualizations(study, optuna_dir):
     # 1. Optimization History
     try:
         vis_mpl.plot_optimization_history(study)
-        plt.savefig(os.path.join(optuna_dir, "optimization_history.png"), dpi=300)
+        plt.tight_layout()
+        plt.savefig(os.path.join(optuna_dir, "optimization_history.png"), dpi=300, bbox_inches='tight')
         plt.close()
     except Exception as e:
         print(f"Error plotting optimization history: {e}")
@@ -459,17 +460,23 @@ def save_optuna_visualizations(study, optuna_dir):
         
     # 2. Parameter Importance
     try:
-        vis_mpl.plot_param_importances(study)
-        plt.savefig(os.path.join(optuna_dir, "param_importances.png"), dpi=300)
-        plt.close()
+        ax = vis_mpl.plot_param_importances(study)
+        fig = ax.get_figure() if hasattr(ax, 'get_figure') else plt.gcf()
+        fig.tight_layout()
+        fig.savefig(os.path.join(optuna_dir, "param_importances.png"), dpi=300, bbox_inches='tight')
+        plt.close(fig)
     except Exception as e:
         print(f"Error plotting param importances: {e}")
-        plt.close()
+        try:
+            plt.close()
+        except Exception:
+            pass
         
     # 3. Parallel Coordinate (uses str-arch study to avoid unhashable list)
     try:
         vis_mpl.plot_parallel_coordinate(study_str)
-        plt.savefig(os.path.join(optuna_dir, "parallel_coordinate.png"), dpi=300)
+        plt.tight_layout()
+        plt.savefig(os.path.join(optuna_dir, "parallel_coordinate.png"), dpi=300, bbox_inches='tight')
         plt.close()
     except Exception as e:
         print(f"Error plotting parallel coordinate: {e}")
@@ -478,7 +485,8 @@ def save_optuna_visualizations(study, optuna_dir):
     # 4. Slice Plot (uses str-arch study to avoid unhashable list)
     try:
         vis_mpl.plot_slice(study_str)
-        plt.savefig(os.path.join(optuna_dir, "slice_plot.png"), dpi=300)
+        plt.tight_layout()
+        plt.savefig(os.path.join(optuna_dir, "slice_plot.png"), dpi=300, bbox_inches='tight')
         plt.close()
     except Exception as e:
         print(f"Error plotting slice plot: {e}")
