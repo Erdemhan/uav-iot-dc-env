@@ -55,6 +55,50 @@ fi
 
 echo -e "${GREEN}[OK] Kutuphane kurulumlari tamamlandi!${NC}"
 
+# 2.5. GPU ve CUDA Kontrolü
+echo -e "\n${YELLOW}[2.5] GPU ve CUDA Durumu Kontrol Ediliyor...${NC}"
+
+# A. nvidia-smi Kontrolü (WSL'in GPU'yu görüp görmediği)
+if ! command -v nvidia-smi &> /dev/null; then
+    echo -e "${RED}[UYARI] nvidia-smi bulunamadi! WSL2 ekran kartinizi (GPU) algilayamiyor.${NC}"
+    echo -e "Bu durum genellikle sunlardan kaynaklanir:"
+    echo -e "  1. Windows ana makinede güncel NVIDIA sürücüsü yüklü degil."
+    echo -e "  2. WSL sürümünüz güncel degil (Windows PowerShell'de 'wsl --update' calistirin)."
+    echo -e "  3. WSL sürümü WSL1 olarak kalmis olabilir ('wsl --set-default-version 2' ile güncelleyin)."
+    echo -e "${YELLOW}Devam ediliyor (Yalnizca CPU kullanilacaktir)...${NC}"
+else
+    echo -e "${GREEN}[OK] WSL2 ekran kartinizi algiladi:${NC}"
+    nvidia-smi --query-gpu=name,driver_version --format=csv,noheader
+    
+    # B. PyTorch CUDA Kontrolü (Sanal ortam icinde)
+    echo -e "PyTorch CUDA erisimi kontrol ediliyor..."
+    CUDA_CHECK=$(python3 -c "import torch; print(torch.cuda.is_available())" 2>/dev/null)
+    
+    if [ "$CUDA_CHECK" = "True" ]; then
+        GPU_NAME=$(python3 -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null)
+        echo -e "${GREEN}[OK] PyTorch CUDA erisimi basarili! Kullanilabilir GPU: $GPU_NAME${NC}"
+    else
+        echo -e "${RED}[UYARI] PyTorch CUDA'ya erisemiyor (torch.cuda.is_available() = False).${NC}"
+        echo -e "Bu genellikle CPU-only PyTorch sürümünün yüklü olmasindan kaynaklanir."
+        read -p "CUDA uyumlu PyTorch sürümü otomatik olarak yeniden kurulsun mu? (e/h): " auto_install_pytorch
+        if [[ "$auto_install_pytorch" =~ ^[Ee]$ ]]; then
+            echo -e "${YELLOW}CUDA destekli PyTorch kuruluyor (bu islem biraz zaman alabilir)...${NC}"
+            pip install --force-reinstall torch --index-url https://download.pytorch.org/whl/cu121
+            
+            # Tekrar kontrol et
+            CUDA_CHECK_NEW=$(python3 -c "import torch; print(torch.cuda.is_available())" 2>/dev/null)
+            if [ "$CUDA_CHECK_NEW" = "True" ]; then
+                GPU_NAME_NEW=$(python3 -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null)
+                echo -e "${GREEN}[OK] Kurulum basarili! PyTorch artik GPU kullanabilir: $GPU_NAME_NEW${NC}"
+            else
+                echo -e "${RED}[HATA] PyTorch hala CUDA'yi göremiyor. Lutfen Windows host sürücülerini ve WSL2 entegrasyonunu kontrol edin.${NC}"
+            fi
+        else
+            echo -e "${YELLOW}Yeniden kurulum atlandi. Ajan CPU modunda calismaya devam edebilir.${NC}"
+        fi
+    fi
+fi
+
 # 3. Ray Cluster Baglanti Kurulumu
 echo -e "\n${YELLOW}[3/3] Ray Cluster Baglanti Asamasi...${NC}"
 read -p "Lutfen Ana Bilgisayarin (Head Node) Windows IP adresini girin (Orn: 192.168.1.50): " head_ip
