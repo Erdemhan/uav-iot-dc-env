@@ -124,7 +124,7 @@ Laboratuvardaki bilgisayarları birbirine bağlamak için ayrıntılı kurulum a
    chmod +x scripts/setup_worker_wsl.sh
    ./scripts/setup_worker_wsl.sh
    ```
-   Script Head Node IP'sini sorar ve Ray'i başlatıp küme bağlantısını kurar.
+   Script sırasıyla `nvidia-smi` ve PyTorch'un CUDA erişim durumlarını denetler. Eğer sistemde GPU algılanmış ancak PyTorch CPU sürümü kurulmuşsa, CUDA uyumlu PyTorch sürümünü (`cu121`) otomatik olarak kurmayı teklif eder. Ardından Head Node IP'sini sorarak küme bağlantısını başlatır.
 
 3. Küme durumunu kontrol et (Head WSL2'de):
    ```bash
