@@ -29,10 +29,10 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
-# venv modulunun kurulu oldugundan emin olalim
-python3 -c "import venv" &> /dev/null
+# venv ve ensurepip modullerinin kurulu oldugundan emin olalim
+python3 -c "import venv, ensurepip" &> /dev/null
 if [ $? -ne 0 ]; then
-    echo -e "${YELLOW}[BILGI] python3-venv paketi eksik. Yukleniyor (Sudo yetkisi gerekebilir)...${NC}"
+    echo -e "${YELLOW}[BILGI] python3-venv (ensurepip) paketi eksik. Yukleniyor (Sudo yetkisi gerekebilir)...${NC}"
     sudo apt update && sudo apt install -y python3-venv python3-pip
 fi
 
@@ -43,6 +43,12 @@ echo -e "\n${YELLOW}[2/3] Sanal Ortam (.venv) ve Bagimliliklar Kuruluyor...${NC}
 if [ ! -d ".venv" ]; then
     echo "Sanal ortam olusturuluyor (.venv)..."
     python3 -m venv .venv
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}[HATA] Sanal ortam (.venv) olusturulamadi.${NC}"
+        echo -e "Lutfen python3-venv paketinin tam kuruldugundan emin olun:"
+        echo -e "  sudo apt update && sudo apt install -y python3-venv"
+        exit 1
+    fi
 else
     echo -e "${GREEN}[OK] .venv zaten mevcut.${NC}"
 fi
@@ -56,7 +62,7 @@ if [ -f "requirements.txt" ]; then
     pip install -r requirements.txt && pip install optuna plotly
 else
     echo -e "${YELLOW}[BİLGİ] requirements.txt bulunamadi. Temel Ray paketleri yukleniyor...${NC}"
-    pip install "ray[default,rllib]>=2.53.0" pettingzoo==1.24.3 gymnasium torch numpy<2.0.0 pandas matplotlib seaborn optuna plotly
+    pip install "ray[default,rllib]>=2.53.0" pettingzoo==1.24.3 gymnasium torch "numpy<2.0.0" pandas matplotlib seaborn optuna plotly
 fi
 
 if [ $? -ne 0 ]; then
