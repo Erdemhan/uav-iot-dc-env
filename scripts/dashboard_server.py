@@ -455,7 +455,7 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                                     "duration_seconds": elapsed
                                 })
                                 
-                                if objective is not None and objective > best_val:
+                                if is_done and objective is not None and objective > best_val:
                                     best_val = objective
                                     best_num = idx
                             except Exception:
