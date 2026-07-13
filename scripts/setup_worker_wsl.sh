@@ -130,7 +130,7 @@ if [ -z "$head_ip" ]; then
     exit 1
 fi
 
-echo -e "Calistirilan Komut: ${CYAN}ray start --address=\"$head_ip:6379\" --node-manager-port=10001 --object-manager-port=10002 --dashboard-agent-listen-port=10003 --min-worker-port=10010 --max-worker-port=10099${NC}"
+echo -e "Calistirilan Komut: ${CYAN}ray start --address=\"$head_ip:6379\" --node-manager-port=10004 --object-manager-port=10002 --dashboard-agent-listen-port=10003 --min-worker-port=10010 --max-worker-port=10099${NC}"
 
 # Check if ray exists in virtual env or PATH
 RAY_CMD=""
@@ -148,7 +148,7 @@ fi
 
 # Ray baslatilir
 $RAY_CMD start --address="$head_ip:6379" \
-    --node-manager-port=10001 \
+    --node-manager-port=10004 \
     --object-manager-port=10002 \
     --dashboard-agent-listen-port=10003 \
     --min-worker-port=10010 \

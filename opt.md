@@ -114,7 +114,7 @@ Laboratuvardaki bilgisayarları birbirine bağlamak için ayrıntılı kurulum a
 2. Firewall portlarını aç (6379, 8265, 10001-10100) ve `.wslconfig` ayarını yap.
 3. WSL2 Ubuntu terminalini açıp Ray Head'i başlat:
    ```bash
-   ray start --head --port=6379 --dashboard-host=0.0.0.0 --num-cpus=0 --num-gpus=0 --node-manager-port=10001 --object-manager-port=10002 --dashboard-agent-listen-port=10003 --min-worker-port=10010 --max-worker-port=10099
+   ray start --head --port=6379 --dashboard-host=0.0.0.0 --num-cpus=0 --num-gpus=0 --node-manager-port=10004 --object-manager-port=10002 --dashboard-agent-listen-port=10003 --min-worker-port=10010 --max-worker-port=10099
    ```
 
 ### B. İşçi Bilgisayarlarda (Worker Nodes) Yapılacaklar (WSL2):
