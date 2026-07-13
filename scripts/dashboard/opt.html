@@ -617,7 +617,7 @@
                 
                 trials.forEach(t => {
                     if (t.state === "TrialState.COMPLETE" || t.state === "COMPLETE") completed++;
-                    else if (t.state === "TrialState.PRUNED" || t.state === "PRUNED") pruned++;
+                    else if (t.state === "TrialState.PRUNED" || t.state === "PRUNED" || t.state === "TrialState.FAIL" || t.state === "FAIL") pruned++;
                     else running++;
                 });
 
@@ -654,6 +654,9 @@
                     if (trial.state.includes("PRUNED")) {
                         stateClass = 'badge-pruned';
                         stateText = 'PRUNED';
+                    } else if (trial.state.includes("FAIL")) {
+                        stateClass = 'badge-pruned';
+                        stateText = 'FAILED';
                     } else if (trial.state.includes("RUNNING")) {
                         stateClass = 'badge-running';
                         stateText = 'RUNNING';
