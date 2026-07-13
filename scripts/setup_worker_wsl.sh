@@ -64,10 +64,10 @@ pip install --upgrade pip
 
 if [ -f "requirements.txt" ]; then
     echo -e "${CYAN}requirements.txt uzerinden paketler kuruluyor...${NC}"
-    pip install -r requirements.txt && pip install optuna plotly
+    pip install -r requirements.txt && pip install optuna plotly scikit-learn
 else
     echo -e "${YELLOW}[BİLGİ] requirements.txt bulunamadi. Temel Ray paketleri yukleniyor...${NC}"
-    pip install "ray[default,rllib]>=2.53.0" pettingzoo==1.24.3 gymnasium torch "numpy<2.0.0" pandas matplotlib seaborn optuna plotly
+    pip install "ray[default,rllib]>=2.53.0" pettingzoo==1.24.3 gymnasium torch "numpy<2.0.0" pandas matplotlib seaborn optuna plotly scikit-learn
 fi
 
 if [ $? -ne 0 ]; then
