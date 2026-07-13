@@ -58,6 +58,12 @@ echo -e "${GREEN}[OK] Kutuphane kurulumlari tamamlandi!${NC}"
 # 2.5. GPU ve CUDA Kontrolü
 echo -e "\n${YELLOW}[2.5] GPU ve CUDA Durumu Kontrol Ediliyor...${NC}"
 
+# WSL2 üzerinde GPU kütüphanelerinin ve nvidia-smi'nin bulunabilmesi için PATH ve LD_LIBRARY_PATH'i güncelleyelim
+if [ -d "/usr/lib/wsl/lib" ]; then
+    export PATH="/usr/lib/wsl/lib:$PATH"
+    export LD_LIBRARY_PATH="/usr/lib/wsl/lib:$LD_LIBRARY_PATH"
+fi
+
 # A. nvidia-smi Kontrolü (WSL'in GPU'yu görüp görmediği)
 if ! command -v nvidia-smi &> /dev/null; then
     echo -e "${RED}[UYARI] nvidia-smi bulunamadi! WSL2 ekran kartinizi (GPU) algilayamiyor.${NC}"
