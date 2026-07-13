@@ -523,12 +523,6 @@ def main():
     args = parser.parse_args()
 
     
-    # Auto-detect CUDA availability
-    import torch
-    if args.use_gpu and not torch.cuda.is_available():
-        print("[WARN] GPU requested but CUDA is not available on this device. Falling back to CPU.")
-        args.use_gpu = False
-        
     # 1. Start or Connect to Ray Cluster
     print(f"Connecting to Ray Cluster...")
     runtime_env = {
@@ -536,6 +530,7 @@ def main():
         "excludes": ["**/logs", "**/.venv", "**/artifacts", "**/comparison", "**/scratch", "**/.git", "**/*.png", "**/*.json"]
     }
     
+    is_cluster = False
     try:
         # Connect to existing cluster.
         # Head node is started with --num-cpus=0 --num-gpus=0, so Ray will
@@ -543,10 +538,22 @@ def main():
         # All compute work goes to worker nodes automatically.
         ray.init(address="auto", runtime_env=runtime_env)
         print("[OK] Connected to active Ray head node successfully!")
+        is_cluster = True
     except Exception as e:
         print(f"[WARN] Ray address='auto' connection failed: {e}. Starting local Ray instance...")
         # Fallback: single-machine mode (head becomes a worker too in this case)
         ray.init(runtime_env=runtime_env)
+        
+    # Auto-detect CUDA availability for local fallback
+    import torch
+    if args.use_gpu:
+        if is_cluster:
+            # In cluster mode, we do not restrict GPU usage based on the head node's GPU availability,
+            # because the trials will run on worker nodes which do have GPU support.
+            print("[BILGI] Cluster modunda calisiliyor. GPU kullanimi worker dugumlerinin kaynaklarina gore planlanacak.")
+        elif not torch.cuda.is_available():
+            print("[WARN] GPU requested but CUDA is not available on this local device. Falling back to CPU.")
+            args.use_gpu = False
         
     # 2. Setup run directory and paths
     from datetime import datetime
