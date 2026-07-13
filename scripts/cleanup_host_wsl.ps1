@@ -66,23 +66,23 @@ if (Test-Path $wslConfigPath) {
     Write-Host ".wslconfig file not found. Skipping." -ForegroundColor DarkGray
 }
 
-# 3. Clean up WSL Ubuntu Distribution (Optional / Interactive)
-Write-Host "`n[3/4] WSL Ubuntu Distribution Clean Up..." -ForegroundColor Yellow
+# 3. Clean up WSL Ubuntu 24.04 LTS Distribution (Optional / Interactive)
+Write-Host "`n[3/4] WSL Ubuntu 24.04 LTS Distribution Clean Up..." -ForegroundColor Yellow
 $distList = wsl --list --quiet 2>&1
-if ($distList -match "Ubuntu") {
-    Write-Host "[WARNING] Unregistering Ubuntu will COMPLETELY DELETE the Ubuntu filesystem" -ForegroundColor Red
+if ($distList -match "Ubuntu-24.04") {
+    Write-Host "[WARNING] Unregistering Ubuntu-24.04 will COMPLETELY DELETE the Ubuntu 24.04 LTS filesystem" -ForegroundColor Red
     Write-Host "and all files, environments, packages installed inside it." -ForegroundColor Red
-    $choice = Read-Host "Do you want to completely uninstall and delete Ubuntu? (Y/N)"
+    $choice = Read-Host "Do you want to completely uninstall and delete Ubuntu-24.04? (Y/N)"
     
     if ($choice -eq "Y" -or $choice -eq "y") {
-        Write-Host "Unregistering Ubuntu distribution..." -ForegroundColor Cyan
-        wsl --unregister Ubuntu
-        Write-Host "Ubuntu distribution has been successfully unregistered and deleted." -ForegroundColor Green
+        Write-Host "Unregistering Ubuntu-24.04 distribution..." -ForegroundColor Cyan
+        wsl --unregister Ubuntu-24.04
+        Write-Host "Ubuntu-24.04 distribution has been successfully unregistered and deleted." -ForegroundColor Green
     } else {
-        Write-Host "Skipping Ubuntu deletion as requested." -ForegroundColor Green
+        Write-Host "Skipping Ubuntu-24.04 deletion as requested." -ForegroundColor Green
     }
 } else {
-    Write-Host "Ubuntu distribution not found. Skipping." -ForegroundColor DarkGray
+    Write-Host "Ubuntu-24.04 distribution not found. Skipping." -ForegroundColor DarkGray
 }
 
 # 4. Clean up temporary Windows host files (setup_worker_wsl.sh)

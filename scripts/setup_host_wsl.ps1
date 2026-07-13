@@ -80,8 +80,8 @@ if ($needsWrite) {
     Write-Host "WSL instances shut down to apply new network settings." -ForegroundColor Cyan
 }
 
-# 3. Check and Install WSL2 (Ubuntu)
-Write-Host "`n[3/3] Checking WSL2 and Ubuntu installation..." -ForegroundColor Yellow
+# 3. Check and Install WSL2 (Ubuntu 24.04 LTS)
+Write-Host "`n[3/3] Checking WSL2 and Ubuntu 24.04 LTS installation..." -ForegroundColor Yellow
 $wslInstalled = $false
 try {
     $wslCheck = wsl --status 2>&1
@@ -89,19 +89,19 @@ try {
 } catch {}
 
 if (-not $wslInstalled) {
-    Write-Host "WSL2 is not installed. Initiating installation of WSL2 and Ubuntu..." -ForegroundColor Cyan
+    Write-Host "WSL2 is not installed. Initiating installation of WSL2 and Ubuntu 24.04 LTS..." -ForegroundColor Cyan
     Write-Host "This process may prompt for Windows restart after completion." -ForegroundColor Yellow
-    wsl --install -d Ubuntu
+    wsl --install -d Ubuntu-24.04
     Write-Host "`n[IMPORTANT] WSL2 installation started. Please restart your PC to complete installation, then rerun this script." -ForegroundColor Red
 } else {
-    # Check if Ubuntu distribution is installed
+    # Check if Ubuntu 24.04 LTS distribution is installed
     $distList = wsl --list --quiet 2>&1
-    if ($distList -match "Ubuntu") {
-        Write-Host "WSL2 and Ubuntu are already installed." -ForegroundColor Green
+    if ($distList -match "Ubuntu-24.04") {
+        Write-Host "WSL2 and Ubuntu 24.04 LTS are already installed." -ForegroundColor Green
     } else {
-        Write-Host "Ubuntu distribution not found. Installing Ubuntu..." -ForegroundColor Cyan
-        wsl --install -d Ubuntu
-        Write-Host "Ubuntu installation initiated. Complete the user registration in the Ubuntu window." -ForegroundColor Yellow
+        Write-Host "Ubuntu 24.04 LTS distribution not found. Installing Ubuntu 24.04 LTS..." -ForegroundColor Cyan
+        wsl --install -d Ubuntu-24.04
+        Write-Host "Ubuntu 24.04 LTS installation initiated. Complete the user registration in the Ubuntu window." -ForegroundColor Yellow
     }
 }
 
