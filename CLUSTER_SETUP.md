@@ -117,7 +117,7 @@ Bu scripti işçi bilgisayarın WSL2 (Ubuntu) ortamına aktarıp çalıştırmak
 4. Ev dizinine gidip betiği çalıştırın:
    ```bash
    cd ~/
-   chmod +x setup_worker_wsl.sh
+   sudo chmod +x setup_worker_wsl.sh
    ./setup_worker_wsl.sh
    ```
 
