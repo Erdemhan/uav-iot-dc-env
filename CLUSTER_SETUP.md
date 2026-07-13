@@ -159,9 +159,12 @@ Herhangi bir dosya taşıma işlemiyle uğraşmak istemiyorsanız:
 
 ## ADIM 4 — Kümenin Hazır Olduğunu Kontrol Edin (Head'de)
 
-Koordinatör makinenin WSL terminalinde küme durumunu doğrulayın:
+Koordinatör makinenin WSL terminalinde küme durumunu doğrulayın (sanal ortamı aktif ederek veya doğrudan yol belirterek):
 ```bash
+source .venv/bin/activate
 ray status
+# veya doğrudan:
+.venv/bin/ray status
 ```
 Ayrıca, tarayıcınızdan `http://localhost:8265` adresine giderek Ray Dashboard üzerinden bağlı işçileri ve kaynak durumlarını (CPU/GPU) canlı izleyebilirsiniz.
 
@@ -199,10 +202,12 @@ python scripts/run_experiments.py --parallel
 Küme çalışmasını sonlandırmak için:
 ```bash
 # Her worker makinede:
-ray stop
+.venv/bin/ray stop
+# (veya önce aktif edin: source .venv/bin/activate && ray stop)
 
 # Head makinesinde:
-ray stop
+.venv/bin/ray stop
+# (veya önce aktif edin: source .venv/bin/activate && ray stop)
 ```
 
 ---
