@@ -261,7 +261,7 @@
             border-radius: 14px;
             padding: 1.25rem 1.5rem;
             display: grid;
-            grid-template-columns: 100px 1fr 110px 110px;
+            grid-template-columns: 100px 1fr 110px 110px 110px;
             align-items: center;
             gap: 1.25rem;
             transition: border-color 0.3s ease;
@@ -512,6 +512,21 @@
     </div>
 
     <script>
+        function formatDuration(sec) {
+            if (sec === null || sec === undefined || isNaN(sec)) return '-';
+            sec = Math.round(sec);
+            const hrs = Math.floor(sec / 3600);
+            const mins = Math.floor((sec % 3600) / 60);
+            const secs = sec % 60;
+            if (hrs > 0) {
+                return `${hrs} sa ${mins} dk ${secs} sn`;
+            }
+            if (mins > 0) {
+                return `${mins} dk ${secs} sn`;
+            }
+            return `${secs} sn`;
+        }
+
         let selectedRunId = '';
         let currentActivePlot = 'param_importances';
         let isPolling = true;
@@ -661,7 +676,7 @@
                             ${trial.value !== null ? trial.value.toFixed(2) + '%' : '-'}
                         </td>
                         <td>${paramsStr.join(', ')}</td>
-                        <td>${trial.duration_seconds ? trial.duration_seconds.toFixed(0) : '-'}</td>
+                        <td>${formatDuration(trial.duration_seconds)}</td>
                     `;
                     tbody.appendChild(row);
                 });
@@ -713,6 +728,10 @@
                         <div class="trial-metric">
                             <div class="trial-metric-val">${jsrStr}</div>
                             <div class="trial-metric-lbl">JSR</div>
+                        </div>
+                        <div class="trial-metric">
+                            <div class="trial-metric-val">${formatDuration(t.duration_seconds)}</div>
+                            <div class="trial-metric-lbl">Süre</div>
                         </div>
                     `;
                     grid.appendChild(card);

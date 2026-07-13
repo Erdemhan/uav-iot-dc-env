@@ -342,13 +342,20 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                                     total_iters = p.get("iterations")
                             except:
                                 pass
+                        elapsed = last.get("time_total_s", None)
+                        if elapsed not in (None, ""):
+                            elapsed = float(elapsed)
+                        else:
+                            elapsed = 0.0
+
                         active_trials.append({
                             "trial_id": trial_folder,
                             "current_iteration": current_iter,
                             "total_iterations": total_iters,
                             "objective": objective,
                             "jsr": jsr,
-                            "num_rows": len(rows)
+                            "num_rows": len(rows),
+                            "duration_seconds": elapsed
                         })
                     except Exception:
                         pass
