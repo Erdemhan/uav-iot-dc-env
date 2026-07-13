@@ -106,23 +106,17 @@ else
         GPU_NAME=$(python3 -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null)
         echo -e "${GREEN}[OK] PyTorch CUDA erisimi basarili! Kullanilabilir GPU: $GPU_NAME${NC}"
     else
-        echo -e "${RED}[UYARI] PyTorch CUDA'ya erisemiyor (torch.cuda.is_available() = False).${NC}"
-        echo -e "Bu genellikle CPU-only PyTorch sürümünün yüklü olmasindan kaynaklanir."
-        read -p "CUDA uyumlu PyTorch sürümü otomatik olarak yeniden kurulsun mu? (e/h): " auto_install_pytorch
-        if [[ "$auto_install_pytorch" =~ ^[Ee]$ ]]; then
-            echo -e "${YELLOW}CUDA destekli PyTorch kuruluyor (bu islem biraz zaman alabilir)...${NC}"
-            pip install --force-reinstall torch --index-url https://download.pytorch.org/whl/cu121
-            
-            # Tekrar kontrol et
-            CUDA_CHECK_NEW=$(python3 -c "import torch; print(torch.cuda.is_available())" 2>/dev/null)
-            if [ "$CUDA_CHECK_NEW" = "True" ]; then
-                GPU_NAME_NEW=$(python3 -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null)
-                echo -e "${GREEN}[OK] Kurulum basarili! PyTorch artik GPU kullanabilir: $GPU_NAME_NEW${NC}"
-            else
-                echo -e "${RED}[HATA] PyTorch hala CUDA'yi göremiyor. Lutfen Windows host sürücülerini ve WSL2 entegrasyonunu kontrol edin.${NC}"
-            fi
+        echo -e "${YELLOW}[BILGI] PyTorch CUDA'ya erisemiyor (torch.cuda.is_available() = False).${NC}"
+        echo -e "CUDA uyumlu PyTorch sürümü otomatik olarak kuruluyor (bu islem internet hizina bagli olarak zaman alabilir)...${NC}"
+        pip install --force-reinstall torch --index-url https://download.pytorch.org/whl/cu121
+        
+        # Tekrar kontrol et
+        CUDA_CHECK_NEW=$(python3 -c "import torch; print(torch.cuda.is_available())" 2>/dev/null)
+        if [ "$CUDA_CHECK_NEW" = "True" ]; then
+            GPU_NAME_NEW=$(python3 -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null)
+            echo -e "${GREEN}[OK] Kurulum basarili! PyTorch artik GPU kullanabilir: $GPU_NAME_NEW${NC}"
         else
-            echo -e "${YELLOW}Yeniden kurulum atlandi. Ajan CPU modunda calismaya devam edebilir.${NC}"
+            echo -e "${RED}[HATA] PyTorch hala CUDA'yi göremiyor. Sürücü ve WSL2 entegrasyonunu kontrol edin. Betik CPU modunda devam edecek.${NC}"
         fi
     fi
 fi
