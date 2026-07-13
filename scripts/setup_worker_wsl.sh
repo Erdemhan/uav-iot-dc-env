@@ -46,11 +46,15 @@ pip install --upgrade pip
 
 if [ -f "requirements.txt" ]; then
     echo -e "${CYAN}requirements.txt uzerinden paketler kuruluyor...${NC}"
-    pip install -r requirements.txt
-    pip install optuna plotly
+    pip install -r requirements.txt && pip install optuna plotly
 else
     echo -e "${YELLOW}[BİLGİ] requirements.txt bulunamadi. Temel Ray paketleri yukleniyor...${NC}"
     pip install "ray[default,rllib]>=2.53.0" pettingzoo==1.24.3 gymnasium torch numpy<2.0.0 pandas matplotlib seaborn optuna plotly
+fi
+
+if [ $? -ne 0 ]; then
+    echo -e "${RED}[HATA] Paket kurulumlari basarisiz oldu. Lutfen internet baglantinizi veya pip hatasini kontrol edin.${NC}"
+    exit 1
 fi
 
 echo -e "${GREEN}[OK] Kutuphane kurulumlari tamamlandi!${NC}"
@@ -117,10 +121,33 @@ fi
 echo -e "\nRay Worker baslatiliyor..."
 echo -e "Calistirilan Komut: ${CYAN}ray start --address=\"$head_ip:6379\"${NC}"
 
-# Ray baslatilir
-ray start --address="$head_ip:6379"
+# Check if ray exists in virtual env or PATH
+RAY_CMD=""
+if [ -f ".venv/bin/ray" ]; then
+    RAY_CMD=".venv/bin/ray"
+elif command -v ray &> /dev/null; then
+    RAY_CMD="ray"
+fi
 
-echo -e "\n${GREEN}==================================================${NC}"
-echo -e "${GREEN}   Tebrikler! Bu WSL2 makinesi Ray Cluster'a katildi. ${NC}"
-echo -e "${GREEN}==================================================${NC}"
-echo -e "Kumeyi durdurmak veya ayrilmak icin: ${YELLOW}ray stop${NC}\n"
+if [ -z "$RAY_CMD" ]; then
+    echo -e "${RED}[HATA] 'ray' komutu bulunamadi. Sanal ortamda '.venv/bin/ray' mevcut degil.${NC}"
+    echo -e "Lutfen kurulum adimlarini ve bagimliliklarin yuklendigini kontrol edin.${NC}"
+    exit 1
+fi
+
+# Ray baslatilir
+$RAY_CMD start --address="$head_ip:6379"
+
+if [ $? -eq 0 ]; then
+    echo -e "\n${GREEN}==================================================${NC}"
+    echo -e "${GREEN}   Tebrikler! Bu WSL2 makinesi Ray Cluster'a katildi. ${NC}"
+    echo -e "${GREEN}==================================================${NC}"
+    echo -e "Kumeyi durdurmak veya ayrilmak icin: ${YELLOW}$RAY_CMD stop${NC}\n"
+else
+    echo -e "${RED}[HATA] Ray baslatilamadi veya Head Node'a baglanamadi.${NC}"
+    echo -e "Lutfen sunlari kontrol edin:"
+    echo -e "  1. Head Node IP adresinin dogrulugu ($head_ip)."
+    echo -e "  2. Ag baglantisi (Ping atilabiliyor mu?)."
+    echo -e "  3. Windows Firewall ayarlarinda Ray portlarinin (6379) acik oldugunu."
+    exit 1
+fi
