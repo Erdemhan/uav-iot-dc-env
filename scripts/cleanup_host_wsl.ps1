@@ -66,27 +66,50 @@ if (Test-Path $wslConfigPath) {
     Write-Host ".wslconfig file not found. Skipping." -ForegroundColor DarkGray
 }
 
-# 3. Clean up WSL Ubuntu 24.04 LTS Distribution (Optional / Interactive)
-Write-Host "`n[3/4] WSL Ubuntu 24.04 LTS Distribution Clean Up..." -ForegroundColor Yellow
-$distList = wsl --list --quiet 2>&1
-if ($distList -match "Ubuntu-24.04") {
-    Write-Host "[WARNING] Unregistering Ubuntu-24.04 will COMPLETELY DELETE the Ubuntu 24.04 LTS filesystem" -ForegroundColor Red
-    Write-Host "and all files, environments, packages installed inside it." -ForegroundColor Red
-    $choice = Read-Host "Do you want to completely uninstall and delete Ubuntu-24.04? (Y/N)"
+# 3. Clean up all WSL Distributions (Optional / Interactive)
+Write-Host "`n[3/5] WSL Distributions Clean Up..." -ForegroundColor Yellow
+
+$dists = @()
+try {
+    $previousOutputEncoding = [Console]::OutputEncoding
+    [Console]::OutputEncoding = [System.Text.Encoding]::Unicode
+    $rawDists = wsl --list --quiet 2>&1
+    [Console]::OutputEncoding = $previousOutputEncoding
     
+    foreach ($line in $rawDists) {
+        $clean = $line.Trim()
+        if ($clean -and $clean -notmatch "is not recognized" -and $clean -notmatch "bulunamadı" -and $clean -notmatch "command not found") {
+            $dists += $clean
+        }
+    }
+} catch {
+    Write-Warning "Failed to retrieve WSL distribution list: $_"
+}
+
+if ($dists.Count -gt 0) {
+    Write-Host "Found the following WSL distributions: $($dists -join ', ')" -ForegroundColor Cyan
+    Write-Host "[WARNING] Unregistering a distribution will COMPLETELY DELETE its filesystem and all files inside it." -ForegroundColor Red
+    
+    $choice = Read-Host "Do you want to completely uninstall and delete ALL found WSL distributions? (Y/N)"
     if ($choice -eq "Y" -or $choice -eq "y") {
-        Write-Host "Unregistering Ubuntu-24.04 distribution..." -ForegroundColor Cyan
-        wsl --unregister Ubuntu-24.04
-        Write-Host "Ubuntu-24.04 distribution has been successfully unregistered and deleted." -ForegroundColor Green
+        foreach ($dist in $dists) {
+            try {
+                Write-Host "Unregistering distribution '$dist'..." -ForegroundColor Cyan
+                wsl --unregister $dist | Out-Null
+                Write-Host "Successfully unregistered and deleted '$dist'." -ForegroundColor Green
+            } catch {
+                Write-Error "Failed to unregister '$dist': $_"
+            }
+        }
     } else {
-        Write-Host "Skipping Ubuntu-24.04 deletion as requested." -ForegroundColor Green
+        Write-Host "Skipping WSL distribution deletion." -ForegroundColor Green
     }
 } else {
-    Write-Host "Ubuntu-24.04 distribution not found. Skipping." -ForegroundColor DarkGray
+    Write-Host "No installed WSL distributions found." -ForegroundColor DarkGray
 }
 
 # 4. Clean up temporary Windows host files (setup_worker_wsl.sh)
-Write-Host "`n[4/4] Cleaning up temporary host files..." -ForegroundColor Yellow
+Write-Host "`n[4/5] Cleaning up temporary host files..." -ForegroundColor Yellow
 $tempPaths = @(
     "C:\setup_worker_wsl.sh",
     (Join-Path $env:USERPROFILE "Desktop\setup_worker_wsl.sh"),
@@ -99,9 +122,43 @@ foreach ($filePath in $tempPaths) {
             Remove-Item $filePath -Force -ErrorAction Stop
             Write-Host "Successfully deleted temporary host file: $filePath" -ForegroundColor Green
         } catch {
-            Write-Warning "Failed to delete temporary file $filePath: $_"
+            Write-Warning "Failed to delete temporary file ${filePath} - $_"
         }
     }
+}
+
+# 5. Completely Uninstall WSL and features (Optional / Interactive)
+Write-Host "`n[5/5] Completely Uninstall WSL and Virtualization Features..." -ForegroundColor Yellow
+$wslUninstallChoice = Read-Host "Do you want to completely disable WSL and Virtual Machine Platform features on Windows? (Y/N)"
+if ($wslUninstallChoice -eq "Y" -or $wslUninstallChoice -eq "y") {
+    Write-Host "Disabling Windows Subsystem for Linux feature..." -ForegroundColor Cyan
+    try {
+        Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -NoRestart -ErrorAction Stop | Out-Null
+        Write-Host "Successfully disabled Microsoft-Windows-Subsystem-Linux feature." -ForegroundColor Green
+    } catch {
+        Write-Warning "Failed to disable Microsoft-Windows-Subsystem-Linux: $_"
+    }
+
+    Write-Host "Disabling Virtual Machine Platform feature..." -ForegroundColor Cyan
+    try {
+        Disable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -NoRestart -ErrorAction Stop | Out-Null
+        Write-Host "Successfully disabled VirtualMachinePlatform feature." -ForegroundColor Green
+    } catch {
+        Write-Warning "Failed to disable VirtualMachinePlatform: $_"
+    }
+
+    # Also uninstall the Windows Subsystem for Linux Store package if installed
+    Write-Host "Uninstalling Windows Subsystem for Linux App package..." -ForegroundColor Cyan
+    try {
+        Get-AppxPackage -Name "*WindowsSubsystemForLinux*" -AllUsers | Remove-AppxPackage -AllUsers -ErrorAction Stop | Out-Null
+        Write-Host "Successfully uninstalled WSL App package." -ForegroundColor Green
+    } catch {
+        # Silent ignore if not found or cannot remove
+    }
+
+    Write-Host "`n[IMPORTANT] WSL and Virtualization features have been disabled. You must restart your PC to complete uninstallation." -ForegroundColor Red
+} else {
+    Write-Host "Skipping WSL features uninstallation." -ForegroundColor Green
 }
 
 Write-Host "`n==================================================" -ForegroundColor Green
