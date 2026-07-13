@@ -101,3 +101,64 @@ class PPOLSTMConfig:
     
     # Model Architecture
     FCNET_HIDDENS = [256, 256]
+
+
+# Helper to dynamically override configurations with tuned parameters if they exist
+def _load_tuned_configs():
+    import os
+    import json
+    
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    tuned_path = os.path.join(current_dir, "tuned_configs.json")
+    if os.path.exists(tuned_path):
+        try:
+            with open(tuned_path, "r", encoding="utf-8") as f:
+                tuned = json.load(f)
+            
+            # 1. PPO Overrides
+            if "ppo" in tuned:
+                p = tuned["ppo"]
+                if "lr" in p: PPOConfig.LR = float(p["lr"])
+                if "gamma" in p: PPOConfig.GAMMA = float(p["gamma"])
+                if "architecture" in p:
+                    arch_str = p["architecture"]
+                    PPOConfig.FCNET_HIDDENS = [int(x) for x in arch_str.split(",") if x.strip()]
+            
+            # 2. DQN Overrides
+            if "dqn" in tuned:
+                d = tuned["dqn"]
+                if "lr" in d: DQNConfig.LR = float(d["lr"])
+                if "gamma" in d: DQNConfig.GAMMA = float(d["gamma"])
+                if "target_network_update_freq" in d:
+                    DQNConfig.TARGET_NETWORK_UPDATE_FREQ = int(d["target_network_update_freq"])
+                if "architecture" in d:
+                    arch_str = d["architecture"]
+                    DQNConfig.FCNET_HIDDENS = [int(x) for x in arch_str.split(",") if x.strip()]
+                    
+            # 3. PPO-LSTM Overrides
+            if "ppo_lstm" in tuned:
+                pl = tuned["ppo_lstm"]
+                if "lr" in pl: PPOLSTMConfig.LR = float(pl["lr"])
+                if "gamma" in pl: PPOLSTMConfig.GAMMA = float(pl["gamma"])
+                if "lstm_cell_size" in pl:
+                    PPOLSTMConfig.LSTM_CELL_SIZE = int(pl["lstm_cell_size"])
+                if "max_seq_len" in pl:
+                    PPOLSTMConfig.MAX_SEQ_LEN = int(pl["max_seq_len"])
+                if "architecture" in pl:
+                    arch_str = pl["architecture"]
+                    PPOLSTMConfig.FCNET_HIDDENS = [int(x) for x in arch_str.split(",") if x.strip()]
+            
+            # 4. QJC Overrides
+            if "qjc" in tuned:
+                q = tuned["qjc"]
+                if "tau_0" in q: QJCConfig.TAU_0 = float(q["tau_0"])
+                if "gamma" in q: QJCConfig.GAMMA = float(q["gamma"])
+                if "temp_xi" in q: QJCConfig.TEMP_XI = float(q["temp_xi"])
+                if "mu_offset" in q: QJCConfig.MU_OFFSET = float(q["mu_offset"])
+                
+            print(f"[OK] Loaded tuned hyperparameters dynamically from confs/tuned_configs.json")
+        except Exception as e:
+            print(f"[WARN] Failed to load tuned_configs.json: {e}")
+
+# Run dynamic loader
+_load_tuned_configs()
