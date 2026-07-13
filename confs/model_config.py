@@ -27,7 +27,7 @@ class GlobalConfig:
 
     # Shared Resource Parameters
     NUM_WORKERS = 5      # Number of parallel rollout workers
-    USE_GPU = False      # GPU enabled or disabled (e.g. GTX 3080 with CUDA 12.1)
+    USE_GPU = True       # GPU enabled or disabled (e.g. GTX 3080 with CUDA 12.1)
 
     
 
