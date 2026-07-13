@@ -19,9 +19,10 @@ def main():
             return
 
     timestamp = os.path.basename(run_dir)
-    print(f"[DASHBOARD] Launching dashboard pointing to: {run_dir}")
+    target_page = "opt.html" if "tune" in run_dir.lower() else "index.html"
+    print(f"[DASHBOARD] Launching dashboard pointing to: {run_dir} (page: {target_page})")
     
-    start_dashboard(run_dir, timestamp)
+    start_dashboard(run_dir, timestamp, page=target_page)
     
     try:
         while True:
