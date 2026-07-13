@@ -40,7 +40,12 @@ echo -e "${GREEN}[OK] Python3 ve gerekli araclar hazir: $(python3 --version)${NC
 
 # 2. Sanal Ortam (Virtual Environment) Kurulumu
 echo -e "\n${YELLOW}[2/3] Sanal Ortam (.venv) ve Bagimliliklar Kuruluyor...${NC}"
-if [ ! -d ".venv" ]; then
+if [ ! -f ".venv/bin/activate" ]; then
+    # Eksik veya bozuk eski kurulumlari temizleyelim
+    if [ -d ".venv" ]; then
+        echo "Eksik veya bozuk .venv klasoru temizleniyor..."
+        rm -rf .venv
+    fi
     echo "Sanal ortam olusturuluyor (.venv)..."
     python3 -m venv .venv
     if [ $? -ne 0 ]; then
@@ -50,7 +55,7 @@ if [ ! -d ".venv" ]; then
         exit 1
     fi
 else
-    echo -e "${GREEN}[OK] .venv zaten mevcut.${NC}"
+    echo -e "${GREEN}[OK] .venv zaten mevcut ve gecerli.${NC}"
 fi
 
 echo "Sanal ortam aktiflestiriliyor ve pip guncelleniyor..."
