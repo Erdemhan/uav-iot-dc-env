@@ -84,15 +84,35 @@ if ($needsWrite) {
 Write-Host "`n[3/3] Checking WSL2 and Ubuntu 24.04 LTS installation..." -ForegroundColor Yellow
 $wslInstalled = $false
 try {
-    $wslCheck = wsl --status 2>&1
-    $wslInstalled = $true
-} catch {}
+    $null = Get-Command wsl -ErrorAction Stop
+    $null = wsl --status 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        $wslInstalled = $true
+    }
+} catch {
+    $wslInstalled = $false
+}
 
 if (-not $wslInstalled) {
-    Write-Host "WSL2 is not installed. Initiating installation of WSL2 and Ubuntu 24.04 LTS..." -ForegroundColor Cyan
-    Write-Host "This process may prompt for Windows restart after completion." -ForegroundColor Yellow
-    wsl --install -d Ubuntu-24.04
-    Write-Host "`n[IMPORTANT] WSL2 installation started. Please restart your PC to complete installation, then rerun this script." -ForegroundColor Red
+    Write-Host "WSL2 is not installed. Registering this script for automatic startup and initiating WSL2 installation..." -ForegroundColor Cyan
+    
+    # Register script to RunOnce registry key so it resumes after reboot
+    try {
+        $runOncePath = "HKLM:\Software\Microsoft\Windows\CurrentVersion\RunOnce"
+        $runCmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+        Set-ItemProperty -Path $runOncePath -Name "RayWSLSetup" -Value $runCmd -ErrorAction Stop
+        Write-Host "Registered script to RunOnce for automatic resumption after reboot." -ForegroundColor Green
+    } catch {
+        Write-Warning "Failed to register script in RunOnce registry: $_"
+    }
+
+    Write-Host "Installing WSL2 and Ubuntu 24.04 LTS..." -ForegroundColor Yellow
+    wsl --install -d Ubuntu-24.04 --no-launch
+    
+    Write-Host "`n[IMPORTANT] WSL2 installation started. Restarting your PC in 5 seconds to complete setup..." -ForegroundColor Red
+    Start-Sleep -Seconds 5
+    Restart-Computer -Force
+    Exit
 } else {
     # Check if Ubuntu 24.04 LTS distribution is installed
     $distList = wsl --list --quiet 2>&1
@@ -108,5 +128,4 @@ if (-not $wslInstalled) {
 Write-Host "`n==================================================" -ForegroundColor Green
 Write-Host "   Windows Host configuration completed!          " -ForegroundColor Green
 Write-Host "==================================================" -ForegroundColor Green
-Write-Host "Please ensure you have restarted your PC if WSL2 was newly installed." -ForegroundColor Yellow
 Read-Host "Press Enter to exit..."
