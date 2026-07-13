@@ -10,6 +10,13 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Betigin BASH ile calistirildigindan emin olalim
+if [ -z "$BASH_VERSION" ]; then
+    echo -e "${RED}[HATA] Bu betik yalnizca BASH kabugu ile calistirilmalidir.${NC}"
+    echo -e "Lutfen betigi su sekilde calistirin: ${YELLOW}bash setup_worker_wsl.sh${NC} veya ${YELLOW}./setup_worker_wsl.sh${NC}"
+    exit 1
+fi
+
 echo -e "${CYAN}==================================================${NC}"
 echo -e "${CYAN}   Ray Cluster - WSL2 Isci (Worker) Kurulumu     ${NC}"
 echo -e "${CYAN}==================================================${NC}"
