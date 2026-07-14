@@ -44,14 +44,14 @@ class OptConfig:
 
 
     # --- QJC Search Space bounds ---
-    QJC_TAU_0_MIN = 1e-5
-    QJC_TAU_0_MAX = 1e-3
+    QJC_TAU_0_MIN = 0.01          # 1e-5 yerine 0.01 (Öğrenme hızını artırıyoruz)
+    QJC_TAU_0_MAX = 0.5           # 1e-3 yerine 0.5
     QJC_GAMMA_MIN = 0.85
     QJC_GAMMA_MAX = 0.99
-    QJC_TEMP_XI_MIN = 1.0
-    QJC_TEMP_XI_MAX = 10.0
+    QJC_TEMP_XI_MIN = 0.05        # 1.0 yerine 0.05 (Q-değerleri küçük olsa bile Softmax'in çalışabilmesi için)
+    QJC_TEMP_XI_MAX = 2.0         # 10.0 yerine 2.0
     QJC_MU_OFFSET_MIN = 1.0
-    QJC_MU_OFFSET_MAX = 2.0
+    QJC_MU_OFFSET_MAX = 2.0 
 
     # --- Phase 2 Reward Weight Search Space bounds ---
     REWARD_W_SUCCESS_MIN = 0.5
