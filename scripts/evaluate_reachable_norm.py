@@ -154,6 +154,10 @@ def evaluate_algo(algo_name, run_dir):
             obs, rewards, terms, truncs, infos = env.step(actions)
             terminated = any(terms.values()) or any(truncs.values())
 
+            if algo_name == "Baseline":
+                r_jam = rewards.get("jammer_0", 0)
+                env.attacker.update_qjc(jam_ch, r_jam)
+
             # --- JSR ---
             reachable_count = sum(1 for n in env.nodes if n.connection_status != 1)
             jammed_c = infos["jammer_0"]["jammed_count"]

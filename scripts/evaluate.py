@@ -120,6 +120,11 @@ def main():
                 # Step environment
                 observations, rewards, terminations, truncations, infos = env.step(actions)
                 
+                # Update baseline Q-table online during evaluation steps
+                if 'jammer_0' in env.agents:
+                    r_jam = rewards.get("jammer_0", 0)
+                    env.attacker.update_qjc(jam_channel, r_jam)
+                
                 # Visualize
                 if not args.no_viz:
                     viz.update(env)

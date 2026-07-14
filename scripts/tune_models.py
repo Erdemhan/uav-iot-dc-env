@@ -127,6 +127,10 @@ def run_30seeds_eval(algo_agent, algo_name, env_config, phase=1, lstm_cell_size=
             r_jam = rewards.get("jammer_0", 0)
             ep_reward_sum += r_jam
             
+            # Update baseline Q-table online during evaluation steps
+            if algo_name == "Baseline":
+                eval_env.attacker.update_qjc(jam_ch, r_jam)
+            
             # --- Collect Stats ---
             reachable_count = sum(1 for n in eval_env.nodes if n.connection_status != 1)
             jammed_c = infos.get("jammer_0", {}).get("jammed_count", 0)
