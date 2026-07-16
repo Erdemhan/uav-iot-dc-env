@@ -43,9 +43,9 @@ scrape_configs:
       - targets: ['localhost:9090']
 
   - job_name: 'ray'
-    file_sd_configs:
-      - files:
-          - '/tmp/ray/prom_metrics_service_discovery.json'
+    http_sd_configs:
+      - url: 'http://localhost:8265/api/prometheus/sd'
+        refresh_interval: 10s
 EOF
 
 # 4. Provision Grafana Datasource (Prometheus)
