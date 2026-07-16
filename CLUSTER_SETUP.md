@@ -194,6 +194,7 @@ python scripts/run_experiments.py --parallel
 | GPU'lar WSL içinde görünmüyor | NVIDIA CUDA WSL sürücüsünün eksik veya güncel olmaması. | Windows tarafında güncel NVIDIA Game Ready / Studio Driver kurulu olmalıdır. WSL içinde `nvidia-smi` komutunu çalıştırarak GPU algılamasını doğrulayın. |
 | `.wslconfig` dosyası algılanmıyor | Dosyanın uzantısının `.txt` olarak kalmış olması. | Windows dosya ayarlarından "Dosya adı uzantılarını göster" seçeneğini açıp dosya adının tam olarak `.wslconfig` olduğunu (sonunda `.txt` olmadığını) doğrulayın. |
 | `Out of memory` veya yetersiz kaynak hatası | WSL'in çok fazla bellek tüketmesi. | `%USERPROFILE%\.wslconfig` içinde WSL'e maksimum bellek sınırı koyabilirsiniz (örn: `memory=16GB`). |
+| İşçi düğümde hata analizi veya müdahale gerekiyor | Manuel kontrol veya hata inceleme ihtiyacı. | Koordinatör makineden veya yerel ağdan `ssh kullanici_adi@<Worker_IP> -p 2222` komutuyla işçiye bağlanıp logları inceleyin. |
 
 ---
 

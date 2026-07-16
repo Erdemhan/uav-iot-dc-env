@@ -121,6 +121,42 @@ else
     fi
 fi
 
+# 2.6. SSH Sunucu (OpenSSH) Kurulumu ve Yapılandırması
+echo -e "\n${YELLOW}[2.6] SSH Sunucu (OpenSSH) Kurulumu ve Yapılandırması...${NC}"
+
+# A. OpenSSH Server Kurulumu
+if ! dpkg -s openssh-server &> /dev/null; then
+    echo "openssh-server yukleniyor (Sudo yetkisi gerekebilir)..."
+    sudo apt update && sudo apt install -y openssh-server
+else
+    echo -e "${GREEN}[OK] openssh-server zaten kurulu.${NC}"
+fi
+
+# B. Port ve Sifreyle Giris Yapılandırması (Port 2222 - Windows ile cakismamasi icin)
+echo "SSH Portu (2222) ve Sifreyle Kimlik Dogrulama yapilandiriliyor..."
+
+# sshd_config dosyasını guncelle
+# Port 2222 olarak ayarla veya varsa degistir
+sudo sed -i 's/#\?Port [0-9]*/Port 2222/' /etc/ssh/sshd_config
+# PasswordAuthentication yes olarak ayarla veya varsa degistir
+sudo sed -i 's/#\?PasswordAuthentication .*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+# Gerekirse host key'leri uret
+sudo ssh-keygen -A &> /dev/null
+
+# C. SSH Servisini Baslat ve Etkinlestir
+echo "SSH servisi baslatiliyor..."
+sudo service ssh restart
+SSH_STATUS=$?
+sudo systemctl enable ssh &> /dev/null || true
+
+if [ $SSH_STATUS -eq 0 ]; then
+    echo -e "${GREEN}[OK] SSH Sunucu Port 2222 uzerinde basariyla aktif edildi!${NC}"
+    echo -e "${YELLOW}[BILGI] Bu makineye erismek icin: ssh kullanici_adi@<IP_Adresi> -p 2222${NC}"
+else
+    echo -e "${RED}[HATA] SSH servisi baslatilamadi.${NC}"
+fi
+
 # 3. Ray Cluster Baglanti Kurulumu
 echo -e "\n${YELLOW}[3/3] Ray Cluster Baglanti Asamasi...${NC}"
 read -p "Lutfen Ana Bilgisayarin (Head Node) Windows IP adresini girin (Orn: 192.168.1.50): " head_ip

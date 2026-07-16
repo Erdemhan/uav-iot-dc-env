@@ -16,7 +16,7 @@ Write-Host "==================================================" -ForegroundColor
 
 # 1. Remove Windows Firewall Rules
 Write-Host "`n[1/3] Removing Windows Defender Firewall rules..." -ForegroundColor Yellow
-$rules = @("Ray Head", "Ray Dashboard", "Ray Workers", "SSH Port 22")
+$rules = @("Ray Head", "Ray Dashboard", "Ray Workers", "SSH Port 22", "SSH Port 2222")
 
 foreach ($ruleName in $rules) {
     $existing = Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue
