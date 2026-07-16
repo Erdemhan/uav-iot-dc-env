@@ -520,6 +520,9 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 def main():
+    from core.logger import setup_console_logging
+    setup_console_logging("tune_models")
+    
     parser = argparse.ArgumentParser(
         description="Model Hyperparameter Search (PPO, DQN, PPO-LSTM, QJC)."
     )

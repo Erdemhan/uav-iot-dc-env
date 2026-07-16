@@ -73,4 +73,6 @@ def debug_training():
         print("Counts:", env.attacker.channel_counts)
 
 if __name__ == "__main__":
+    from core.logger import setup_console_logging
+    setup_console_logging("debug_qjc_training")
     debug_training()

@@ -284,6 +284,9 @@ class ParallelTrainer:
             process.wait()
 
 def main():
+    from core.logger import setup_console_logging
+    setup_console_logging("run_experiments")
+    
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Run parallel or sequential training experiments")
     parser.add_argument("--parallel", action="store_true",

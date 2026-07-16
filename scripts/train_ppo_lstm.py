@@ -65,6 +65,8 @@ class ProgressCallback(tune.Callback):
         print(f"Iteration {result['training_iteration']}")
 
 if __name__ == "__main__":
+    from core.logger import setup_console_logging
+    setup_console_logging("train_ppo_lstm")
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=str, default="ray_results", help="Output directory for PPO-LSTM")

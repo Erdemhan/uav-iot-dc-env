@@ -118,3 +118,68 @@ class ProcessLogger:
                 
         return prefix, clean_line
 
+
+class Tee:
+    """
+    A helper class to duplicate writes to both an underlying stream (like sys.stdout/sys.stderr)
+    and a log file on disk. Delegates all other attributes to the original stream.
+    """
+    def __init__(self, filepath: str, stream):
+        self.filepath = filepath
+        self.stream = stream
+        self.file = open(filepath, "a", encoding="utf-8")
+
+    def write(self, data):
+        self.stream.write(data)
+        self.file.write(data)
+        self.file.flush()
+
+    def flush(self):
+        self.stream.flush()
+        self.file.flush()
+
+    def close(self):
+        if hasattr(self, "file") and self.file:
+            self.file.close()
+            self.file = None
+
+    def __getattr__(self, attr):
+        return getattr(self.stream, attr)
+
+
+def setup_console_logging(script_name: str):
+    """
+    Redirects sys.stdout and sys.stderr to write to both the console and a log file
+    under artifacts/logs/<script_name>_<timestamp>.log.
+    """
+    import sys
+    
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(current_dir)
+    log_dir = os.path.join(project_root, "artifacts", "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = os.path.join(log_dir, f"{script_name}_{timestamp}.log")
+    
+    sys.stdout = Tee(log_file, sys.stdout)
+    sys.stderr = Tee(log_file, sys.stderr)
+    
+    print(f"[Logger] Console output is being saved to: {log_file}")
+    
+    # Register cleanup on exit
+    import atexit
+    original_stdout = sys.stdout.stream if isinstance(sys.stdout, Tee) else sys.stdout
+    original_stderr = sys.stderr.stream if isinstance(sys.stderr, Tee) else sys.stderr
+    
+    def cleanup():
+        if isinstance(sys.stdout, Tee):
+            sys.stdout.close()
+            sys.stdout = original_stdout
+        if isinstance(sys.stderr, Tee):
+            sys.stderr.close()
+            sys.stderr = original_stderr
+            
+    atexit.register(cleanup)
+
+

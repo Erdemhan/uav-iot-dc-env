@@ -14,6 +14,9 @@ import os
 import argparse
 
 def main():
+    from core.logger import setup_console_logging
+    setup_console_logging("train_baseline")
+    
     # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=str, default="baseline_q_table", 

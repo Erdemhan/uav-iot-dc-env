@@ -56,6 +56,9 @@ def find_latest_checkpoint(base_dir="./ray_results"):
     return latest_ckpt
 
 def main():
+    from core.logger import setup_console_logging
+    setup_console_logging("evaluate")
+    
     parser = argparse.ArgumentParser(description="Evaluate Trained Model")
     parser.add_argument("--algo", type=str, default="PPO", help="Algorithm (Baseline, PPO, or DQN)")
     parser.add_argument("--dir", type=str, default="./ray_results", help="Model Directory")

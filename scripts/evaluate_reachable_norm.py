@@ -217,8 +217,11 @@ def print_summary(algo_name, res):
 
 
 def main():
+    from core.logger import setup_console_logging
+    setup_console_logging("evaluate_reachable_norm")
+    
     parser = argparse.ArgumentParser()
-    parser.add_argument("--run-dir", required=True)
+    parser.add_argument("--run-dir", type=str, required=True, help="Path to artifacts directory")
     args = parser.parse_args()
     run_dir = os.path.abspath(args.run_dir)
     print(f"Run dir: {run_dir}")
