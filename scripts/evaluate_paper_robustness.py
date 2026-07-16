@@ -3,6 +3,8 @@ import sys
 import argparse
 import numpy as np
 import json
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import ray

@@ -7,6 +7,8 @@ import json
 import random
 import numpy as np
 import torch
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 # Suppress warnings and metrics logs

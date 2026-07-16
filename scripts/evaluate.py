@@ -18,6 +18,8 @@ from ray.rllib.env.wrappers.pettingzoo_env import ParallelPettingZooEnv
 from simulation.pettingzoo_env import UAV_IoT_PZ_Env
 from visualization.visualization import Visualization
 from visualization.visualizer import SimulationVisualizer
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import time
 import numpy as np
