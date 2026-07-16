@@ -122,7 +122,9 @@ class SmartAttacker(BaseEntity):
         if self.temp_xi <= 0:
             return np.argmax(self.q_table) # Greedy fallback
             
-        exps = np.exp(self.q_table / self.temp_xi)
+        # Numerically stable softmax to avoid exp overflow when temp_xi is small
+        q_shifted = self.q_table - np.max(self.q_table)
+        exps = np.exp(q_shifted / self.temp_xi)
         probs = exps / np.sum(exps)
         
         action = np.random.choice(np.arange(self.num_channels), p=probs)
