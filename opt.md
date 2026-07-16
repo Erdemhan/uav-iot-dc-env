@@ -87,19 +87,16 @@ Yeni tasarımda tek bir `architecture` kategorik parametresi kullanılmaktadır.
 ---
 
 ### Çoklu Operasyonel Senaryo Tasarımı ve Değerlendirmesi
-Ajanların değişen operasyonel hedeflere göre politikalarını nasıl uyarlayabildiğini (policy adaptability) analiz etmek ve akademik karşılaştırmayı daha zengin hale getirmek için 3 farklı görev senaryosu tasarlanmıştır:
+Ajanların değişen operasyonel hedeflere göre politikalarını nasıl uyarlayabildiğini (policy adaptability) analiz etmek ve akademik karşılaştırmayı daha belirgin hale getirmek için **2 farklı görev senaryosu** tasarlanmıştır:
 
 * **Ödül Yapısı**:
   `Reward = W_success * Jamming_Success + W_tracking * Tracking_Acc - W_cost * Power_Cost`
 * **Senaryolar**:
-  - **Senaryo A: Saldırgan/Görev Öncelikli (Aggressive / Mission-First)**:
-    - *Tanım:* IoT ağının maksimum düzeyde sabote edilmesi hedeflenir.
+  - **Senaryo A: Düşük Güç Cezası (Low Power Penalty Scenario)**:
+    - *Tanım:* Güç tüketiminin etkisi arka planda tutularak, IoT ağının veri toplama sürecinin maksimum düzeyde sabote edilmesi hedeflenir.
     - *Ağırlıklar:* `W_SUCCESS = 0.8`, `W_TRACKING = 0.2`, `W_COST = 0.03` (HPO'nun da yapıldığı referans senaryo).
-  - **Senaryo B: Dengeli Profil (Balanced Profile)**:
-    - *Tanım:* Karıştırma başarısı ile İHA batarya ömrü arasında orta yol hedeflenir.
-    - *Ağırlıklar:* `W_SUCCESS = 0.5`, `W_TRACKING = 0.3`, `W_COST = 0.2`
-  - **Senaryo C: Yeşil/Enerji Koruma Odaklı (Green / Energy-Saving)**:
-    - *Tanım:* İHA batarya ömrünü korumak birincil önceliktir. Karıştırıcı sadece başarı şansının çok yüksek olduğu durumlarda çalışır.
+  - **Senaryo B: Yüksek Güç Cezası (High Power Penalty Scenario)**:
+    - *Tanım:* İHA batarya ömrünü korumak ve enerji tüketimini minimize etmek birincil önceliktir. Karıştırıcı sadece başarı şansının çok yüksek olduğu durumlarda çalışmaya zorlanır, diğer durumlarda gücünü kapatır (uyku modu).
     - *Ağırlıklar:* `W_SUCCESS = 0.2`, `W_TRACKING = 0.1`, `W_COST = 0.7`
 * **Neden Ağırlıklar Donduruluyor?**: Hiperparametrelerin (öğrenme parametreleri ve ağ yapısı) tüm senaryolarda sabit tutulması, elde edilen performans farkının **tamamen ve sadece değişen operasyonel senaryoya (ödül fonksiyonuna) bağlı olduğunu** kanıtlar. Bu yaklaşım bilimsel açıdan değişken izolasyonu için zorunludur.
 
