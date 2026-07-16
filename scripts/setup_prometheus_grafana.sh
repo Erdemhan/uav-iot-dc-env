@@ -93,6 +93,47 @@ fi
 # Fix permissions for Grafana dashboards folder
 sudo chown -R grafana:grafana /var/lib/grafana/dashboards
 
+# 5.5 Configure allow_embedding and anonymous auth in /etc/grafana/grafana.ini
+echo "Configuring security and anonymous auth in /etc/grafana/grafana.ini..."
+sudo python3 -c "
+import re
+try:
+    with open('/etc/grafana/grafana.ini', 'r') as f:
+        content = f.read()
+
+    # Replace allow_embedding under [security]
+    security_sec = re.search(r'\[security\](.*?)(?=\n\[|$)', content, re.DOTALL)
+    if security_sec:
+        sec_content = security_sec.group(1)
+        if 'allow_embedding' in sec_content:
+            new_sec_content = re.sub(r';?\s*allow_embedding\s*=\s*\w+', 'allow_embedding = true', sec_content)
+            content = content.replace(sec_content, new_sec_content)
+        else:
+            new_sec_content = sec_content + '\nallow_embedding = true\n'
+            content = content.replace(sec_content, new_sec_content)
+
+    # Replace enabled and org_role under [auth.anonymous]
+    auth_sec = re.search(r'\[auth\.anonymous\](.*?)(?=\n\[|$)', content, re.DOTALL)
+    if auth_sec:
+        sec_content = auth_sec.group(1)
+        new_sec_content = sec_content
+        if 'enabled' in sec_content:
+            new_sec_content = re.sub(r';?\s*enabled\s*=\s*\w+', 'enabled = true', new_sec_content)
+        else:
+            new_sec_content += '\nenabled = true\n'
+        if 'org_role' in sec_content:
+            new_sec_content = re.sub(r';?\s*org_role\s*=\s*\w+', 'org_role = Viewer', new_sec_content)
+        else:
+            new_sec_content += '\norg_role = Viewer\n'
+        content = content.replace(sec_content, new_sec_content)
+
+    with open('/etc/grafana/grafana.ini', 'w') as f:
+        f.write(content)
+    print('[OK] Grafana security and anonymous auth configured successfully.')
+except Exception as e:
+    print(f'[WARN] Failed to configure grafana.ini automatically: {e}')
+"
+
 # 6. Restart Services
 echo "Restarting services..."
 restart_service() {
