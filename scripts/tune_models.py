@@ -1,6 +1,10 @@
 # tune_models.py
 import os
 import sys
+
+# Force Matplotlib to use the headless Agg backend before any imports
+os.environ["MPLBACKEND"] = "Agg"
+
 import argparse
 import warnings
 import json
