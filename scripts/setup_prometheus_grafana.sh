@@ -80,11 +80,15 @@ providers:
       path: /var/lib/grafana/dashboards
 EOF
 
-# Create dashboard folder and download Ray's official dashboard
+# Create dashboard folder and copy Ray's built-in dashboards
 sudo mkdir -p /var/lib/grafana/dashboards
-echo "Downloading Ray Official Grafana Dashboard..."
-sudo wget -q -O /var/lib/grafana/dashboards/ray.json \
-  https://raw.githubusercontent.com/ray-project/ray/master/doc/source/ray-core/doc_code/grafana_dashboard.json
+echo "Copying Ray's built-in Grafana Dashboards..."
+if [ -d "/tmp/ray/session_latest/metrics/grafana/dashboards" ]; then
+    sudo cp /tmp/ray/session_latest/metrics/grafana/dashboards/*.json /var/lib/grafana/dashboards/
+    echo "Successfully copied all dashboards from /tmp/ray/session_latest/metrics/grafana/dashboards/"
+else
+    echo "Warning: /tmp/ray/session_latest/metrics/grafana/dashboards/ not found. Start Ray cluster first to generate them."
+fi
 
 # Fix permissions for Grafana dashboards folder
 sudo chown -R grafana:grafana /var/lib/grafana/dashboards
