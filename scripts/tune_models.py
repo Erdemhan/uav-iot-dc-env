@@ -292,7 +292,7 @@ def train_rllib_trial(config):
     # Build Algorithm
     algo = cfg_obj.build()
     
-    last_objective = -float('inf')
+    last_objective = 0.0
     last_jsr = 0.0
     last_track = 0.0
     last_power = 0.0
@@ -346,7 +346,7 @@ def train_qjc_trial(config):
     learned_q_table = None
     learned_counts = None
     
-    last_objective = -float('inf')
+    last_objective = 0.0
     last_jsr = 0.0
     last_track = 0.0
     last_power = 0.0
