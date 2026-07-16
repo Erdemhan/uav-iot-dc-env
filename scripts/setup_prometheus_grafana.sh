@@ -45,7 +45,7 @@ scrape_configs:
   - job_name: 'ray'
     file_sd_configs:
       - files:
-          - '/tmp/ray/session_latest/metrics/prometheus_exporter_sd_config.json'
+          - '/tmp/ray/prom_metrics_service_discovery.json'
 EOF
 
 # 4. Provision Grafana Datasource (Prometheus)
