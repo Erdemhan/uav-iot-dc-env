@@ -1,4 +1,31 @@
 
+# --- Ray RLlib DQN Replay Buffer Bug Patch ---
+try:
+    import ray.rllib.algorithms.algorithm as rllib_algo
+    original_create_buffer = rllib_algo.Algorithm._create_local_replay_buffer_if_necessary
+
+    def patched_create_buffer(self, config, *args, **kwargs):
+        has_patched = False
+        original_type = None
+        if "replay_buffer_config" in config and "type" in config["replay_buffer_config"]:
+            original_type = config["replay_buffer_config"]["type"]
+            if original_type is not None and not isinstance(original_type, str):
+                has_patched = True
+                if hasattr(original_type, "__name__"):
+                    config["replay_buffer_config"]["type"] = original_type.__name__
+                else:
+                    config["replay_buffer_config"]["type"] = str(original_type)
+        try:
+            return original_create_buffer(self, config, *args, **kwargs)
+        finally:
+            if has_patched:
+                config["replay_buffer_config"]["type"] = original_type
+
+    rllib_algo.Algorithm._create_local_replay_buffer_if_necessary = patched_create_buffer
+except Exception:
+    pass
+# ---------------------------------------------
+
 class GlobalConfig:
     """
     Global configuration shared across all algorithms.
