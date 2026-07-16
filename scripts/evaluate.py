@@ -100,6 +100,7 @@ def main():
             env.attacker.load_model(args.dir)
             print(f"[OK] Loaded Q-table from: {args.dir}")
             env.attacker.temp_xi = 0  # Greedy policy for evaluation
+            env.attacker.channel_counts = np.zeros(env.attacker.num_channels) # Reset counts for online adaptation
         except Exception as e:
             print(f"[WARNING] Could not load Q-table from {args.dir}: {e}")
             print("  Running with empty Q-table")

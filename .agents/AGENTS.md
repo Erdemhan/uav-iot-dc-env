@@ -10,3 +10,7 @@
 
 - **Active codebase-memory usage:** The codebase-memory MCP server is integrated. Always ensure the project is indexed and use graph/codebase memory tools where appropriate. See [.agents/mcp.md](file:///c:/Users/Erdemhan/Desktop/OneDrive%20-%20erciyes.edu.tr/okul_msi/Projeler/DR%20TEZ/uav-iot-dc-env/.agents/mcp.md) for detailed instructions.
 
+## Testing and Code Verification Guidelines
+
+- **Max 50 Iterations for Testing:** When writing/running scratch scripts, debug scripts, or test command runs to verify code changes, always limit the run length to a maximum of 50 iterations (or equivalent episodes/steps) to prevent unnecessary delays.
+

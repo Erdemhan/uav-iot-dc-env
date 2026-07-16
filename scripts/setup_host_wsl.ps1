@@ -19,7 +19,8 @@ Write-Host "`n[1/3] Configuring Windows Defender Firewall rules..." -ForegroundC
 $ports = @(
     @{ Name="Ray Head"; Port="6379" },
     @{ Name="Ray Dashboard"; Port="8265" },
-    @{ Name="Ray Workers"; Port="10001-10100" }
+    @{ Name="Ray Workers"; Port="10001-10100" },
+    @{ Name="SSH Port 22"; Port="22" }
 )
 
 foreach ($rule in $ports) {

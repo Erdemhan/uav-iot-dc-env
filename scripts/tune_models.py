@@ -40,7 +40,7 @@ SEEDS = OptConfig.EVAL_SEEDS
 def env_creator(config):
     return ParallelPettingZooEnv(UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS))
 
-def run_30seeds_eval(algo_agent, algo_name, env_config, phase=1, lstm_cell_size=256, q_table=None, q_counts=None):
+def run_30seeds_eval(algo_agent, algo_name, env_config, phase=1, lstm_cell_size=256, q_table=None, q_counts=None, q_params=None):
     """Evaluate current policy on 30 random seeds and calculate JSR, Tracking and Reward"""
     ep_rewards = []
     ep_jsrs = []
@@ -69,8 +69,12 @@ def run_30seeds_eval(algo_agent, algo_name, env_config, phase=1, lstm_cell_size=
         if algo_name == "Baseline":
             if q_table is not None:
                 eval_env.attacker.q_table = q_table.copy()
-                eval_env.attacker.channel_counts = q_counts.copy()
+                eval_env.attacker.channel_counts = np.zeros(eval_env.attacker.num_channels)
             eval_env.attacker.temp_xi = 0.0 # Greedy evaluation
+            if q_params is not None:
+                eval_env.attacker.tau_0 = q_params.get("tau_0", eval_env.attacker.tau_0)
+                eval_env.attacker.gamma = q_params.get("gamma", eval_env.attacker.gamma)
+                eval_env.attacker.mu_offset = q_params.get("mu_offset", eval_env.attacker.mu_offset)
             
         lstm_state = [np.zeros(lstm_cell_size, dtype=np.float32), np.zeros(lstm_cell_size, dtype=np.float32)] if algo_name == "PPO-LSTM" else []
         
@@ -390,7 +394,12 @@ def train_qjc_trial(config):
                 env_config=config["env_config"],
                 phase=phase,
                 q_table=learned_q_table,
-                q_counts=learned_counts
+                q_counts=learned_counts,
+                q_params={
+                    "tau_0": tau_0,
+                    "gamma": gamma,
+                    "mu_offset": mu_offset
+                }
             )
             last_objective = eval_metrics["objective"]
             last_jsr = eval_metrics["jsr"]

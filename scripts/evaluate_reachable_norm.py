@@ -113,6 +113,7 @@ def evaluate_algo(algo_name, run_dir):
         if algo_name == "Baseline":
             env.attacker.load_model(os.path.join(run_dir, "baseline"))
             env.attacker.temp_xi = 0
+            env.attacker.channel_counts = np.zeros(env.attacker.num_channels) # Reset counts for online adaptation
 
         terminated = False
         steps = 0

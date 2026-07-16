@@ -109,6 +109,7 @@ class SmartAttacker(BaseEntity):
         self.tau_0 = QJCConfig.TAU_0
         self.gamma = QJCConfig.GAMMA
         self.temp_xi = QJCConfig.TEMP_XI
+        self.mu_offset = QJCConfig.MU_OFFSET
 
     def set_jamming_power(self, power: float):
         self.jamming_power = max(0.0, power)
@@ -137,8 +138,7 @@ class SmartAttacker(BaseEntity):
         mu = self.channel_counts[channel]
         
         # Adaptive learning rate
-        from confs.model_config import QJCConfig
-        tau = self.tau_0 / (mu * np.log10(mu + QJCConfig.MU_OFFSET))
+        tau = self.tau_0 / (mu * np.log10(mu + self.mu_offset))
         
         # Update
         # Note: Liao's Algo 2 uses max(Q_next) which implies we need next state optimal.
