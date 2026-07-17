@@ -542,6 +542,7 @@ def main():
     parser.add_argument("--use-gpu", type=str2bool, default=True, help="Use RTX 3060 GPU for network updates")
     parser.add_argument("--max-concurrent", type=int, default=0, help="Maximum concurrent trials for this algorithm. 0 for unlimited.")
     parser.add_argument("--phase", type=int, default=1, help="Tuning phase (default: 1)")
+    parser.add_argument("--resume-dir", type=str, default=None, help="Path to an existing run directory under artifacts/tune to resume HPO")
     args = parser.parse_args()
 
     
@@ -581,10 +582,21 @@ def main():
         
     # 2. Setup run directory and paths
     from datetime import datetime
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    run_name = f"tune_{args.algo.lower().replace('-', '_')}_phase{args.phase}_{timestamp}"
-    run_dir = os.path.join(PROJECT_ROOT, "artifacts", "tune", run_name)
-    os.makedirs(run_dir, exist_ok=True)
+    if args.resume_dir:
+        # Resolve path
+        run_dir = os.path.abspath(args.resume_dir)
+        run_name = os.path.basename(run_dir)
+        # Parse timestamp from name
+        parts = run_name.split("_")
+        timestamp = "_".join(parts[-2:]) if len(parts) >= 2 else "resume"
+        resume_mode = True
+        print(f"[RESUME] Resuming existing HPO run from directory: {run_dir}")
+    else:
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        run_name = f"tune_{args.algo.lower().replace('-', '_')}_phase{args.phase}_{timestamp}"
+        run_dir = os.path.join(PROJECT_ROOT, "artifacts", "tune", run_name)
+        os.makedirs(run_dir, exist_ok=True)
+        resume_mode = False
     
     # Write metadata to log folder
     metadata = {
@@ -712,7 +724,8 @@ def main():
         trial_dirname_creator=short_trial_dirname_creator,
         callbacks=[OptunaPlotCallback(optuna_search, optuna_dir)],
         max_failures=3,
-        verbose=1
+        verbose=1,
+        resume="AUTO" if resume_mode else None
     )
 
     
