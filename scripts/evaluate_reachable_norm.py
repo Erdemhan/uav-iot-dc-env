@@ -237,7 +237,6 @@ def main():
         ignore_reinit_error=True,
         _system_config={
             "raylet_heartbeat_timeout_milliseconds": 300000,
-            "gcs_server_heartbeat_timeout_milliseconds": 300000,
         }
     )
 

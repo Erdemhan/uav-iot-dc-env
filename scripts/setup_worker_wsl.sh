@@ -166,7 +166,7 @@ if [ -z "$head_ip" ]; then
     exit 1
 fi
 
-echo -e "Calistirilan Komut: ${CYAN}ray start --address=\"$head_ip:6379\" --node-manager-port=10004 --object-manager-port=10002 --dashboard-agent-listen-port=10003 --min-worker-port=10010 --max-worker-port=10099 --system-config='{\"raylet_heartbeat_timeout_milliseconds\":300000,\"gcs_server_heartbeat_timeout_milliseconds\":300000}'${NC}"
+echo -e "Calistirilan Komut: ${CYAN}ray start --address=\"$head_ip:6379\" --node-manager-port=10004 --object-manager-port=10002 --dashboard-agent-listen-port=10003 --min-worker-port=10010 --max-worker-port=10099${NC}"
 
 # Check if ray exists in virtual env or PATH
 RAY_CMD=""
@@ -188,8 +188,7 @@ $RAY_CMD start --address="$head_ip:6379" \
     --object-manager-port=10002 \
     --dashboard-agent-listen-port=10003 \
     --min-worker-port=10010 \
-    --max-worker-port=10099 \
-    --system-config='{"raylet_heartbeat_timeout_milliseconds":300000,"gcs_server_heartbeat_timeout_milliseconds":300000}'
+    --max-worker-port=10099
 
 if [ $? -eq 0 ]; then
     echo -e "\n${GREEN}==================================================${NC}"

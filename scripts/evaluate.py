@@ -158,7 +158,6 @@ def main():
             runtime_env=runtime_env,
             _system_config={
                 "raylet_heartbeat_timeout_milliseconds": 300000,
-                "gcs_server_heartbeat_timeout_milliseconds": 300000,
             }
         )
     except Exception:
@@ -167,7 +166,6 @@ def main():
             runtime_env=runtime_env,
             _system_config={
                 "raylet_heartbeat_timeout_milliseconds": 300000,
-                "gcs_server_heartbeat_timeout_milliseconds": 300000,
             }
         )
     register_env("uav_iot_ppo_v1", env_creator_ppo)

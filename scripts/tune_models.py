@@ -566,7 +566,6 @@ def main():
         # Fallback: single-machine mode (head becomes a worker too in this case)
         ray.init(runtime_env=runtime_env, _system_config={
             "raylet_heartbeat_timeout_milliseconds": 300000,
-            "gcs_server_heartbeat_timeout_milliseconds": 300000,
         })
         
     # Auto-detect CUDA availability for local fallback
