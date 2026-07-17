@@ -79,23 +79,9 @@ if __name__ == "__main__":
     try:
         if ray.is_initialized():
             ray.shutdown()
-        ray.init(
-            num_gpus=1,
-            ignore_reinit_error=True,
-            runtime_env=runtime_env,
-            _system_config={
-                "raylet_heartbeat_timeout_milliseconds": 300000,
-            }
-        )
+        ray.init(num_gpus=1, ignore_reinit_error=True, runtime_env=runtime_env)
     except Exception:
-        ray.init(
-            num_gpus=1,
-            ignore_reinit_error=True,
-            runtime_env=runtime_env,
-            _system_config={
-                "raylet_heartbeat_timeout_milliseconds": 300000,
-            }
-        )
+        ray.init(num_gpus=1, ignore_reinit_error=True, runtime_env=runtime_env)
     
     # Reproducibility
     import torch

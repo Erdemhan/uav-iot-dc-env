@@ -564,9 +564,7 @@ def main():
     except Exception as e:
         print(f"[WARN] Ray address='auto' connection failed: {e}. Starting local Ray instance...")
         # Fallback: single-machine mode (head becomes a worker too in this case)
-        ray.init(runtime_env=runtime_env, _system_config={
-            "raylet_heartbeat_timeout_milliseconds": 300000,
-        })
+        ray.init(runtime_env=runtime_env)
         
     # Auto-detect CUDA availability for local fallback
     import torch

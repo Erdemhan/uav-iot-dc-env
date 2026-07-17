@@ -80,7 +80,7 @@ pip install -r requirements.txt
 WSL2 terminali içinde koordinatör servisini başlatın (Windows Firewall engeline takılmamak için portları 10001-10100 arasına sabitliyoruz):
 ```bash
 # --num-cpus=0 --num-gpus=0 -> Koordinatör makinede trial çalıştırılmaz, tüm yük işçilere dağıtılır.
-ray start --head --port=6379 --dashboard-host=0.0.0.0 --num-cpus=0 --num-gpus=0 --node-manager-port=10004 --object-manager-port=10002 --dashboard-agent-listen-port=10003 --min-worker-port=10010 --max-worker-port=10099 --system-config='{"raylet_heartbeat_timeout_milliseconds":300000}'
+ray start --head --port=6379 --dashboard-host=0.0.0.0 --num-cpus=0 --num-gpus=0 --node-manager-port=10004 --object-manager-port=10002 --dashboard-agent-listen-port=10003 --min-worker-port=10010 --max-worker-port=10099
 ```
 Başarıyla çalıştığında konsolda şu çıktıyı göreceksiniz:
 ```text

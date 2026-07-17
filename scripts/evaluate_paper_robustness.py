@@ -248,23 +248,9 @@ def main():
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     runtime_env = {"env_vars": {"PYTHONPATH": project_root}}
     try:
-        ray.init(
-            ignore_reinit_error=True,
-            log_to_driver=False,
-            runtime_env=runtime_env,
-            _system_config={
-                "raylet_heartbeat_timeout_milliseconds": 300000,
-            }
-        )
+        ray.init(ignore_reinit_error=True, log_to_driver=False, runtime_env=runtime_env)
     except Exception:
-        ray.init(
-            ignore_reinit_error=True,
-            log_to_driver=False,
-            runtime_env=runtime_env,
-            _system_config={
-                "raylet_heartbeat_timeout_milliseconds": 300000,
-            }
-        )
+        ray.init(ignore_reinit_error=True, log_to_driver=False, runtime_env=runtime_env)
         
     register_env("uav_iot_ppo_v1", env_creator)
     register_env("uav_iot_dqn_v1", env_creator)
