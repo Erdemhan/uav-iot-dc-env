@@ -233,7 +233,13 @@ def main():
     register_env("uav_iot_ppo_v1", env_creator)
     register_env("uav_iot_dqn_v1", env_creator)
     register_env("uav_iot_ppo_lstm_v1", env_creator)
-    ray.init(ignore_reinit_error=True)
+    ray.init(
+        ignore_reinit_error=True,
+        _system_config={
+            "raylet_heartbeat_timeout_milliseconds": 300000,
+            "gcs_server_heartbeat_timeout_milliseconds": 300000,
+        }
+    )
 
     all_results = {}
     for algo in ALGOS:

@@ -75,9 +75,25 @@ if __name__ == "__main__":
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     runtime_env = {"env_vars": {"PYTHONPATH": project_root}}
     try:
-        ray.init(num_gpus=1, ignore_reinit_error=True, runtime_env=runtime_env)
+        ray.init(
+            num_gpus=1,
+            ignore_reinit_error=True,
+            runtime_env=runtime_env,
+            _system_config={
+                "raylet_heartbeat_timeout_milliseconds": 300000,
+                "gcs_server_heartbeat_timeout_milliseconds": 300000,
+            }
+        )
     except Exception:
-        ray.init(num_gpus=1, ignore_reinit_error=True, runtime_env=runtime_env)
+        ray.init(
+            num_gpus=1,
+            ignore_reinit_error=True,
+            runtime_env=runtime_env,
+            _system_config={
+                "raylet_heartbeat_timeout_milliseconds": 300000,
+                "gcs_server_heartbeat_timeout_milliseconds": 300000,
+            }
+        )
     
     # Reproducibility
     import torch

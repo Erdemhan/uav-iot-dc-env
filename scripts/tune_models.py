@@ -564,7 +564,10 @@ def main():
     except Exception as e:
         print(f"[WARN] Ray address='auto' connection failed: {e}. Starting local Ray instance...")
         # Fallback: single-machine mode (head becomes a worker too in this case)
-        ray.init(runtime_env=runtime_env)
+        ray.init(runtime_env=runtime_env, _system_config={
+            "raylet_heartbeat_timeout_milliseconds": 300000,
+            "gcs_server_heartbeat_timeout_milliseconds": 300000,
+        })
         
     # Auto-detect CUDA availability for local fallback
     import torch
@@ -709,6 +712,7 @@ def main():
         name="optuna_study",
         trial_dirname_creator=short_trial_dirname_creator,
         callbacks=[OptunaPlotCallback(optuna_search, optuna_dir)],
+        max_failures=3,
         verbose=1
     )
 
