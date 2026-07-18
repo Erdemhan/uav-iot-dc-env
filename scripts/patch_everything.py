@@ -125,7 +125,7 @@ def patch_experiment_state_json(path):
 def main():
     print("=== SWEEPING AND PATCHING ALL TUNE STATE LOCATIONS ===")
     
-    # 1. Sweep local workspace paths
+    # 1. Sweep local workspace paths - SCAN ALL MATCHING DIRECTORIES
     tune_dir = os.path.join(PROJECT_ROOT, "artifacts", "tune")
     ppo_lstm_runs = sorted(glob.glob(os.path.join(tune_dir, "tune_ppo_lstm_phase1_2026-07-*")), reverse=True)
     
@@ -133,12 +133,13 @@ def main():
     local_jsons = []
     local_states = []
     
-    if ppo_lstm_runs:
-        run_dir = ppo_lstm_runs[0]
+    # Loop over all matching run folders to patch local states
+    for run_dir in ppo_lstm_runs:
+        print(f"Adding local run directory to sweep: {os.path.basename(run_dir)}")
         opt_study_dir = os.path.join(run_dir, "tune_results", "optuna_study")
-        local_pkls = glob.glob(os.path.join(opt_study_dir, "searcher-state-*.pkl"))
-        local_jsons = glob.glob(os.path.join(opt_study_dir, "search_gen_state-*.json"))
-        local_states = glob.glob(os.path.join(opt_study_dir, "experiment_state-*.json"))
+        local_pkls.extend(glob.glob(os.path.join(opt_study_dir, "searcher-state-*.pkl")))
+        local_jsons.extend(glob.glob(os.path.join(opt_study_dir, "search_gen_state-*.json")))
+        local_states.extend(glob.glob(os.path.join(opt_study_dir, "experiment_state-*.json")))
         
     # 2. Sweep /tmp ray session paths
     tmp_pkls = glob.glob("/tmp/ray/session_*/artifacts/*/optuna_study/driver_artifacts/searcher-state-*.pkl")
@@ -149,7 +150,7 @@ def main():
     all_jsons = list(set(local_jsons + tmp_jsons))
     all_states = list(set(local_states + tmp_states))
     
-    print(f"Found {len(all_pkls)} searcher state PKL files to patch.")
+    print(f"\nFound {len(all_pkls)} searcher state PKL files to patch.")
     print(f"Found {len(all_jsons)} search generator JSON files to patch.")
     print(f"Found {len(all_states)} experiment state JSON files to patch.")
     
