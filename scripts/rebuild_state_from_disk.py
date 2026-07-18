@@ -105,9 +105,9 @@ def main():
         print("[ERROR] No completed trials found. Cannot rebuild state files.")
         sys.exit(1)
         
-    # Recreate Optuna study
+    # Recreate Optuna study - FIX: Use 'maximize' instead of 'max'
     print("\nRebuilding Optuna study state...")
-    study = optuna.create_study(study_name="optuna_study", direction="max")
+    study = optuna.create_study(study_name="optuna_study", direction="maximize")
     _ot_trials = {}
     _completed_trials = set()
     
