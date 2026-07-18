@@ -105,17 +105,23 @@ def main():
         print("[ERROR] No completed trials found. Cannot rebuild state files.")
         sys.exit(1)
         
-    # Recreate Optuna study - FIX: Use 'maximize' instead of 'max'
+    # Recreate Optuna study
     print("\nRebuilding Optuna study state...")
     study = optuna.create_study(study_name="optuna_study", direction="maximize")
     _ot_trials = {}
     _completed_trials = set()
     
+    # Define target HPO keys for parameter filtering
+    hpo_keys = {"lr", "gamma", "architecture", "lstm_cell_size", "max_seq_len"}
+    
     for idx, (trial_id, params, objective, _) in enumerate(completed_trials):
+        # Filter params to keep ONLY HPO search variables
+        filtered_params = {k: v for k, v in params.items() if k in hpo_keys}
+        
         t = optuna.trial.create_trial(
             state=optuna.trial.TrialState.COMPLETE,
             value=objective,
-            params=params,
+            params=filtered_params,
             distributions={
                 "lr": optuna.distributions.FloatDistribution(1e-5, 1e-3, log=True),
                 "gamma": optuna.distributions.FloatDistribution(0.8, 0.99),
