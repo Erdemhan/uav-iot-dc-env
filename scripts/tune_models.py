@@ -487,7 +487,8 @@ def save_optuna_visualizations(study, optuna_dir):
         
     # 2. Parameter Importance
     try:
-        ax = vis_mpl.plot_param_importances(study)
+        from optuna.importance import MeanDecreaseImpurityImportanceEvaluator
+        ax = vis_mpl.plot_param_importances(study, evaluator=MeanDecreaseImpurityImportanceEvaluator())
         fig = ax.get_figure() if hasattr(ax, 'get_figure') else plt.gcf()
         fig.tight_layout()
         fig.savefig(os.path.join(optuna_dir, "param_importances.png"), dpi=300, bbox_inches='tight')
@@ -633,8 +634,6 @@ def main():
         
     # 3. Define Optuna Search Space and Search Alg
     optuna_search = OptunaSearch(metric="objective", mode="max")
-    from ray.tune.search import ConcurrencyLimiter
-    optuna_search = ConcurrencyLimiter(optuna_search, max_concurrent=args.max_concurrent if args.max_concurrent > 0 else 4)
 
     # Load existing tuned_configs (to avoid overwriting other algos)
     tuned_configs = {}
