@@ -4,7 +4,7 @@ import glob
 import sys
 import shutil
 
-# Standalone dummy function definition in __main__ namespace to satisfy pickle load/dump
+# Standalone dummy function definition in __main__ namespace (fallback)
 def short_trial_dirname_creator(trial):
     pass
 
@@ -62,6 +62,15 @@ limiter_state["num_unfinished_live_trials"] = 0
 print("\nAfter Patch:")
 print(f"  live_trials: {limiter_state.get('live_trials')}")
 print(f"  num_unfinished_live_trials: {limiter_state.get('num_unfinished_live_trials')}")
+
+# Bypassing Pickling Error: Nullify the trial_dirname_creator function reference inside exp.spec
+# Ray Tune will automatically overwrite this with today's passed parameter at startup anyway.
+exp = data.get("experiment")
+if exp is not None and hasattr(exp, "spec") and isinstance(exp.spec, dict):
+    print("\n[INFO] Found 'spec' dictionary inside Experiment object. Nullifying 'trial_dirname_creator'...")
+    exp.spec["trial_dirname_creator"] = None
+else:
+    print("\n[WARN] Could not find 'spec' dictionary inside Experiment object.")
 
 # 5. Safely save using temporary file (atomic write)
 temp_file = target_file + ".tmp"
