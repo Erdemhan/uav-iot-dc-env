@@ -33,7 +33,6 @@ def verify_trial_iterations(logdir):
         last_line = json.loads(lines[-1].strip())
         iter_count = last_line.get("training_iteration", 0)
         
-        # If it reached 999 or 1000, it's considered complete
         if iter_count >= 999:
             return True
     except Exception as e:
@@ -46,10 +45,8 @@ def purge_run_directory(run_dir, is_temp=False):
     
     opt_study_dir = os.path.join(run_dir, "tune_results", "optuna_study")
     if is_temp:
-        # Temp ray session directory has driver_artifacts
         opt_study_dir = os.path.join(run_dir, "optuna_study", "driver_artifacts")
         
-    # Find latest experiment state file dynamically
     pkl_files = sorted(glob.glob(os.path.join(opt_study_dir, "searcher-state-*.pkl")))
     json_files = sorted(glob.glob(os.path.join(opt_study_dir, "search_gen_state-*.json")))
     state_files = sorted(glob.glob(os.path.join(opt_study_dir, "experiment_state-*.json")))
@@ -62,7 +59,14 @@ def purge_run_directory(run_dir, is_temp=False):
     json_path = json_files[-1] if json_files else None
     state_path = state_files[-1]
     
-    # 1. Load Experiment State JSON to inspect trials and check their actual iteration count
+    # Backup files first before doing surgery
+    print(f"  [BACKUP] Creating safety backups...")
+    shutil.copy2(pkl_path, pkl_path + ".bak")
+    shutil.copy2(state_path, state_path + ".bak")
+    if json_path:
+        shutil.copy2(json_path, json_path + ".bak")
+        
+    # 1. Load Experiment State JSON to inspect trials
     print(f"  [STATE] Inspecting trials in state JSON: {state_path}")
     try:
         with open(state_path, "r", encoding="utf-8") as f:
@@ -73,32 +77,31 @@ def purge_run_directory(run_dir, is_temp=False):
         purged_trial_ids = set()
         
         if trial_data_raw is not None:
-            # trial_data_raw is a list. Each element is a list containing a JSON string.
             for item in trial_data_raw:
                 if isinstance(item, list) and len(item) > 0:
                     elem = item[0]
                     if isinstance(elem, str):
                         try:
                             trial_dict = json.loads(elem)
-                            trial_is_str = True
                         except:
-                            print(f"    [WARN] Failed to load JSON from list item: {elem[:100]}...")
                             continue
                     elif isinstance(elem, dict):
                         trial_dict = elem
-                        trial_is_str = False
                     else:
-                        print(f"    [WARN] Unknown element type in trial_data item list: {type(elem)}")
                         continue
                         
                     trial_id = trial_dict.get("trial_id")
-                    logdir = trial_dict.get("logdir", "")
+                    
+                    # DYNAMIC PATH RESOLUTION:
+                    # Instead of using the stored 'logdir' path which might be from another machine,
+                    # we resolve the path directly inside our local workspace relative to PROJECT_ROOT.
+                    local_logdir = os.path.join(PROJECT_ROOT, "artifacts", "tune", "tune_ppo_lstm_phase1_2026-07-17_10-29-00", "tune_results", "optuna_study", f"trial_{trial_id}")
                     
                     is_valid = False
                     status = trial_dict.get("status")
                     if status == "TERMINATED":
-                        # Check if it actually completed 1000 iterations
-                        if verify_trial_iterations(logdir):
+                        # Check local workspace result.json
+                        if verify_trial_iterations(local_logdir):
                             is_valid = True
                         else:
                             print(f"    Purging trial {trial_id} (Incomplete iterations: reached < 999)")
@@ -109,11 +112,9 @@ def purge_run_directory(run_dir, is_temp=False):
                         kept_trials.append(item)
                     else:
                         purged_trial_ids.add(trial_id)
-                else:
-                    print(f"    [WARN] Item in trial_data is not a non-empty list: {item}")
-                    
+                        
             state_data["trial_data"] = kept_trials
-            print(f"  [STATE] Kept {len(kept_trials)} trials in JSON (purged {len(purged_trial_ids)} due to < 999 iterations or failure).")
+            print(f"  [STATE] Kept {len(kept_trials)} trials in JSON (purged {len(purged_trial_ids)}).")
             
         # Clean runner_data
         runner_data_raw = state_data.get("runner_data")
@@ -140,8 +141,6 @@ def purge_run_directory(run_dir, is_temp=False):
         print("  [STATE SUCCESS] State JSON successfully purged and saved.")
     except Exception as e:
         print(f"  [STATE ERROR] Failed: {e}")
-        import traceback
-        traceback.print_exc()
         return
         
     # 2. Load and purge Optuna PKL using the kept trial IDs
@@ -155,11 +154,9 @@ def purge_run_directory(run_dir, is_temp=False):
             print("  [PKL ERROR] Optuna study not found in state.")
             return
             
-        # Keep ONLY trials that are COMPLETE in Optuna AND whose Ray trial_id is in the kept list
         completed_trials = []
         for t in old_study.trials:
             if t.state == optuna.trial.TrialState.COMPLETE:
-                # Check if this trial corresponds to a kept Ray trial
                 is_kept = False
                 for item in kept_trials:
                     elem = item[0]
@@ -176,21 +173,17 @@ def purge_run_directory(run_dir, is_temp=False):
         completed_trial_ids = {t._trial_id for t in completed_trials}
         print(f"  [PKL] Found {len(completed_trials)} truly complete (1000/1000 iters) trials in study.")
         
-        # Recreate a clean study with ONLY completed trials
         new_study = optuna.create_study(study_name=old_study.study_name, direction=old_study.direction)
         for t in completed_trials:
             new_study.add_trial(t)
             
-        # Rebuild _ot_trials mapping only for completed ones
         old_ot_trials = state_dict.get("_ot_trials", {})
         new_ot_trials = {tid: ot_trial for tid, ot_trial in old_ot_trials.items() if tid in completed_trial_ids}
         
-        # Save back to state dict
         state_dict["_ot_study"] = new_study
         state_dict["_ot_trials"] = new_ot_trials
         state_dict["_completed_trials"] = completed_trial_ids
         
-        # Save PKL
         with open(pkl_path, "wb") as f:
             pickle.dump(state_dict, f)
         print("  [PKL SUCCESS] PKL successfully purged and saved.")
@@ -208,7 +201,6 @@ def purge_run_directory(run_dir, is_temp=False):
             limiter_state["live_trials"] = set()
             limiter_state["num_unfinished_live_trials"] = 0
             
-            # Nullify spec dirname creator to prevent pickling errors
             exp = limiter_data.get("experiment")
             if exp is not None and hasattr(exp, "spec") and isinstance(exp.spec, dict):
                 exp.spec["trial_dirname_creator"] = None
@@ -221,11 +213,9 @@ def purge_run_directory(run_dir, is_temp=False):
             
     # 4. Delete physical trial folders of purged trials from disk
     if not is_temp:
-        # We only delete physical folders on the local workspace (temp has driver_artifacts only)
-        optuna_dir = os.path.dirname(opt_study_dir)
+        # FIX: Physical trial folders are in opt_study_dir's parent (tune_results/optuna_study/)
         for tid in purged_trial_ids:
-            # Look for folders starting with trial_
-            trial_folders = glob.glob(os.path.join(optuna_dir, f"trial_{tid}*"))
+            trial_folders = glob.glob(os.path.join(opt_study_dir, f"trial_{tid}*"))
             for tf in trial_folders:
                 print(f"  [DISK] Deleting corrupted/purged trial folder: {tf}")
                 try:
@@ -236,14 +226,12 @@ def purge_run_directory(run_dir, is_temp=False):
 def main():
     print("=== STARTING SURGICAL PURGE OF INCOMPLETE & FAILED TRIALS (ITER < 999) ===")
     
-    # Local target run dir:
     local_run_dir = os.path.join(PROJECT_ROOT, "artifacts", "tune", "tune_ppo_lstm_phase1_2026-07-17_10-29-00")
     if os.path.exists(local_run_dir):
         purge_run_directory(local_run_dir, is_temp=False)
     else:
         print(f"[ERROR] Local target run directory not found: {local_run_dir}")
         
-    # Temp target run dir:
     temp_run_dir = "/tmp/ray/session_2026-07-17_10-05-50_996511_3860/artifacts/2026-07-17_10-29-00"
     if os.path.exists(temp_run_dir):
         purge_run_directory(temp_run_dir, is_temp=True)
