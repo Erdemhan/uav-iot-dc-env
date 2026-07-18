@@ -14,31 +14,6 @@ def short_trial_dirname_creator(trial):
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(PROJECT_ROOT)
 
-def verify_trial_iterations(logdir):
-    """
-    Check if a trial has completed at least 999 training iterations
-    by reading its result.json file from disk.
-    """
-    result_json_path = os.path.join(logdir, "result.json")
-    if not os.path.exists(result_json_path):
-        return False
-        
-    try:
-        with open(result_json_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-        if len(lines) < 999:
-            return False
-            
-        last_line = json.loads(lines[-1].strip())
-        iter_count = last_line.get("training_iteration", 0)
-        
-        if iter_count >= 999:
-            return True
-    except:
-        pass
-        
-    return False
-
 def main():
     print("=== REBUILDING STATE FILES FROM DISK TRIAL DIRECTORIES ===")
     
@@ -62,26 +37,30 @@ def main():
         res_path = os.path.join(td, "result.json")
         params_path = os.path.join(td, "params.json")
         
-        if not os.path.exists(res_path) or not os.path.exists(params_path):
-            continue
-            
-        try:
-            with open(res_path, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-            if len(lines) < 999:
-                continue
+        is_valid = False
+        iter_count = 0
+        objective = None
+        last_line = {}
+        params = {}
+        
+        if os.path.exists(res_path) and os.path.exists(params_path):
+            try:
+                with open(res_path, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                if len(lines) >= 999:
+                    last_line = json.loads(lines[-1].strip())
+                    iter_count = last_line.get("training_iteration", 0)
+                    objective = last_line.get("objective")
+                    
+                    if iter_count >= 999 and objective is not None:
+                        with open(params_path, "r", encoding="utf-8") as f:
+                            params = json.load(f)
+                        is_valid = True
+            except:
+                pass
                 
-            last_line = json.loads(lines[-1].strip())
-            iter_count = last_line.get("training_iteration", 0)
-            objective = last_line.get("objective")
-            
-            if iter_count < 999 or objective is None:
-                continue
-                
-            with open(params_path, "r", encoding="utf-8") as f:
-                params = json.load(f)
-                
-            print(f"  [FOUND] Trial {trial_id}: reached {iter_count} iters, objective = {objective}")
+        if is_valid:
+            print(f"  [FOUND & KEEPING] Trial {trial_id}: reached {iter_count} iters, objective = {objective}")
             completed_trials.append((trial_id, params, objective, last_line))
             
             # Construct compliant Ray trial dictionary
@@ -94,12 +73,15 @@ def main():
                 "last_result": last_line,
                 "last_update_time": 0.0
             }
-            # Add wrapped in list for Ray schema liveness
             ray_trial_data.append([json.dumps(ray_trial)])
-            
-        except Exception as e:
-            print(f"    Error parsing {trial_id}: {e}")
-            
+        else:
+            # PHYSICAL CLEANUP: Delete from disk so Ray Tune won't auto-scan and throw KeyError
+            print(f"  [DELETE] Physical cleanup of failed/incomplete trial folder: {td}")
+            try:
+                shutil.rmtree(td)
+            except Exception as de:
+                print(f"    Failed to delete {td}: {de}")
+                
     print(f"\nReconstructed {len(completed_trials)} completed trials successfully.")
     
     if not completed_trials:
@@ -155,7 +137,7 @@ def main():
         _ot_trials[ray_tid] = ot_trial
         _completed_trials.add(ray_tid)
         
-    # 1. Write PKL file (goes inside optuna_study_dir)
+    # 1. Write PKL file
     pkl_files = sorted(glob.glob(os.path.join(optuna_study_dir, "searcher-state-*.pkl")))
     pkl_path = pkl_files[-1] if pkl_files else os.path.join(optuna_study_dir, "searcher-state-2026-07-17_10-29-00.pkl")
     
@@ -169,7 +151,6 @@ def main():
     print(f"[PKL REBUILT] {pkl_path}")
     
     # 2. Write JSON experiment state file
-    # FIX: Ray Tune looks for experiment_state-*.json directly under run_dir!
     state_files = sorted(glob.glob(os.path.join(run_dir, "experiment_state-*.json")))
     state_path = state_files[-1] if state_files else os.path.join(run_dir, "experiment_state-2026-07-17_10-29-00.json")
     
@@ -209,7 +190,6 @@ def main():
     # 4. Copy rebuilt files to /tmp/ray session if path exists
     temp_run_dir = "/tmp/ray/session_2026-07-17_10-05-50_996511_3860/artifacts/2026-07-17_10-29-00"
     if os.path.exists(temp_run_dir):
-        # Temp ray session structure has pkl/json inside driver_artifacts, and experiment_state directly under artifacts/
         temp_driver_dir = os.path.join(temp_run_dir, "optuna_study", "driver_artifacts")
         if os.path.exists(temp_driver_dir):
             shutil.copy2(pkl_path, os.path.join(temp_driver_dir, os.path.basename(pkl_path)))
@@ -220,7 +200,7 @@ def main():
         print("[TEMP COPIED] Rebuilt files copied to temp ray session directory.")
             
     print("\n=== REBUILD SUCCESSFUL! ===")
-    print("Tum veri tabaniniz diskteki trial verilerinizden sifirdan ve kusursuz olarak insa edildi.")
+    print("Tum HPO durumunuz diskteki verilerle esitlendi ve hatalı klasorler temizlendi.")
     print("Artik '--num-samples 100' ile baslatabilirsiniz.")
 
 if __name__ == "__main__":
