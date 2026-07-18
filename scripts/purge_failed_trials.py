@@ -49,17 +49,18 @@ def purge_run_directory(run_dir, is_temp=False):
         # Temp ray session directory has driver_artifacts
         opt_study_dir = os.path.join(run_dir, "optuna_study", "driver_artifacts")
         
-    pkl_files = glob.glob(os.path.join(opt_study_dir, "searcher-state-*.pkl"))
-    json_files = glob.glob(os.path.join(opt_study_dir, "search_gen_state-*.json"))
-    state_files = glob.glob(os.path.join(opt_study_dir, "experiment_state-*.json"))
+    # Find latest experiment state file dynamically
+    pkl_files = sorted(glob.glob(os.path.join(opt_study_dir, "searcher-state-*.pkl")))
+    json_files = sorted(glob.glob(os.path.join(opt_study_dir, "search_gen_state-*.json")))
+    state_files = sorted(glob.glob(os.path.join(opt_study_dir, "experiment_state-*.json")))
     
     if not pkl_files or not state_files:
         print("  [WARN] Required state files not found. Skipping...")
         return
         
-    pkl_path = pkl_files[0]
-    json_path = json_files[0] if json_files else None
-    state_path = state_files[0]
+    pkl_path = pkl_files[-1]
+    json_path = json_files[-1] if json_files else None
+    state_path = state_files[-1]
     
     # 1. Load Experiment State JSON to inspect trials and check their actual iteration count
     print(f"  [STATE] Inspecting trials in state JSON: {state_path}")
@@ -72,39 +73,46 @@ def purge_run_directory(run_dir, is_temp=False):
         purged_trial_ids = set()
         
         if trial_data_raw is not None:
-            # Handle both string-serialized and directly-loaded list formats
-            if isinstance(trial_data_raw, str):
-                trial_data = json.loads(trial_data_raw)
-                trial_data_is_str = True
-            else:
-                trial_data = trial_data_raw
-                trial_data_is_str = False
-                
-            for trial in trial_data:
-                trial_id = trial.get("trial_id")
-                logdir = trial.get("logdir", "")
-                
-                # Check iteration count on local disk
-                local_logdir = logdir
-                is_valid = False
-                if trial.get("status") == "TERMINATED":
-                    # Check if it actually completed 1000 iterations
-                    if verify_trial_iterations(local_logdir):
-                        is_valid = True
+            # trial_data_raw is a list. Each element is a list containing a JSON string.
+            for item in trial_data_raw:
+                if isinstance(item, list) and len(item) > 0:
+                    elem = item[0]
+                    if isinstance(elem, str):
+                        try:
+                            trial_dict = json.loads(elem)
+                            trial_is_str = True
+                        except:
+                            print(f"    [WARN] Failed to load JSON from list item: {elem[:100]}...")
+                            continue
+                    elif isinstance(elem, dict):
+                        trial_dict = elem
+                        trial_is_str = False
                     else:
-                        print(f"    Purging trial {trial_id} (Incomplete iterations: reached < 999)")
-                else:
-                    print(f"    Purging active/failed trial {trial_id} (Status is {trial.get('status')})")
+                        print(f"    [WARN] Unknown element type in trial_data item list: {type(elem)}")
+                        continue
+                        
+                    trial_id = trial_dict.get("trial_id")
+                    logdir = trial_dict.get("logdir", "")
                     
-                if is_valid:
-                    kept_trials.append(trial)
+                    is_valid = False
+                    status = trial_dict.get("status")
+                    if status == "TERMINATED":
+                        # Check if it actually completed 1000 iterations
+                        if verify_trial_iterations(logdir):
+                            is_valid = True
+                        else:
+                            print(f"    Purging trial {trial_id} (Incomplete iterations: reached < 999)")
+                    else:
+                        print(f"    Purging active/failed trial {trial_id} (Status is {status})")
+                        
+                    if is_valid:
+                        kept_trials.append(item)
+                    else:
+                        purged_trial_ids.add(trial_id)
                 else:
-                    purged_trial_ids.add(trial_id)
+                    print(f"    [WARN] Item in trial_data is not a non-empty list: {item}")
                     
-            if trial_data_is_str:
-                state_data["trial_data"] = json.dumps(kept_trials)
-            else:
-                state_data["trial_data"] = kept_trials
+            state_data["trial_data"] = kept_trials
             print(f"  [STATE] Kept {len(kept_trials)} trials in JSON (purged {len(purged_trial_ids)} due to < 999 iterations or failure).")
             
         # Clean runner_data
@@ -132,6 +140,8 @@ def purge_run_directory(run_dir, is_temp=False):
         print("  [STATE SUCCESS] State JSON successfully purged and saved.")
     except Exception as e:
         print(f"  [STATE ERROR] Failed: {e}")
+        import traceback
+        traceback.print_exc()
         return
         
     # 2. Load and purge Optuna PKL using the kept trial IDs
@@ -151,8 +161,13 @@ def purge_run_directory(run_dir, is_temp=False):
             if t.state == optuna.trial.TrialState.COMPLETE:
                 # Check if this trial corresponds to a kept Ray trial
                 is_kept = False
-                for kt in kept_trials:
-                    if t._trial_id == kt.get("trial_id") or f"trial_{t._trial_id}" in kt.get("logdir", ""):
+                for item in kept_trials:
+                    elem = item[0]
+                    if isinstance(elem, str):
+                        td = json.loads(elem)
+                    else:
+                        td = elem
+                    if t._trial_id == td.get("trial_id") or f"trial_{t._trial_id}" in td.get("logdir", ""):
                         is_kept = True
                         break
                 if is_kept:
