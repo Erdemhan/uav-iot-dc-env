@@ -717,6 +717,25 @@ def main():
             # We skip real-time plotting for stability; plots will be saved at the end of the run.
             pass
 
+    print("\n[DEBUG] ==================== HPO STARTUP DIAGNOSTICS ====================")
+    print(f"[DEBUG] Algo: {args.algo}")
+    print(f"[DEBUG] Num samples: {args.num_samples}")
+    print(f"[DEBUG] Max concurrent: {args.max_concurrent}")
+    if hasattr(optuna_search, "_ot_study") and optuna_search._ot_study is not None:
+        study = optuna_search._ot_study
+        import optuna
+        running_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.RUNNING]
+        complete_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+        failed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.FAIL]
+        print(f"[DEBUG] Optuna Study Name: {study.study_name}")
+        print(f"[DEBUG] Total trials in study: {len(study.trials)}")
+        print(f"[DEBUG] COMPLETE trials: {len(complete_trials)}")
+        print(f"[DEBUG] FAILED trials: {len(failed_trials)}")
+        print(f"[DEBUG] RUNNING trials (Deadlock risk): {[t.number for t in running_trials]}")
+    else:
+        print("[DEBUG] Optuna study not initialized or found in searcher.")
+    print("[DEBUG] Calling tune.run now...\n")
+
     analysis = tune.run(
         trainable,
         config=full_config,
