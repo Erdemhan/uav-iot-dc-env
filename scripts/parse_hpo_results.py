@@ -1,7 +1,6 @@
 import os
 import json
 import argparse
-import sys
 
 def main():
     parser = argparse.ArgumentParser(description="Parse HPO trial results and extract best parameters.")
@@ -9,6 +8,8 @@ def main():
                         help="Path to the HPO run directory containing 'tune_results' (e.g. artifacts/tune/tune_dqn_...)")
     parser.add_argument("--algo", type=str, default="dqn", choices=["ppo", "dqn", "ppo_lstm", "qjc"],
                         help="Algorithm key to update in tuned_configs.json (default: dqn)")
+    parser.add_argument("--iterations", type=int, default=1000,
+                        help="Strict minimum iterations required to consider a trial completed (default: 1000)")
     args = parser.parse_args()
 
     run_dir = os.path.abspath(args.run_dir)
@@ -19,11 +20,13 @@ def main():
         tune_results_dir = run_dir
         
     print(f"Scanning directory: {tune_results_dir}")
+    print(f"Filtering trials that reached at least {args.iterations} iterations...")
     
     best_objective = -float('inf')
     best_config = None
     best_trial_num = None
     completed_trials_count = 0
+    scanned_trials_count = 0
     
     # Walk through the directories to find trial_* folders
     for item in os.listdir(tune_results_dir):
@@ -31,6 +34,7 @@ def main():
         if os.path.isdir(item_path) and (item.startswith("trial_") or item.startswith("t_") or item.startswith("train_rllib_trial")):
             result_file = os.path.join(item_path, "result.json")
             if os.path.exists(result_file):
+                scanned_trials_count += 1
                 try:
                     # Read the last line of result.json which contains the latest metrics
                     last_result = None
@@ -40,27 +44,31 @@ def main():
                                 last_result = json.loads(line)
                     
                     if last_result is not None:
-                        completed_trials_count += 1
-                        objective = last_result.get("objective")
-                        config = last_result.get("config")
+                        iteration = last_result.get("training_iteration", 0)
                         
-                        if objective is not None and config is not None:
-                            # We want to maximize the objective
-                            if objective > best_objective:
-                                best_objective = objective
-                                best_config = config
-                                best_trial_num = item
+                        # Only consider trials that reached the required iteration limit (converged)
+                        if iteration >= args.iterations:
+                            completed_trials_count += 1
+                            objective = last_result.get("objective")
+                            config = last_result.get("config")
+                            
+                            if objective is not None and config is not None:
+                                if objective > best_objective:
+                                    best_objective = objective
+                                    best_config = config
+                                    best_trial_num = item
                 except Exception as e:
                     print(f"Warning: Could not parse {result_file}: {e}")
                     
-    print(f"\nScan completed. Found {completed_trials_count} completed trials.")
+    print(f"\nScan completed. Scanned {scanned_trials_count} trial folders.")
+    print(f"Found {completed_trials_count} trials that fully reached {args.iterations} iterations.")
     
     if best_config is None:
-        print("Error: Could not find any valid trial results with an objective and config.")
+        print(f"Error: Could not find any trial results that reached {args.iterations} iterations with valid objective/config.")
         return
         
     print(f"Best Trial: {best_trial_num}")
-    print(f"Best Objective: {best_objective:.4f}")
+    print(f"Best Objective Score (Mean Reward): {best_objective:.4f}")
     
     # Filter config to only include the tuned hyper-parameters (remove static ones)
     tuned_keys = ["lr", "gamma", "architecture", "target_network_update_freq", "lstm_cell_size", "max_seq_len", "tau_0", "temp_xi", "mu_offset"]

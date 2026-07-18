@@ -469,7 +469,15 @@ def save_optuna_visualizations(study, optuna_dir):
     
     # 1. Optimization History
     try:
-        vis_mpl.plot_optimization_history(study)
+        ax = vis_mpl.plot_optimization_history(study)
+        try:
+            best_trial = study.best_trial
+            if best_trial is not None:
+                ax.plot(best_trial.number, best_trial.value, marker='*', color='red', 
+                        markersize=14, linestyle='None', label=f'Best Trial #{best_trial.number}')
+                ax.legend(loc='best')
+        except Exception as e:
+            print(f"Error marking best trial on plot: {e}")
         plt.tight_layout()
         plt.savefig(os.path.join(optuna_dir, "optimization_history.png"), dpi=300, bbox_inches='tight')
         plt.close()
@@ -625,6 +633,8 @@ def main():
         
     # 3. Define Optuna Search Space and Search Alg
     optuna_search = OptunaSearch(metric="objective", mode="max")
+    from ray.tune.search import ConcurrencyLimiter
+    optuna_search = ConcurrencyLimiter(optuna_search, max_concurrent=args.max_concurrent if args.max_concurrent > 0 else 4)
 
     # Load existing tuned_configs (to avoid overwriting other algos)
     tuned_configs = {}
