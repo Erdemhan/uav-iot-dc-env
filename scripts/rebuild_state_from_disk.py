@@ -111,7 +111,26 @@ def main():
     _ot_trials = {}
     _completed_trials = set()
     
-    # Define target HPO keys for parameter filtering
+    # DYNAMIC CHOICES RESOLUTION:
+    # Scan completed trials to dynamically build choices for categorical variables.
+    # This prevents any ValueError from unexpected/omitted config choices.
+    arch_choices = set()
+    lstm_choices = set()
+    seq_choices = set()
+    
+    for _, params, _, _ in completed_trials:
+        if "architecture" in params:
+            arch_choices.add(params["architecture"])
+        if "lstm_cell_size" in params:
+            lstm_choices.add(params["lstm_cell_size"])
+        if "max_seq_len" in params:
+            seq_choices.add(params["max_seq_len"])
+            
+    # Default fallback values to ensure valid search space bounds
+    arch_choices.update(["128,256", "256,256", "256,128,128", "128,512,128", "256,256,256", "512,256,256", "512,256", "512,256,256,128"])
+    lstm_choices.update([32, 64, 128, 256])
+    seq_choices.update([10, 20, 50, 100])
+    
     hpo_keys = {"lr", "gamma", "architecture", "lstm_cell_size", "max_seq_len"}
     
     for idx, (trial_id, params, objective, _) in enumerate(completed_trials):
@@ -125,9 +144,9 @@ def main():
             distributions={
                 "lr": optuna.distributions.FloatDistribution(1e-5, 1e-3, log=True),
                 "gamma": optuna.distributions.FloatDistribution(0.8, 0.99),
-                "architecture": optuna.distributions.CategoricalDistribution(["128,256", "256,256", "256,128,128", "128,512,128", "256,256,256", "512,256,256", "512,256", "512,256,256,128"]),
-                "lstm_cell_size": optuna.distributions.CategoricalDistribution([32, 64, 128, 256]),
-                "max_seq_len": optuna.distributions.CategoricalDistribution([10, 20, 50, 100])
+                "architecture": optuna.distributions.CategoricalDistribution(sorted(list(arch_choices))),
+                "lstm_cell_size": optuna.distributions.CategoricalDistribution(sorted(list(lstm_choices))),
+                "max_seq_len": optuna.distributions.CategoricalDistribution(sorted(list(seq_choices)))
             }
         )
         study.add_trial(t)
@@ -202,7 +221,7 @@ def main():
             
     print("\n=== REBUILD SUCCESSFUL! ===")
     print("Tum veri tabaniniz diskteki trial verilerinizden sifirdan ve kusursuz olarak insa edildi.")
-    print("Artik '--num-samples 100' ile eğitimi tekrar baslatabilirsiniz.")
+    print("Artik '--num-samples 100' ile baslatabilirsiniz.")
 
 if __name__ == "__main__":
     main()
