@@ -635,11 +635,8 @@ def run_server():
         
         # Open in default browser after 1 second delay to ensure server is listening
         def open_browser():
-            time.sleep(1.0)
-            target = f"http://localhost:{port}"
-            if DashboardState.target_page and DashboardState.target_page != "index.html":
-                target += "/" + DashboardState.target_page
-            webbrowser.open(target)
+            # Disabling automatic browser open in WSL/headless mode to prevent GIL deadlocks
+            pass
             
         browser_thread = threading.Thread(target=open_browser)
         browser_thread.daemon = True
