@@ -8,6 +8,9 @@ import shutil
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(PROJECT_ROOT)
 
+# Import the real function to satisfy pickle's identity check during serialization
+from scripts.tune_models import short_trial_dirname_creator
+
 # 1. Target files
 tune_dir = os.path.join(PROJECT_ROOT, "artifacts", "tune")
 ppo_lstm_runs = sorted(glob.glob(os.path.join(tune_dir, "tune_ppo_lstm_phase1_2026-07-*")), reverse=True)
@@ -24,7 +27,6 @@ session_pattern = "/tmp/ray/session_2026-07-17_*/artifacts/2026-07-17_10-29-00/o
 backup_files = glob.glob(session_pattern)
 
 if not backup_files:
-    # Try broader search in /tmp
     backup_files = glob.glob("/tmp/ray/session_*/artifacts/*/optuna_study/driver_artifacts/search_gen_state-2026-07-17_10-29-00.json")
 
 if not backup_files:
@@ -37,10 +39,6 @@ print(f"Found backup file at: {backup_file} ({os.path.getsize(backup_file)} byte
 # 3. Restore backup to target directory
 print(f"Restoring backup to: {target_file}...")
 shutil.copy2(backup_file, target_file)
-
-# Define dummy function at module level to bypass pickling error
-def short_trial_dirname_creator(trial):
-    pass
 
 # 4. Load restored file
 print("Loading restored state file...")
