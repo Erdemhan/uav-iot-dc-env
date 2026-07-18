@@ -8,9 +8,6 @@ import shutil
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(PROJECT_ROOT)
 
-# Import the real function to satisfy pickle's identity check during serialization
-from scripts.tune_models import short_trial_dirname_creator
-
 # 1. Target files
 tune_dir = os.path.join(PROJECT_ROOT, "artifacts", "tune")
 ppo_lstm_runs = sorted(glob.glob(os.path.join(tune_dir, "tune_ppo_lstm_phase1_2026-07-*")), reverse=True)
@@ -54,13 +51,24 @@ print("\nBefore Patch:")
 print(f"  live_trials: {limiter_state.get('live_trials')}")
 print(f"  num_unfinished_live_trials: {limiter_state.get('num_unfinished_live_trials')}")
 
-# Apply patch
+# Apply patch to limiter
 limiter_state["live_trials"] = "set()"
 limiter_state["num_unfinished_live_trials"] = 0
 
 print("\nAfter Patch:")
 print(f"  live_trials: {limiter_state.get('live_trials')}")
 print(f"  num_unfinished_live_trials: {limiter_state.get('num_unfinished_live_trials')}")
+
+# Bypassing Pickling Error: Strip any callable functions (like short_trial_dirname_creator) from the Experiment object.
+# Ray Tune will automatically overwrite these with today's passed parameters at startup anyway.
+exp = data.get("experiment")
+if exp is not None:
+    print("\nStripping callable/function attributes from the Experiment object to prevent PicklingErrors...")
+    for attr_name in list(exp.__dict__.keys()):
+        attr_val = getattr(exp, attr_name)
+        if callable(attr_val):
+            print(f"  Setting callable attribute '{attr_name}' to None...")
+            setattr(exp, attr_name, None)
 
 # 5. Safely save using temporary file (atomic write)
 temp_file = target_file + ".tmp"
