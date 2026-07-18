@@ -22,10 +22,10 @@ print(f"Loading searcher state: {path}...")
 with open(path, "rb") as f:
     state_dict = pickle.load(f)
 
-# Extract Optuna study
-study = state_dict.get("ot_study")
+# Extract Optuna study (using the correct key '_ot_study')
+study = state_dict.get("_ot_study")
 if study is None:
-    print("[ERROR] Could not find 'ot_study' in the searcher state.")
+    print("[ERROR] Could not find '_ot_study' in the searcher state.")
     sys.exit(1)
 
 print(f"Loaded study '{study.study_name}' with {len(study.trials)} trials.")
