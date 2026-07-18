@@ -22,7 +22,7 @@ print(f"Loading searcher state: {path}...")
 with open(path, "rb") as f:
     state_dict = pickle.load(f)
 
-# Extract Optuna study (using the correct key '_ot_study')
+# Extract Optuna study
 study = state_dict.get("_ot_study")
 if study is None:
     print("[ERROR] Could not find '_ot_study' in the searcher state.")
@@ -38,7 +38,12 @@ if running_trials:
     # Set their state to FAIL in Optuna storage
     for t in running_trials:
         print(f"  Patching Trial #{t.number} (ID: {t._trial_id}) state from RUNNING to FAIL...")
-        study._storage.set_trial_state(t._trial_id, optuna.trial.TrialState.FAIL)
+        try:
+            # Optuna 3.0+ API
+            study._storage.set_trial_state_values(t._trial_id, optuna.trial.TrialState.FAIL)
+        except AttributeError:
+            # Optuna 2.0+ API fallback
+            study._storage.set_trial_state(t._trial_id, optuna.trial.TrialState.FAIL)
     
     # Save the updated state back to the pickle file
     print("Saving patched searcher state back to disk...")
