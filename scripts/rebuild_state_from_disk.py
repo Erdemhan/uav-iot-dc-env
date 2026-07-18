@@ -4,6 +4,7 @@ import glob
 import sys
 import json
 import optuna
+import shutil  # Added missing import
 
 # Define dummy function for pickle load
 def short_trial_dirname_creator(trial):
@@ -112,8 +113,6 @@ def main():
     _completed_trials = set()
     
     # DYNAMIC CHOICES RESOLUTION:
-    # Scan completed trials to dynamically build choices for categorical variables.
-    # This prevents any ValueError from unexpected/omitted config choices.
     arch_choices = set()
     lstm_choices = set()
     seq_choices = set()
