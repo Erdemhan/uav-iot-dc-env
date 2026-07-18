@@ -2,19 +2,20 @@ import os
 import json
 import argparse
 import sys
+import glob
 import warnings
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-# Add project root to sys.path
-PROJECT_ROOT = "c:/Users/Erdemhan/Desktop/OneDrive - erciyes.edu.tr/okul_msi/Projeler/DR TEZ/uav-iot-dc-env"
+# Resolve project root dynamically (works on both Windows and Linux/WSL)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(PROJECT_ROOT)
 
 from confs.opt_config import OptConfig
 
 def main():
-    parser = argparse.ArgumentParser(description="Reconstruct Optuna study and save all HPO visualization plots.")
+    parser = argparse.ArgumentParser(description="Reconstruct Optuna study in correct order and save visualization plots.")
     parser.add_argument("--run-dir", type=str, required=True, 
                         help="Path to the HPO run directory containing 'tune_results' (e.g. artifacts/tune_ppo_...)")
     parser.add_argument("--algo", type=str, default="ppo", choices=["ppo", "dqn", "ppo_lstm", "qjc"],
@@ -31,6 +32,32 @@ def main():
     
     print(f"Reading trial logs from: {tune_results_dir}")
     
+    # 1. Build chronological mapping from experiment_state-*.json
+    trial_id_to_index = {}
+    state_files = glob.glob(os.path.join(tune_results_dir, "experiment_state-*.json"))
+    if state_files:
+        state_file = state_files[0]
+        print(f"Loading chronological trial order from state metadata: {os.path.basename(state_file)}")
+        try:
+            with open(state_file, "r", encoding="utf-8") as f:
+                state_data = json.load(f)
+            trial_list = state_data.get("trial_data", [])
+            for idx, item in enumerate(trial_list):
+                if isinstance(item, list) and len(item) > 0:
+                    elem = item[0]
+                    if isinstance(elem, str):
+                        try:
+                            elem = json.loads(elem)
+                        except Exception:
+                            pass
+                    if isinstance(elem, dict) and "trial_id" in elem:
+                        trial_id_to_index[elem["trial_id"]] = idx
+            print(f"Successfully mapped {len(trial_id_to_index)} trial IDs to chronological order.")
+        except Exception as e:
+            print(f"Warning: Could not parse experiment state file: {e}")
+    else:
+        print("Warning: No experiment_state-*.json file found. Order will be fallback sequential.")
+
     import optuna
     warnings.filterwarnings("ignore", category=optuna.exceptions.ExperimentalWarning)
     
@@ -38,21 +65,19 @@ def main():
     study = optuna.create_study(direction="maximize")
     
     # Define distributions based on algorithm
-    # PPO and DQN have different parameters, so we dynamically assign the right distributions
     distributions = {
         "lr": optuna.distributions.FloatDistribution(OptConfig.RL_LR_MIN, OptConfig.RL_LR_MAX, log=True),
         "gamma": optuna.distributions.FloatDistribution(OptConfig.RL_GAMMA_MIN, OptConfig.RL_GAMMA_MAX)
     }
     
-    # Add architecture choice to distributions (shared by PPO, DQN, PPO-LSTM)
     arch_choices = OptConfig.ARCH_CHOICES
-    
     scanned_trials = []
     
     # Scan trial folders and extract results
     for item in os.listdir(tune_results_dir):
         item_path = os.path.join(tune_results_dir, item)
         if os.path.isdir(item_path) and (item.startswith("trial_") or item.startswith("t_") or item.startswith("train_rllib_trial")):
+            trial_hash = item.split("_")[-1]
             result_file = os.path.join(item_path, "result.json")
             if os.path.exists(result_file):
                 try:
@@ -69,9 +94,8 @@ def main():
                         
                         # Only consider trials that finished at least 100 iterations (or 1000)
                         if objective is not None and config is not None and iteration >= 100:
-                            trial_id = int(item.split("_")[-1]) if item.split("_")[-1].isdigit() else len(scanned_trials)
+                            original_index = trial_id_to_index.get(trial_hash, len(scanned_trials))
                             
-                            # Filter config to only include the searched parameters
                             params = {}
                             trial_dists = {}
                             
@@ -86,15 +110,13 @@ def main():
                             # 2. Architecture
                             if "architecture" in config:
                                 arch_val = config["architecture"]
-                                # Convert lists to strings if needed
                                 if isinstance(arch_val, list):
                                     arch_val = ",".join(map(str, arch_val))
                                 params["architecture"] = arch_val
-                                # Ensure the choices contains strings
                                 choices = [str(x) if isinstance(x, list) else x for x in arch_choices]
                                 trial_dists["architecture"] = optuna.distributions.CategoricalDistribution(choices)
                                 
-                            # 3. DQN specific target update freq
+                            # 3. DQN target update freq
                             if args.algo == "dqn" and "target_network_update_freq" in config:
                                 params["target_network_update_freq"] = config["target_network_update_freq"]
                                 trial_dists["target_network_update_freq"] = optuna.distributions.CategoricalDistribution(OptConfig.DQN_TARGET_UPDATE_FREQ)
@@ -108,22 +130,21 @@ def main():
                                     params["max_seq_len"] = config["max_seq_len"]
                                     trial_dists["max_seq_len"] = optuna.distributions.CategoricalDistribution(OptConfig.PPOLSTM_MAX_SEQ_LEN)
                                     
-                            # Create Optuna FrozenTrial
                             frozen = optuna.trial.create_trial(
                                 params=params,
                                 distributions=trial_dists,
                                 value=objective
                             )
-                            scanned_trials.append((trial_id, frozen))
+                            scanned_trials.append((original_index, frozen))
                 except Exception as e:
                     print(f"Warning: Could not load {result_file}: {e}")
                     
-    # Sort trials by ID to maintain chronological order in Optimization History
+    # Sort trials by original Ray chronological index to preserve historical order
     scanned_trials.sort(key=lambda x: x[0])
     for _, frozen in scanned_trials:
         study.add_trial(frozen)
         
-    print(f"Reconstructed study with {len(study.trials)} trials.")
+    print(f"Reconstructed study in correct chronological order with {len(study.trials)} trials.")
     
     if len(study.trials) == 0:
         print("Error: No trials found to reconstruct.")
