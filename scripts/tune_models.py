@@ -770,10 +770,11 @@ def main():
     try:
         from ray.tune.execution.tune_controller import TuneController
         
-        original_has_resources = TuneController._has_resources_for_next_trial
-        def debug_has_resources(self):
-            res = original_has_resources(self)
-            print(f"[DEBUG] TuneController._has_resources_for_next_trial() -> {res}")
+        original_update_queue = TuneController._update_trial_queue
+        def debug_update_queue(self, blocking=False):
+            print(f"[DEBUG] TuneController._update_trial_queue(blocking={blocking}) called")
+            res = original_update_queue(self, blocking)
+            print(f"[DEBUG] TuneController._update_trial_queue() -> {res}")
             try:
                 trials = self.get_trials()
                 pending = [t for t in trials if t.status == "PENDING"]
@@ -783,16 +784,16 @@ def main():
             except Exception as ex:
                 print(f"  [DEBUG] Error printing runner state: {ex}")
             return res
-        TuneController._has_resources_for_next_trial = debug_has_resources
-        
-        original_update_queue = TuneController._update_trial_queue
-        def debug_update_queue(self, blocking=False):
-            print(f"[DEBUG] TuneController._update_trial_queue(blocking={blocking}) called")
-            res = original_update_queue(self, blocking)
-            print(f"[DEBUG] TuneController._update_trial_queue() -> {res}")
-            return res
         TuneController._update_trial_queue = debug_update_queue
-        print("[DEBUG] Successfully monkey-patched Ray Tune's TuneController for diagnostics.")
+
+        original_unstage = TuneController._unstage_trial_with_resources
+        def debug_unstage(self, trial):
+            res = original_unstage(self, trial)
+            print(f"[DEBUG] TuneController._unstage_trial_with_resources(trial={trial.trial_id}) -> {res}")
+            return res
+        TuneController._unstage_trial_with_resources = debug_unstage
+        
+        print("[DEBUG] Successfully monkey-patched Ray Tune's TuneController (_update_trial_queue & _unstage_trial_with_resources) for diagnostics.")
     except Exception as e:
         print(f"[DEBUG] Could not monkey-patch TuneController: {e}")
 
