@@ -61,34 +61,31 @@ def purge_run_directory(run_dir, is_temp=False):
     json_path = json_files[0] if json_files else None
     state_path = state_files[0]
     
-    # We will identify which trials to keep based on the JSON file and their result.json on disk.
-    # Note: For temp dir, we don't have result.json files, so we will match based on the local run directory's decisions.
-    # We will map by Ray trial_id.
-    
     # 1. Load Experiment State JSON to inspect trials and check their actual iteration count
     print(f"  [STATE] Inspecting trials in state JSON: {state_path}")
     try:
         with open(state_path, "r", encoding="utf-8") as f:
             state_data = json.load(f)
             
-        trial_data_str = state_data.get("trial_data")
+        trial_data_raw = state_data.get("trial_data")
         kept_trials = []
         purged_trial_ids = set()
         
-        if trial_data_str:
-            trial_data = json.loads(trial_data_str)
+        if trial_data_raw is not None:
+            # Handle both string-serialized and directly-loaded list formats
+            if isinstance(trial_data_raw, str):
+                trial_data = json.loads(trial_data_raw)
+                trial_data_is_str = True
+            else:
+                trial_data = trial_data_raw
+                trial_data_is_str = False
+                
             for trial in trial_data:
                 trial_id = trial.get("trial_id")
                 logdir = trial.get("logdir", "")
                 
-                # Check iteration count on local disk (even for temp directories, we check the local disk copy)
-                # Map temp logdir to local logdir if needed
+                # Check iteration count on local disk
                 local_logdir = logdir
-                if is_temp:
-                    # e.g. logdir is /home/adminx/uav-iot-dc-env-master/artifacts/tune/...
-                    # which is local and accessible!
-                    local_logdir = logdir
-                    
                 is_valid = False
                 if trial.get("status") == "TERMINATED":
                     # Check if it actually completed 1000 iterations
@@ -104,17 +101,30 @@ def purge_run_directory(run_dir, is_temp=False):
                 else:
                     purged_trial_ids.add(trial_id)
                     
-            state_data["trial_data"] = json.dumps(kept_trials)
+            if trial_data_is_str:
+                state_data["trial_data"] = json.dumps(kept_trials)
+            else:
+                state_data["trial_data"] = kept_trials
             print(f"  [STATE] Kept {len(kept_trials)} trials in JSON (purged {len(purged_trial_ids)} due to < 999 iterations or failure).")
             
         # Clean runner_data
-        runner_data_str = state_data.get("runner_data")
-        if runner_data_str:
-            runner_data = json.loads(runner_data_str)
+        runner_data_raw = state_data.get("runner_data")
+        if runner_data_raw is not None:
+            if isinstance(runner_data_raw, str):
+                runner_data = json.loads(runner_data_raw)
+                runner_data_is_str = True
+            else:
+                runner_data = runner_data_raw
+                runner_data_is_str = False
+                
             for key in ["_cached_trial_decisions", "_queued_trial_decisions"]:
                 if key in runner_data:
                     runner_data[key] = {}
-            state_data["runner_data"] = json.dumps(runner_data)
+                    
+            if runner_data_is_str:
+                state_data["runner_data"] = json.dumps(runner_data)
+            else:
+                state_data["runner_data"] = runner_data
             
         # Save JSON
         with open(state_path, "w", encoding="utf-8") as f:
@@ -140,7 +150,6 @@ def purge_run_directory(run_dir, is_temp=False):
         for t in old_study.trials:
             if t.state == optuna.trial.TrialState.COMPLETE:
                 # Check if this trial corresponds to a kept Ray trial
-                # Check by matching trial_id hex
                 is_kept = False
                 for kt in kept_trials:
                     if t._trial_id == kt.get("trial_id") or f"trial_{t._trial_id}" in kt.get("logdir", ""):
@@ -212,14 +221,14 @@ def purge_run_directory(run_dir, is_temp=False):
 def main():
     print("=== STARTING SURGICAL PURGE OF INCOMPLETE & FAILED TRIALS (ITER < 999) ===")
     
-    # 1. Target Local Directory of yesterday's run (July 17)
+    # Local target run dir:
     local_run_dir = os.path.join(PROJECT_ROOT, "artifacts", "tune", "tune_ppo_lstm_phase1_2026-07-17_10-29-00")
     if os.path.exists(local_run_dir):
         purge_run_directory(local_run_dir, is_temp=False)
     else:
         print(f"[ERROR] Local target run directory not found: {local_run_dir}")
         
-    # 2. Target Temp Ray Session Directory of July 17
+    # Temp target run dir:
     temp_run_dir = "/tmp/ray/session_2026-07-17_10-05-50_996511_3860/artifacts/2026-07-17_10-29-00"
     if os.path.exists(temp_run_dir):
         purge_run_directory(temp_run_dir, is_temp=True)
