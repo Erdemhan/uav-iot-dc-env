@@ -75,12 +75,25 @@ def main():
             }
             ray_trial_data.append([json.dumps(ray_trial)])
         else:
-            # PHYSICAL CLEANUP: Delete from disk so Ray Tune won't auto-scan and throw KeyError
+            # PHYSICAL CLEANUP: Delete from local disk
             print(f"  [DELETE] Physical cleanup of failed/incomplete trial folder: {td}")
             try:
                 shutil.rmtree(td)
             except Exception as de:
                 print(f"    Failed to delete {td}: {de}")
+                
+            # ALSO DELETE FROM TEMP DIRECTORIES (Ray cache):
+            temp_paths = [
+                os.path.join("/tmp/ray/session_2026-07-17_10-05-50_996511_3860/artifacts/2026-07-17_10-29-00/optuna_study/driver_artifacts", f"trial_{trial_id}"),
+                os.path.join("/tmp/ray/session_2026-07-17_10-05-50_996511_3860/artifacts/2026-07-17_10-29-00/optuna_study", f"trial_{trial_id}")
+            ]
+            for tp in temp_paths:
+                if os.path.exists(tp):
+                    print(f"  [DELETE TEMP] Physical cleanup of temp trial folder: {tp}")
+                    try:
+                        shutil.rmtree(tp)
+                    except Exception as de:
+                        print(f"    Failed to delete temp {tp}: {de}")
                 
     print(f"\nReconstructed {len(completed_trials)} completed trials successfully.")
     
@@ -200,7 +213,7 @@ def main():
         print("[TEMP COPIED] Rebuilt files copied to temp ray session directory.")
             
     print("\n=== REBUILD SUCCESSFUL! ===")
-    print("Tum HPO durumunuz diskteki verilerle esitlendi ve hatalı klasorler temizlendi.")
+    print("Tum HPO Hata kopyalari /tmp altindan da temizlendi.")
     print("Artik '--num-samples 100' ile baslatabilirsiniz.")
 
 if __name__ == "__main__":
