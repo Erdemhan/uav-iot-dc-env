@@ -1,4 +1,4 @@
-import json
+import pickle
 import os
 import glob
 import sys
@@ -20,10 +20,19 @@ if not state_files:
     sys.exit(1)
 
 state_file = state_files[0]
-print(f"Reading search generator state file: {state_file}...\n")
+print(f"Reading search generator state file as binary pickle: {state_file}...\n")
 
-with open(state_file, "r", encoding="utf-8") as f:
-    data = json.load(f)
-
-print("=== SEARCH GENERATOR STATE ===")
-print(json.dumps(data, indent=4))
+try:
+    with open(state_file, "rb") as f:
+        data = pickle.load(f)
+    
+    print("=== SEARCH GENERATOR STATE ===")
+    print(f"Class: {type(data)}")
+    if isinstance(data, dict):
+        print("Keys of the state dictionary:", list(data.keys()))
+        for k, v in data.items():
+            print(f"  {k}: type={type(v)}")
+            if isinstance(v, (set, list)):
+                print(f"    Value: {v}")
+except Exception as e:
+    print(f"[ERROR] Failed to load search_gen_state as pickle: {e}")
