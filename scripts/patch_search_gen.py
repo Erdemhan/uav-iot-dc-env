@@ -3,6 +3,10 @@ import os
 import glob
 import sys
 
+# Define dummy function at module level so pickle.dump can resolve it on __main__
+def short_trial_dirname_creator(trial):
+    pass
+
 # Resolve project root
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(PROJECT_ROOT)
