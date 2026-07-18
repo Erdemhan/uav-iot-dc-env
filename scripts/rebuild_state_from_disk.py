@@ -82,20 +82,28 @@ def main():
             except Exception as de:
                 print(f"    Failed to delete {td}: {de}")
                 
-            # ALSO DELETE FROM TEMP DIRECTORIES (Ray cache):
-            temp_paths = [
-                os.path.join("/tmp/ray/session_2026-07-17_10-05-50_996511_3860/artifacts/2026-07-17_10-29-00/optuna_study/driver_artifacts", f"trial_{trial_id}"),
-                os.path.join("/tmp/ray/session_2026-07-17_10-05-50_996511_3860/artifacts/2026-07-17_10-29-00/optuna_study", f"trial_{trial_id}")
-            ]
-            for tp in temp_paths:
-                if os.path.exists(tp):
-                    print(f"  [DELETE TEMP] Physical cleanup of temp trial folder: {tp}")
-                    try:
-                        shutil.rmtree(tp)
-                    except Exception as de:
-                        print(f"    Failed to delete temp {tp}: {de}")
-                
+    # Build a set of completed trial IDs
+    completed_ids = {t[0] for t in completed_trials}
     print(f"\nReconstructed {len(completed_trials)} completed trials successfully.")
+    
+    # DIRECT TEMP CLEANUP:
+    # Scan the /tmp directories directly for trial_* folders and delete them if they aren't complete
+    print("\nScanning /tmp directories directly for orphaned/incomplete trials...")
+    temp_dirs_to_clean = [
+        "/tmp/ray/session_2026-07-17_10-05-50_996511_3860/artifacts/2026-07-17_10-29-00/optuna_study/driver_artifacts",
+        "/tmp/ray/session_2026-07-17_10-05-50_996511_3860/artifacts/2026-07-17_10-29-00/optuna_study"
+    ]
+    for d in temp_dirs_to_clean:
+        if os.path.exists(d):
+            temp_trial_folders = glob.glob(os.path.join(d, "trial_*"))
+            for tf in temp_trial_folders:
+                tid = os.path.basename(tf).replace("trial_", "")
+                if tid not in completed_ids:
+                    print(f"  [DELETE TEMP DIRECT] Deleting orphaned temp trial: {tf}")
+                    try:
+                        shutil.rmtree(tf)
+                    except Exception as de:
+                        print(f"    Failed to delete temp {tf}: {de}")
     
     if not completed_trials:
         print("[ERROR] No completed trials found. Cannot rebuild state files.")
@@ -213,7 +221,7 @@ def main():
         print("[TEMP COPIED] Rebuilt files copied to temp ray session directory.")
             
     print("\n=== REBUILD SUCCESSFUL! ===")
-    print("Tum HPO Hata kopyalari /tmp altindan da temizlendi.")
+    print("Tum HPO durumunuz diskteki verilerle esitlendi ve hatalı klasorler temizlendi.")
     print("Artik '--num-samples 100' ile baslatabilirsiniz.")
 
 if __name__ == "__main__":
