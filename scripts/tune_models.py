@@ -534,6 +534,29 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
+_original_update_queue = None
+
+def debug_update_queue(self, blocking=False):
+    print(f"[DEBUG] TuneController._update_trial_queue(blocking={blocking}) called")
+    res = _original_update_queue(self, blocking)
+    print(f"[DEBUG] TuneController._update_trial_queue() -> {res}")
+    try:
+        trials = self.get_trials()
+        pending = [t for t in trials if t.status == "PENDING"]
+        running = [t for t in trials if t.status == "RUNNING"]
+        terminated = [t for t in trials if t.status == "TERMINATED"]
+        print(f"  [DEBUG] Runner State: Total={len(trials)} | RUNNING={len(running)} | PENDING={len(pending)} | TERMINATED={len(terminated)}")
+    except Exception as ex:
+        print(f"  [DEBUG] Error printing runner state: {ex}")
+    return res
+
+_original_unstage = None
+
+def debug_unstage(self, trial):
+    res = _original_unstage(self, trial)
+    print(f"[DEBUG] TuneController._unstage_trial_with_resources(trial={trial.trial_id}) -> {res}")
+    return res
+
 def main():
     from core.logger import setup_console_logging
     setup_console_logging("tune_models")
@@ -734,7 +757,17 @@ def main():
         print(f"[DEBUG] RUNNING trials (Deadlock risk): {[t.number for t in running_trials]}")
     else:
         print("[DEBUG] Optuna study not initialized or found in searcher.")
-    print("[DEBUG] Calling tune.run now...\n")
+    try:
+        from ray.tune.execution.tune_controller import TuneController
+        global _original_update_queue, _original_unstage
+        _original_update_queue = TuneController._update_trial_queue
+        TuneController._update_trial_queue = debug_update_queue
+        _original_unstage = TuneController._unstage_trial_with_resources
+        TuneController._unstage_trial_with_resources = debug_unstage
+        print("[DEBUG] Successfully monkey-patched Ray Tune's TuneController at module level.")
+    except Exception as e:
+        print(f"[DEBUG] Could not monkey-patch TuneController: {e}")
+
     analysis = tune.run(
         trainable,
         config=full_config,
