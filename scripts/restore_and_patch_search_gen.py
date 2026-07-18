@@ -4,6 +4,10 @@ import glob
 import sys
 import shutil
 
+# Standalone dummy function definition in __main__ namespace to satisfy pickle load/dump
+def short_trial_dirname_creator(trial):
+    pass
+
 # Resolve project root
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(PROJECT_ROOT)
@@ -58,17 +62,6 @@ limiter_state["num_unfinished_live_trials"] = 0
 print("\nAfter Patch:")
 print(f"  live_trials: {limiter_state.get('live_trials')}")
 print(f"  num_unfinished_live_trials: {limiter_state.get('num_unfinished_live_trials')}")
-
-# Bypassing Pickling Error: Strip any callable functions (like short_trial_dirname_creator) from the Experiment object.
-# Ray Tune will automatically overwrite these with today's passed parameters at startup anyway.
-exp = data.get("experiment")
-if exp is not None:
-    print("\nStripping callable/function attributes from the Experiment object to prevent PicklingErrors...")
-    for attr_name in list(exp.__dict__.keys()):
-        attr_val = getattr(exp, attr_name)
-        if callable(attr_val):
-            print(f"  Setting callable attribute '{attr_name}' to None...")
-            setattr(exp, attr_name, None)
 
 # 5. Safely save using temporary file (atomic write)
 temp_file = target_file + ".tmp"
