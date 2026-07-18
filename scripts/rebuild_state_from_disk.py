@@ -4,7 +4,7 @@ import glob
 import sys
 import json
 import optuna
-import shutil  # Added missing import
+import shutil
 
 # Define dummy function for pickle load
 def short_trial_dirname_creator(trial):
@@ -125,7 +125,7 @@ def main():
         if "max_seq_len" in params:
             seq_choices.add(params["max_seq_len"])
             
-    # Default fallback values to ensure valid search space bounds
+    # Default fallback values
     arch_choices.update(["128,256", "256,256", "256,128,128", "128,512,128", "256,256,256", "512,256,256", "512,256", "512,256,256,128"])
     lstm_choices.update([32, 64, 128, 256])
     seq_choices.update([10, 20, 50, 100])
@@ -133,7 +133,6 @@ def main():
     hpo_keys = {"lr", "gamma", "architecture", "lstm_cell_size", "max_seq_len"}
     
     for idx, (trial_id, params, objective, _) in enumerate(completed_trials):
-        # Filter params to keep ONLY HPO search variables
         filtered_params = {k: v for k, v in params.items() if k in hpo_keys}
         
         t = optuna.trial.create_trial(
@@ -156,8 +155,7 @@ def main():
         _ot_trials[ray_tid] = ot_trial
         _completed_trials.add(ray_tid)
         
-    # 1. Write PKL file
-    # Get latest searcher filename
+    # 1. Write PKL file (goes inside optuna_study_dir)
     pkl_files = sorted(glob.glob(os.path.join(optuna_study_dir, "searcher-state-*.pkl")))
     pkl_path = pkl_files[-1] if pkl_files else os.path.join(optuna_study_dir, "searcher-state-2026-07-17_10-29-00.pkl")
     
@@ -171,8 +169,9 @@ def main():
     print(f"[PKL REBUILT] {pkl_path}")
     
     # 2. Write JSON experiment state file
-    state_files = sorted(glob.glob(os.path.join(optuna_study_dir, "experiment_state-*.json")))
-    state_path = state_files[-1] if state_files else os.path.join(optuna_study_dir, "experiment_state-2026-07-17_10-29-00.json")
+    # FIX: Ray Tune looks for experiment_state-*.json directly under run_dir!
+    state_files = sorted(glob.glob(os.path.join(run_dir, "experiment_state-*.json")))
+    state_path = state_files[-1] if state_files else os.path.join(run_dir, "experiment_state-2026-07-17_10-29-00.json")
     
     experiment_state = {
         "trial_data": ray_trial_data,
@@ -210,13 +209,15 @@ def main():
     # 4. Copy rebuilt files to /tmp/ray session if path exists
     temp_run_dir = "/tmp/ray/session_2026-07-17_10-05-50_996511_3860/artifacts/2026-07-17_10-29-00"
     if os.path.exists(temp_run_dir):
-        temp_study_dir = os.path.join(temp_run_dir, "optuna_study", "driver_artifacts")
-        if os.path.exists(temp_study_dir):
-            shutil.copy2(pkl_path, os.path.join(temp_study_dir, os.path.basename(pkl_path)))
-            shutil.copy2(state_path, os.path.join(temp_study_dir, os.path.basename(state_path)))
+        # Temp ray session structure has pkl/json inside driver_artifacts, and experiment_state directly under artifacts/
+        temp_driver_dir = os.path.join(temp_run_dir, "optuna_study", "driver_artifacts")
+        if os.path.exists(temp_driver_dir):
+            shutil.copy2(pkl_path, os.path.join(temp_driver_dir, os.path.basename(pkl_path)))
             if json_files:
-                shutil.copy2(json_path, os.path.join(temp_study_dir, os.path.basename(json_path)))
-            print("[TEMP COPIED] Rebuilt files copied to temp ray session directory.")
+                shutil.copy2(json_path, os.path.join(temp_driver_dir, os.path.basename(json_path)))
+        if os.path.exists(temp_run_dir):
+            shutil.copy2(state_path, os.path.join(temp_run_dir, os.path.basename(state_path)))
+        print("[TEMP COPIED] Rebuilt files copied to temp ray session directory.")
             
     print("\n=== REBUILD SUCCESSFUL! ===")
     print("Tum veri tabaniniz diskteki trial verilerinizden sifirdan ve kusursuz olarak insa edildi.")
