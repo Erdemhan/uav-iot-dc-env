@@ -635,6 +635,36 @@ def main():
     # 3. Define Optuna Search Space and Search Alg
     optuna_search = OptunaSearch(metric="objective", mode="max")
 
+    # Inject dynamic debug loggers into the searcher methods to print states during tune.run
+    original_restore = optuna_search.restore
+    def debug_restore(checkpoint_path):
+        print(f"\n[DEBUG] === Searcher restore started from: {checkpoint_path} ===")
+        res = original_restore(checkpoint_path)
+        print("[DEBUG] === Searcher restore completed ===")
+        if hasattr(optuna_search, "_ot_study") and optuna_search._ot_study is not None:
+            study = optuna_search._ot_study
+            import optuna
+            running = [t for t in study.trials if t.state == optuna.trial.TrialState.RUNNING]
+            complete = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+            failed = [t for t in study.trials if t.state == optuna.trial.TrialState.FAIL]
+            print(f"[DEBUG] Study name in searcher: {study.study_name}")
+            print(f"[DEBUG] Total trials restored in Optuna: {len(study.trials)}")
+            print(f"[DEBUG] COMPLETE trials in Optuna: {len(complete)}")
+            print(f"[DEBUG] FAILED/ERR trials in Optuna: {len(failed)}")
+            print(f"[DEBUG] RUNNING trials in Optuna (concurrency block risk): {[t.number for t in running]}\n")
+        else:
+            print("[DEBUG] _ot_study not found after restore.")
+        return res
+    optuna_search.restore = debug_restore
+
+    original_suggest = optuna_search.suggest
+    def debug_suggest(trial_id):
+        print(f"[DEBUG] Searcher.suggest() called for trial: {trial_id}")
+        res = original_suggest(trial_id)
+        print(f"[DEBUG] Searcher.suggest() returned: {res}")
+        return res
+    optuna_search.suggest = debug_suggest
+
     # Load existing tuned_configs (to avoid overwriting other algos)
     tuned_configs = {}
     tuned_cfg_path = os.path.join(PROJECT_ROOT, "confs", "tuned_configs.json")
