@@ -8,14 +8,17 @@ sys.path.append(PROJECT_ROOT)
 
 print("Connecting to Ray cluster...")
 try:
+    # Use ray.init client connection
     ray.init(address="ray://10.70.121.33:10001", ignore_reinit_error=True)
     print("[SUCCESS] Connected to Ray!")
     
-    from ray._private.state import state
+    from ray.util.state import list_jobs
     print("\n=== ACTIVE RAY JOBS ===")
-    jobs = state.jobs()
+    jobs = list_jobs()
+    if not jobs:
+        print("No active jobs found in the cluster.")
     for job in jobs:
-        print(f"Job ID: {job.get('JobID')} | Status: {job.get('Status')} | Driver IP: {job.get('DriverIPAddress')} | Start Time: {job.get('StartTime')}")
+        print(f"Job ID: {job.job_id} | Status: {job.status} | Entrypoint: {job.entrypoint} | Start Time: {job.start_time}")
         
 except Exception as e:
     print(f"[ERROR] Failed to fetch Ray state: {e}")
