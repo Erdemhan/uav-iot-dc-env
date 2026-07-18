@@ -2,6 +2,7 @@ import pickle
 import os
 import glob
 import sys
+import json
 
 # Resolve project root
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -20,19 +21,16 @@ if not state_files:
     sys.exit(1)
 
 state_file = state_files[0]
-print(f"Reading search generator state file as binary pickle: {state_file}...\n")
+print(f"Reading search generator state file: {state_file}...\n")
 
 try:
     with open(state_file, "rb") as f:
         data = pickle.load(f)
     
-    print("=== SEARCH GENERATOR STATE ===")
-    print(f"Class: {type(data)}")
-    if isinstance(data, dict):
-        print("Keys of the state dictionary:", list(data.keys()))
-        for k, v in data.items():
-            print(f"  {k}: type={type(v)}")
-            if isinstance(v, (set, list)):
-                print(f"    Value: {v}")
+    limiter_state = data.get("name:ConcurrencyLimiter", {})
+    print("=== ConcurrencyLimiter NESTED STATE ===")
+    print(f"Limiter state type: {type(limiter_state)}")
+    if isinstance(limiter_state, dict):
+        print(json.dumps(limiter_state, indent=4, default=str))
 except Exception as e:
-    print(f"[ERROR] Failed to load search_gen_state as pickle: {e}")
+    print(f"[ERROR] Failed to print ConcurrencyLimiter state: {e}")
