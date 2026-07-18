@@ -704,12 +704,9 @@ def main():
             self.search_alg = search_alg
             self.plots_dir = plots_dir
         def on_trial_complete(self, *args, **kwargs):
-            try:
-                st = self.search_alg.study if hasattr(self.search_alg, "study") else self.search_alg._ot_study
-                if st:
-                    save_optuna_visualizations(st, self.plots_dir)
-            except Exception as e:
-                print(f"[DASHBOARD] Warning during on_trial_complete callback: {e}")
+            # Matplotlib rendering in background threads can cause deadlocks/freezes.
+            # We skip real-time plotting for stability; plots will be saved at the end of the run.
+            pass
 
     analysis = tune.run(
         trainable,
