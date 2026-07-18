@@ -58,7 +58,8 @@ def patch_search_gen_json(path):
         limiter_state = data.get("name:ConcurrencyLimiter")
         if limiter_state is not None:
             print(f"  [JSON] Current live_trials: {limiter_state.get('live_trials')} | unfinished: {limiter_state.get('num_unfinished_live_trials')}")
-            limiter_state["live_trials"] = "set()"
+            # FIX: Use actual python empty set object instead of string "set()"
+            limiter_state["live_trials"] = set()
             limiter_state["num_unfinished_live_trials"] = 0
             
         # 2. Patch Experiment object to bypass PicklingErrors
