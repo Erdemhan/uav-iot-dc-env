@@ -197,8 +197,8 @@ if __name__ == "__main__":
         name=f"PPO_LSTM_{args.scenario}",
         config=config.to_dict(),
         stop=stopper, 
-        checkpoint_at_end=False,
-        checkpoint_freq=0,
+        checkpoint_at_end=True,
+        checkpoint_freq=GlobalConfig.CHECKPOINT_FREQ,
         trial_dirname_creator=lambda trial: f"t_{trial.trial_id}",
         callbacks=[ProgressCallback()]
     )
