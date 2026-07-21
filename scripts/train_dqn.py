@@ -212,7 +212,8 @@ if __name__ == "__main__":
     
     stopper = EarlyStoppingStopper()
     
-    node_key = ray.util.get_current_node_resource_key()
+    node_ip = ray.util.get_node_ip_address()
+    node_key = f"node:{node_ip}"
     resources_per_trial = {"cpu": 1, node_key: 0.001}
     if GlobalConfig.USE_GPU:
         resources_per_trial["gpu"] = 1
