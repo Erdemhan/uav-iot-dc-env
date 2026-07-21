@@ -52,16 +52,28 @@ def copy_ray_progress_to_run_dir(scenario, algo, target_dir):
     if not prefix:
         return
         
+    os.makedirs(target_dir, exist_ok=True)
+    
+    # 1. Copy progress.csv
     search_pattern = os.path.join(ray_results_dir, f"{prefix}_{scenario}", "t_*", "progress.csv")
     csv_files = glob.glob(search_pattern)
-    if not csv_files:
+    if csv_files:
+        newest_csv = max(csv_files, key=os.path.getmtime)
+        shutil.copy2(newest_csv, os.path.join(target_dir, "progress.csv"))
+        print(f"Successfully copied {newest_csv} -> {os.path.join(target_dir, 'progress.csv')}")
+    else:
         print(f"Warning: No progress.csv found for {scenario} {algo} using pattern: {search_pattern}")
-        return
         
-    newest_csv = max(csv_files, key=os.path.getmtime)
-    os.makedirs(target_dir, exist_ok=True)
-    shutil.copy2(newest_csv, os.path.join(target_dir, "progress.csv"))
-    print(f"Successfully copied {newest_csv} -> {os.path.join(target_dir, 'progress.csv')}")
+    # 2. Copy latest checkpoint folder
+    search_ckpt = os.path.join(ray_results_dir, f"{prefix}_{scenario}", "t_*", "checkpoint_*")
+    ckpt_dirs = [d for d in glob.glob(search_ckpt) if os.path.isdir(d)]
+    if ckpt_dirs:
+        newest_ckpt = max(ckpt_dirs, key=os.path.getmtime)
+        dest_ckpt = os.path.join(target_dir, os.path.basename(newest_ckpt))
+        if os.path.exists(dest_ckpt):
+            shutil.rmtree(dest_ckpt)
+        shutil.copytree(newest_ckpt, dest_ckpt)
+        print(f"Successfully copied checkpoint {newest_ckpt} -> {dest_ckpt}")
 
 def main():
     import argparse
@@ -225,9 +237,36 @@ def main():
     plot_cmd = f"{sys.executable} scripts/plot_scenario_learning_curves.py --run-dir {run_dir}"
     subprocess.run(plot_cmd, shell=True)
 
+    # ----------------------------------------------------
+    # PHASE 4: AUTOMATIC ROBUSTNESS EVALUATION & PLOTS
+    # ----------------------------------------------------
     print("\n" + "="*80)
-    print("  ALL SCENARIOS COMPLETED SUCCESSFULLY!")
-    print(f"  Artifacts and Plots saved under: {run_dir}")
+    print("  PHASE 4: AUTOMATIC ROBUSTNESS EVALUATION & PLOT GENERATION")
+    print("="*80 + "\n")
+    
+    scenario_configs = {
+        "1-A": {"NUM_NODES": 15, "NUM_UAVS": 1, "AREA_SIZE": 500.0, "W_COST": 0.03},
+        "1-B": {"NUM_NODES": 15, "NUM_UAVS": 1, "AREA_SIZE": 500.0, "W_COST": 0.3},
+        "2-A": {"NUM_NODES": 30, "NUM_UAVS": 2, "AREA_SIZE": 1000.0, "W_COST": 0.03},
+        "2-B": {"NUM_NODES": 30, "NUM_UAVS": 2, "AREA_SIZE": 1000.0, "W_COST": 0.3},
+    }
+    
+    import json
+    for scen in ["1-A", "1-B", "2-A", "2-B"]:
+        scen_dir = os.path.join(run_dir, f"S{scen}")
+        if os.path.exists(scen_dir):
+            meta_path = os.path.join(scen_dir, "metadata.json")
+            if not os.path.exists(meta_path):
+                with open(meta_path, "w", encoding="utf-8") as f:
+                    json.dump({"scenario": scen, "env_config": scenario_configs[scen]}, f, indent=2)
+            
+            print(f"\n---> Evaluating Robustness & Generating Plots for Scenario {scen}...")
+            eval_cmd = f"{sys.executable} scripts/evaluate_paper_robustness.py --run-dir {scen_dir}"
+            subprocess.run(eval_cmd, shell=True)
+
+    print("\n" + "="*80)
+    print("  ALL SCENARIOS & EVALUATIONS COMPLETED SUCCESSFULLY!")
+    print(f"  Artifacts, Robustness Evaluation, and Plots saved under: {run_dir}")
     print("="*80 + "\n")
 
 if __name__ == "__main__":
