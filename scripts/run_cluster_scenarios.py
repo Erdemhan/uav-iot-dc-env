@@ -176,9 +176,19 @@ def main():
             subprocess.run(cmd, shell=True)
             print(f"{name} completed.")
 
+    # ----------------------------------------------------
+    # PHASE 3: GENERATING REWARD LEARNING CURVES
+    # ----------------------------------------------------
+    print("\n" + "="*80)
+    print("  PHASE 3: GENERATING REWARD LEARNING CURVES")
+    print("="*80 + "\n")
+    
+    plot_cmd = f"{sys.executable} scripts/plot_scenario_learning_curves.py --run-dir {run_dir}"
+    subprocess.run(plot_cmd, shell=True)
+
     print("\n" + "="*80)
     print("  ALL SCENARIOS COMPLETED SUCCESSFULLY!")
-    print(f"  Artifacts saved under: {run_dir}")
+    print(f"  Artifacts and Plots saved under: {run_dir}")
     print("="*80 + "\n")
 
 if __name__ == "__main__":

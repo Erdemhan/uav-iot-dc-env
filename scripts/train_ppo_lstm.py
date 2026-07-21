@@ -25,13 +25,13 @@ def env_creator(config):
     
     # Override EnvConfig dynamically for remote workers
     if "num_nodes" in config:
-        EnvConfig.NUM_NODES = config["num_nodes"]
+        EnvConfig.NUM_NODES = int(config["num_nodes"])
     if "num_uavs" in config:
-        EnvConfig.NUM_UAVS = config["num_uavs"]
+        EnvConfig.NUM_UAVS = int(config["num_uavs"])
     if "area_size" in config:
-        EnvConfig.AREA_SIZE = config["area_size"]
+        EnvConfig.AREA_SIZE = float(config["area_size"])
     if "w_cost" in config:
-        EnvConfig.W_COST = config["w_cost"]
+        EnvConfig.W_COST = float(config["w_cost"])
         
     return ParallelPettingZooEnv(UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS))
 
@@ -146,13 +146,12 @@ if __name__ == "__main__":
     node_obs = dummy_env.observation_space("node_0")
     node_act = dummy_env.action_space("node_0")
     
-    # Configure env_config to pass scenario variables to remote rollout workers
     env_cfg = {
         "seed": GlobalConfig.RANDOM_SEED,
-        "num_nodes": dummy_env.area_size * 0.0 + EnvConfig.NUM_NODES, # dynamic reference
-        "num_uavs": EnvConfig.NUM_UAVS,
-        "area_size": EnvConfig.AREA_SIZE,
-        "w_cost": EnvConfig.W_COST
+        "num_nodes": int(EnvConfig.NUM_NODES),
+        "num_uavs": int(EnvConfig.NUM_UAVS),
+        "area_size": float(EnvConfig.AREA_SIZE),
+        "w_cost": float(EnvConfig.W_COST)
     }
     
     config = (
