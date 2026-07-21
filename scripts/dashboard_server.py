@@ -151,46 +151,69 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                 if not os.path.isdir(folder_path):
                     continue
                 for item in os.listdir(folder_path):
-                    if run_group == "legacy" and item in ["training", "tune"]:
+                    if run_group == "legacy" and item in ["training", "tune", "scenario_runs"]:
                         continue
                     item_path = os.path.join(folder_path, item)
                     if not os.path.isdir(item_path):
                         continue
                         
-                    run_id = item
-                    if run_group != "legacy":
-                        run_id = f"{run_group}/{item}"
-                        
-                    if run_id in seen_ids:
-                        continue
-                        
-                    meta_path = os.path.join(item_path, "metadata.json")
-                    status_path = os.path.join(item_path, "status.json")
-                    if os.path.exists(meta_path) or os.path.exists(status_path):
-                        run_type = "training"
-                        algo_name = ""
-                        if os.path.exists(meta_path):
-                            try:
-                                with open(meta_path, "r", encoding="utf-8") as f:
-                                    m = json.load(f)
-                                    algo_name = m.get("algo", "")
-                                    phase = m.get("phase", None)
-                                    if phase == 1:
-                                        run_type = "hpo"
-                                    elif phase == 2:
-                                        run_type = "reward"
-                            except:
-                                pass
-                        
-                        mtime = os.path.getmtime(item_path)
-                        runs.append({
-                            "id": run_id,
-                            "type": run_type,
-                            "algo": algo_name,
-                            "mtime": mtime,
-                            "date_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime))
-                        })
-                        seen_ids.add(run_id)
+                    # For scenario_runs and head-node-logs, scan one level deeper to find S1-A, S1-B, S2-A, S2-B
+                    if run_group in ["scenario_runs", "head-node-logs"]:
+                        try:
+                            for sub_item in os.listdir(item_path):
+                                sub_item_path = os.path.join(item_path, sub_item)
+                                if not os.path.isdir(sub_item_path):
+                                    continue
+                                if sub_item in ["S1-A", "S1-B", "S2-A", "S2-B"]:
+                                    run_id = f"{run_group}/{item}/{sub_item}"
+                                    if run_id in seen_ids:
+                                        continue
+                                    mtime = os.path.getmtime(sub_item_path)
+                                    runs.append({
+                                        "id": run_id,
+                                        "type": "training", # mapped to training in UI
+                                        "algo": "",
+                                        "mtime": mtime,
+                                        "date_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime))
+                                    })
+                                    seen_ids.add(run_id)
+                        except Exception:
+                            pass
+                    else:
+                        run_id = item
+                        if run_group != "legacy":
+                            run_id = f"{run_group}/{item}"
+                            
+                        if run_id in seen_ids:
+                            continue
+                            
+                        meta_path = os.path.join(item_path, "metadata.json")
+                        status_path = os.path.join(item_path, "status.json")
+                        if os.path.exists(meta_path) or os.path.exists(status_path):
+                            run_type = "training"
+                            algo_name = ""
+                            if os.path.exists(meta_path):
+                                try:
+                                    with open(meta_path, "r", encoding="utf-8") as f:
+                                        m = json.load(f)
+                                        algo_name = m.get("algo", "")
+                                        phase = m.get("phase", None)
+                                        if phase == 1:
+                                            run_type = "hpo"
+                                        elif phase == 2:
+                                            run_type = "reward"
+                                except:
+                                    pass
+                            
+                            mtime = os.path.getmtime(item_path)
+                            runs.append({
+                                "id": run_id,
+                                "type": run_type,
+                                "algo": algo_name,
+                                "mtime": mtime,
+                                "date_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime))
+                            })
+                            seen_ids.add(run_id)
             # Sort by mtime descending
             runs.sort(key=lambda x: x["mtime"], reverse=True)
             self.wfile.write(json.dumps({"runs": runs}).encode("utf-8"))
