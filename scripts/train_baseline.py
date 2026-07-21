@@ -21,8 +21,21 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=str, default="baseline_q_table", 
                        help="Directory to save baseline outputs")
+    parser.add_argument("--scenario", type=str, default=None, choices=["1-A", "1-B", "2-A", "2-B"], help="Scenario combination to run")
     args = parser.parse_args()
     
+    # Apply scenario config dynamically
+    if args.scenario:
+        from confs.env_config import EnvConfig
+        if args.scenario == "1-A":
+            EnvConfig.NUM_NODES = 15; EnvConfig.NUM_UAVS = 1; EnvConfig.AREA_SIZE = 500.0; EnvConfig.W_COST = 0.03
+        elif args.scenario == "1-B":
+            EnvConfig.NUM_NODES = 15; EnvConfig.NUM_UAVS = 1; EnvConfig.AREA_SIZE = 500.0; EnvConfig.W_COST = 0.3
+        elif args.scenario == "2-A":
+            EnvConfig.NUM_NODES = 30; EnvConfig.NUM_UAVS = 2; EnvConfig.AREA_SIZE = 1000.0; EnvConfig.W_COST = 0.03
+        elif args.scenario == "2-B":
+            EnvConfig.NUM_NODES = 30; EnvConfig.NUM_UAVS = 2; EnvConfig.AREA_SIZE = 1000.0; EnvConfig.W_COST = 0.3
+            
     print(f"--- Starting Baseline (QJC) Training ---")
     print(f"Output Directory: {args.output_dir}\n")
     

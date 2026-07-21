@@ -21,6 +21,18 @@ from simulation.pettingzoo_env import UAV_IoT_PZ_Env
 
 def env_creator(config):
     from confs.model_config import GlobalConfig
+    from confs.env_config import EnvConfig
+    
+    # Override EnvConfig dynamically for remote workers
+    if "num_nodes" in config:
+        EnvConfig.NUM_NODES = config["num_nodes"]
+    if "num_uavs" in config:
+        EnvConfig.NUM_UAVS = config["num_uavs"]
+    if "area_size" in config:
+        EnvConfig.AREA_SIZE = config["area_size"]
+    if "w_cost" in config:
+        EnvConfig.W_COST = config["w_cost"]
+        
     return ParallelPettingZooEnv(UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS))
 
 from ray.tune.stopper import Stopper
@@ -59,7 +71,9 @@ class EarlyStoppingStopper(Stopper):
     def stop_all(self):
         return False
 
-class ProgressCallback(tune.Callback):
+from ray.tune import Callback
+
+class ProgressCallback(Callback):
     """Callback to print progress in a format run_experiments.py can parse"""
     def on_trial_result(self, iteration, trials, trial, result, **info):
         print(f"Iteration {result['training_iteration']}")
@@ -70,34 +84,46 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=str, default="ray_results", help="Output directory for PPO-LSTM")
+    parser.add_argument("--scenario", type=str, default=None, choices=["1-A", "1-B", "2-A", "2-B"], help="Scenario combination to run")
+    parser.add_argument("--ray-address", type=str, default=None, help="Ray cluster address (e.g. 'auto' or IP address)")
     args = parser.parse_args()
     
+    # Apply scenario config dynamically on driver node before dummy env is created
+    if args.scenario:
+        from confs.env_config import EnvConfig
+        if args.scenario == "1-A":
+            EnvConfig.NUM_NODES = 15; EnvConfig.NUM_UAVS = 1; EnvConfig.AREA_SIZE = 500.0; EnvConfig.W_COST = 0.03
+        elif args.scenario == "1-B":
+            EnvConfig.NUM_NODES = 15; EnvConfig.NUM_UAVS = 1; EnvConfig.AREA_SIZE = 500.0; EnvConfig.W_COST = 0.3
+        elif args.scenario == "2-A":
+            EnvConfig.NUM_NODES = 30; EnvConfig.NUM_UAVS = 2; EnvConfig.AREA_SIZE = 1000.0; EnvConfig.W_COST = 0.03
+        elif args.scenario == "2-B":
+            EnvConfig.NUM_NODES = 30; EnvConfig.NUM_UAVS = 2; EnvConfig.AREA_SIZE = 1000.0; EnvConfig.W_COST = 0.3
+            
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     runtime_env = {"env_vars": {"PYTHONPATH": project_root}}
+    
+    init_kwargs = {
+        "ignore_reinit_error": True,
+        "runtime_env": runtime_env,
+        "_system_config": {"num_heartbeats_timeout": 600}
+    }
+    if args.ray_address:
+        init_kwargs["address"] = args.ray_address
+    else:
+        init_kwargs["num_gpus"] = 1
+        
     try:
-        ray.init(
-            num_gpus=1,
-            ignore_reinit_error=True,
-            runtime_env=runtime_env,
-            _system_config={
-                "num_heartbeats_timeout": 600,
-            }
-        )
+        ray.init(**init_kwargs)
     except Exception:
-        ray.init(
-            num_gpus=1,
-            ignore_reinit_error=True,
-            runtime_env=runtime_env,
-            _system_config={
-                "num_heartbeats_timeout": 600,
-            }
-        )
+        ray.init(**init_kwargs)
     
     # Reproducibility
     import torch
     import numpy as np
     import random
     from confs.model_config import GlobalConfig, PPOLSTMConfig
+    from confs.env_config import EnvConfig
     
     torch.set_num_threads(2)
     random.seed(GlobalConfig.RANDOM_SEED)
@@ -117,9 +143,18 @@ if __name__ == "__main__":
     node_obs = dummy_env.observation_space("node_0")
     node_act = dummy_env.action_space("node_0")
     
+    # Configure env_config to pass scenario variables to remote rollout workers
+    env_cfg = {
+        "seed": GlobalConfig.RANDOM_SEED,
+        "num_nodes": dummy_env.area_size * 0.0 + EnvConfig.NUM_NODES, # dynamic reference
+        "num_uavs": EnvConfig.NUM_UAVS,
+        "area_size": EnvConfig.AREA_SIZE,
+        "w_cost": EnvConfig.W_COST
+    }
+    
     config = (
         PPOConfig()
-        .environment("uav_iot_ppo_lstm_v1", env_config={"seed": GlobalConfig.RANDOM_SEED})
+        .environment("uav_iot_ppo_lstm_v1", env_config=env_cfg)
         .framework("torch")
         .debugging(seed=GlobalConfig.RANDOM_SEED)
         .env_runners(

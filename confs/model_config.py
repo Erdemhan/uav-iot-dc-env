@@ -53,7 +53,7 @@ class GlobalConfig:
     CHECKPOINT_SCORE_ATTR = "env_runners/episode_reward_mean" # Checkpoint'leri sıralamak için kullanılan performans metriği
 
     # Shared Resource Parameters
-    NUM_WORKERS = 5      # Number of parallel rollout workers
+    NUM_WORKERS = 10     # Number of parallel rollout workers
     USE_GPU = True       # GPU enabled or disabled (e.g. GTX 3080 with CUDA 12.1)
 
     
