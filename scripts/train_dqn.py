@@ -214,15 +214,11 @@ if __name__ == "__main__":
     
     analysis = tune.run(
         "DQN", 
-        name="DQN_EXPERIMENT",
+        name=f"DQN_{args.scenario}",
         config=config.to_dict(),
         stop=stopper, 
-        checkpoint_at_end=True,
-        checkpoint_freq=GlobalConfig.CHECKPOINT_FREQ,
-        keep_checkpoints_num=GlobalConfig.KEEP_CHECKPOINTS_NUM,
-        checkpoint_score_attr=GlobalConfig.CHECKPOINT_SCORE_ATTR,
-        storage_path=storage_path,
-        sync_config=tune.SyncConfig(syncer=None),
+        checkpoint_at_end=False,
+        checkpoint_freq=0,
         trial_dirname_creator=lambda trial: f"t_{trial.trial_id}",
         callbacks=[ProgressCallback()]
     )

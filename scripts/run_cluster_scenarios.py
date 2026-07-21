@@ -36,6 +36,33 @@ def wait_for_processes(processes_dict):
         time.sleep(5)
     print("All processes in this batch have finished!\n")
 
+def copy_ray_progress_to_run_dir(scenario, algo, target_dir):
+    """Finds the latest progress.csv under ~/ray_results/{algo_prefix}_{scenario}/t_*/progress.csv and copies it"""
+    import shutil
+    import glob
+    home = os.path.expanduser("~")
+    ray_results_dir = os.path.join(home, "ray_results")
+    
+    algo_prefixes = {
+        "ppo": "PPO",
+        "dqn": "DQN",
+        "ppo_lstm": "PPO_LSTM"
+    }
+    prefix = algo_prefixes.get(algo)
+    if not prefix:
+        return
+        
+    search_pattern = os.path.join(ray_results_dir, f"{prefix}_{scenario}", "t_*", "progress.csv")
+    csv_files = glob.glob(search_pattern)
+    if not csv_files:
+        print(f"Warning: No progress.csv found for {scenario} {algo} using pattern: {search_pattern}")
+        return
+        
+    newest_csv = max(csv_files, key=os.path.getmtime)
+    os.makedirs(target_dir, exist_ok=True)
+    shutil.copy2(newest_csv, os.path.join(target_dir, "progress.csv"))
+    print(f"Successfully copied {newest_csv} -> {os.path.join(target_dir, 'progress.csv')}")
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Orchestrate Scenario 1 and 2 runs across the 6-PC Ray Cluster")
@@ -98,6 +125,12 @@ def main():
         active_s1[name] = (p, f)
         
     wait_for_processes(active_s1)
+    
+    # Copy RLlib progress logs from ~/ray_results
+    print("Collecting Scenario 1 progress logs from Ray results...")
+    for scen in ["1-A", "1-B"]:
+        for algo in ["ppo", "dqn", "ppo_lstm"]:
+            copy_ray_progress_to_run_dir(scen, algo, os.path.join(run_dir, f"S{scen}", algo))
 
     # ----------------------------------------------------
     # LOCAL BASELINES FOR SCENARIO 1 (QJC)
@@ -159,6 +192,12 @@ def main():
         active_s2[name] = (p, f)
         
     wait_for_processes(active_s2)
+    
+    # Copy RLlib progress logs from ~/ray_results
+    print("Collecting Scenario 2 progress logs from Ray results...")
+    for scen in ["2-A", "2-B"]:
+        for algo in ["ppo", "dqn", "ppo_lstm"]:
+            copy_ray_progress_to_run_dir(scen, algo, os.path.join(run_dir, f"S{scen}", algo))
 
     # ----------------------------------------------------
     # LOCAL BASELINES FOR SCENARIO 2 (QJC)

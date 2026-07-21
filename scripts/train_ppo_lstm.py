@@ -194,15 +194,11 @@ if __name__ == "__main__":
     
     analysis = tune.run(
         "PPO", # Still PPO algo, just configured with LSTM
-        name="PPO_LSTM",
+        name=f"PPO_LSTM_{args.scenario}",
         config=config.to_dict(),
         stop=stopper, 
-        checkpoint_at_end=True,
-        checkpoint_freq=GlobalConfig.CHECKPOINT_FREQ,
-        keep_checkpoints_num=GlobalConfig.KEEP_CHECKPOINTS_NUM,
-        checkpoint_score_attr=GlobalConfig.CHECKPOINT_SCORE_ATTR,
-        storage_path=os.path.abspath(args.output_dir),
-        sync_config=tune.SyncConfig(syncer=None),
+        checkpoint_at_end=False,
+        checkpoint_freq=0,
         trial_dirname_creator=lambda trial: f"t_{trial.trial_id}",
         callbacks=[ProgressCallback()]
     )
