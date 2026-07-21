@@ -695,13 +695,24 @@ if __name__ == "__main__":
     if not run_dir or not os.path.exists(run_dir):
         run_dir = get_project_root()
         
-    start_dashboard(run_dir, "standalone")
+    DashboardState.run_dir = run_dir
+    DashboardState.timestamp = "standalone"
+    DashboardState.target_page = "index.html"
+    DashboardState.stage = "TRAINING"
+    DashboardState.start_time = time.time()
     
-    # Block main thread since server runs in a daemon thread
-    print(f"[DASHBOARD] Server is running. Access it at http://<HEAD_NODE_IP>:{DashboardState.port}")
-    print("Press Ctrl+C to stop.")
+    # Update active run file
     try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        stop_dashboard()
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(base_dir)
+        active_file = os.path.join(project_root, "dashboard_active_run.txt")
+        abs_run_dir = os.path.abspath(run_dir)
+        with open(active_file, "w", encoding="utf-8") as f:
+            f.write(abs_run_dir)
+        print(f"[DASHBOARD] Updated active run directory to: {abs_run_dir}")
+    except Exception as e:
+        print(f"[DASHBOARD] Warning: Could not write active run file: {e}")
+        
+    # Run the server synchronously on the main thread so crashes are printed to console
+    print("[DASHBOARD] Starting server synchronously on main thread for debugging...")
+    run_server()
