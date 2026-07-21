@@ -1293,7 +1293,7 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 let queryRun = urlParams.get('run');
                 
-                const trainingRuns = (data.runs || []).filter(r => r.type === 'training');
+                const trainingRuns = data.runs || [];
                 
                 if (trainingRuns.length === 0) {
                     select.innerHTML = '<option value="">No Runs Found</option>';
