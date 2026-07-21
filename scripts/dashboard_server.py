@@ -538,7 +538,7 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             # Map algorithm names to folders and config keys
             algos = {
                 "Baseline": {
-                    "csv_finder": lambda: os.path.join(run_dir, "baseline", "training_curve.csv"),
+                    "csv_finder": lambda: os.path.join(run_dir, "qjc", "training_curve.csv") if os.path.exists(os.path.join(run_dir, "qjc", "training_curve.csv")) else os.path.join(run_dir, "baseline", "training_curve.csv"),
                     "parser": parse_baseline_progress
                 },
                 "PPO": {
