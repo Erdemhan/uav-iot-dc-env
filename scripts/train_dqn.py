@@ -219,7 +219,7 @@ if __name__ == "__main__":
         stop=stopper, 
         checkpoint_at_end=True,
         checkpoint_freq=GlobalConfig.CHECKPOINT_FREQ,
-        local_dir=args.output_dir,
+        storage_path=os.path.abspath(args.output_dir),
         trial_dirname_creator=lambda trial: f"t_{trial.trial_id}",
         callbacks=[ProgressCallback()]
     )
