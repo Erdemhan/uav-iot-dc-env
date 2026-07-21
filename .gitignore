@@ -228,6 +228,7 @@ check_fairness.py
 baseline_q_table
 
 #Scientific Paper
+head-node-logs/
 paper/
 liaovd(2025).txt
 node_modules/

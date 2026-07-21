@@ -106,8 +106,7 @@ if __name__ == "__main__":
     
     init_kwargs = {
         "ignore_reinit_error": True,
-        "runtime_env": runtime_env,
-        "_system_config": {"num_heartbeats_timeout": 600}
+        "runtime_env": runtime_env
     }
     if args.ray_address:
         init_kwargs["address"] = args.ray_address
