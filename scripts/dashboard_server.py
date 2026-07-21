@@ -124,6 +124,7 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             
             if os.path.exists(resolved_run_dir):
                 run_dir = resolved_run_dir
+                DashboardState.run_dir = resolved_run_dir # Persist selected run directory
             else:
                 run_dir = get_active_run_dir()
         else:
