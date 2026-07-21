@@ -182,7 +182,7 @@ if __name__ == "__main__":
             double_q=DQNHyperparams.DOUBLE_Q,
             dueling=DQNHyperparams.DUELING,
             replay_buffer_config={
-                "type": "MultiAgentReplayBuffer",
+                "type": "ReplayBuffer",
                 "capacity": DQNHyperparams.REPLAY_BUFFER_CAPACITY,
             },
             num_steps_sampled_before_learning_starts=DQNHyperparams.NUM_STEPS_SAMPLED_BEFORE_LEARNING_STARTS,
