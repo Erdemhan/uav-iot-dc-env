@@ -132,6 +132,7 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
 
         # Serve list of runs
         if path == "/api/list_runs":
+            print(f"[DEBUG] /api/list_runs called. project_root={project_root}")
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -148,6 +149,7 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             
             seen_ids = set()
             for run_group, folder_path in search_paths:
+                print(f"  [DEBUG] Scanning run_group={run_group}, path={folder_path}, exists={os.path.isdir(folder_path)}")
                 if not os.path.isdir(folder_path):
                     continue
                 for item in os.listdir(folder_path):
@@ -160,10 +162,12 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                     # For scenario_runs and head-node-logs, scan one level deeper to find S1-A, S1-B, S2-A, S2-B
                     if run_group in ["scenario_runs", "head-node-logs"]:
                         try:
+                            print(f"    [DEBUG] Scanning scenario subfolders for: {item} under {item_path}")
                             for sub_item in os.listdir(item_path):
                                 sub_item_path = os.path.join(item_path, sub_item)
                                 if not os.path.isdir(sub_item_path):
                                     continue
+                                print(f"      [DEBUG] Found folder: {sub_item}")
                                 if sub_item in ["S1-A", "S1-B", "S2-A", "S2-B"]:
                                     run_id = f"{run_group}/{item}/{sub_item}"
                                     if run_id in seen_ids:
@@ -177,8 +181,9 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                                         "date_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime))
                                     })
                                     seen_ids.add(run_id)
-                        except Exception:
-                            pass
+                                    print(f"        [DEBUG] Added run_id: {run_id}")
+                        except Exception as e:
+                            print(f"    [DEBUG] Exception in scenario subfolder scan: {e}")
                     else:
                         run_id = item
                         if run_group != "legacy":
@@ -189,6 +194,7 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                             
                         meta_path = os.path.join(item_path, "metadata.json")
                         status_path = os.path.join(item_path, "status.json")
+                        print(f"    [DEBUG] Checking normal folder: {item}, metadata_exists={os.path.exists(meta_path)}, status_exists={os.path.exists(status_path)}")
                         if os.path.exists(meta_path) or os.path.exists(status_path):
                             run_type = "training"
                             algo_name = ""
@@ -214,8 +220,10 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                                 "date_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime))
                             })
                             seen_ids.add(run_id)
+                            print(f"      [DEBUG] Added normal run_id: {run_id}")
             # Sort by mtime descending
             runs.sort(key=lambda x: x["mtime"], reverse=True)
+            print(f"[DEBUG] list_runs output: {[r['id'] for r in runs]}")
             self.wfile.write(json.dumps({"runs": runs}).encode("utf-8"))
             return
 
@@ -516,6 +524,7 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
 
         # Serve real-time progress
         if path == "/api/progress":
+            print(f"[DEBUG] /api/progress called. run_dir={run_dir}")
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             # Avoid caching
@@ -584,6 +593,7 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             
             for name, config in algos.items():
                 csv_path = config["csv_finder"]()
+                print(f"    [DEBUG] Algo: {name}, resolved_csv={csv_path}, exists={os.path.exists(csv_path) if csv_path else False}")
                 history, reward, steps = config["parser"](csv_path)
                 
                 status = "PENDING"

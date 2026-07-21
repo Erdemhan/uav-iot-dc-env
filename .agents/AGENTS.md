@@ -14,3 +14,7 @@
 
 - **Max 50 Iterations for Testing:** When writing/running scratch scripts, debug scripts, or test command runs to verify code changes, always limit the run length to a maximum of 50 iterations (or equivalent episodes/steps) to prevent unnecessary delays.
 
+## Debugging and Problem Solving Guidelines
+
+- **No Guesswork on Failures:** When a failure or unexpected behavior occurs (e.g., server connection issues, empty data grids, path resolution errors), never guess the cause or propose speculative solutions. Always add comprehensive debug logs, verify exact output states, test raw endpoints locally, and identify the root cause before implementing any code changes.
+
