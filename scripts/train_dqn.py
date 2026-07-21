@@ -102,7 +102,11 @@ if __name__ == "__main__":
             EnvConfig.NUM_NODES = 30; EnvConfig.NUM_UAVS = 2; EnvConfig.AREA_SIZE = 1000.0; EnvConfig.W_COST = 0.3
             
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    runtime_env = {"env_vars": {"PYTHONPATH": project_root}}
+    runtime_env = {
+        "working_dir": project_root,
+        "excludes": [".venv", "artifacts", "ray_results", "head-node-logs", ".git", "baseline_q_table", "node_modules"],
+        "env_vars": {"PYTHONPATH": "."}
+    }
     
     init_kwargs = {
         "ignore_reinit_error": True,
