@@ -117,11 +117,12 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         if run_param:
             # Normalize path delimiters for windows/linux and prevent directory traversal
             clean_run_param = run_param.replace("\\", "/").strip("/")
-            resolved_run_dir = os.path.abspath(os.path.join(project_root, "artifacts", clean_run_param))
-            artifacts_dir = os.path.abspath(os.path.join(project_root, "artifacts"))
+            if clean_run_param.startswith("artifacts") or clean_run_param.startswith("head-node-logs"):
+                resolved_run_dir = os.path.abspath(os.path.join(project_root, clean_run_param))
+            else:
+                resolved_run_dir = os.path.abspath(os.path.join(project_root, "artifacts", clean_run_param))
             
-            # Use normcase to handle drive letter case mismatch (c: vs C:) on Windows
-            if os.path.normcase(resolved_run_dir).startswith(os.path.normcase(artifacts_dir)) and os.path.exists(resolved_run_dir):
+            if os.path.exists(resolved_run_dir):
                 run_dir = resolved_run_dir
             else:
                 run_dir = get_active_run_dir()
