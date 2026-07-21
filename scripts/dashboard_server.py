@@ -525,6 +525,15 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         # Serve real-time progress
         if path == "/api/progress":
             print(f"[DEBUG] /api/progress called. run_dir={run_dir}")
+            if os.path.exists(run_dir):
+                try:
+                    print(f"  [DEBUG] Contents of run_dir {run_dir}: {os.listdir(run_dir)}")
+                    for sub in os.listdir(run_dir):
+                        sub_path = os.path.join(run_dir, sub)
+                        if os.path.isdir(sub_path):
+                            print(f"    [DEBUG] Contents of subfolder {sub}: {os.listdir(sub_path)}")
+                except Exception as e:
+                    print(f"  [DEBUG] Error listing run_dir: {e}")
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             # Avoid caching
@@ -640,12 +649,36 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(b"404 Not Found")
 
     def _find_rllib_progress(self, run_dir, subfolder):
-        # Check direct path first (harvested runs)
+        # 1. Check direct path first (harvested runs after completion)
         direct_path = os.path.join(run_dir, subfolder, "progress.csv")
         if os.path.exists(direct_path):
             return direct_path
             
-        # Fallback to recursive glob (raw tune results)
+        # 2. Live fallback: Check active ray_results on head node if training is still running
+        try:
+            scenario = os.path.basename(run_dir)
+            if scenario.startswith("S"):
+                scenario = scenario[1:] # convert "S1-A" to "1-A"
+                
+            algo_prefixes = {
+                "ppo": "PPO",
+                "dqn": "DQN",
+                "ppo_lstm": "PPO_LSTM"
+            }
+            prefix = algo_prefixes.get(subfolder)
+            if prefix:
+                home = os.path.expanduser("~")
+                ray_results_dir = os.path.join(home, "ray_results")
+                search_pattern = os.path.join(ray_results_dir, f"{prefix}_{scenario}", "**", "progress.csv")
+                files = glob.glob(search_pattern, recursive=True)
+                if files:
+                    newest = max(files, key=os.path.getmtime)
+                    print(f"      [DEBUG] Live progress fallback found: {newest}")
+                    return newest
+        except Exception as e:
+            print(f"      [DEBUG] Error in live progress fallback: {e}")
+            
+        # 3. Fallback to recursive glob in run_dir
         pattern = os.path.join(run_dir, subfolder, "**", "progress.csv")
         files = glob.glob(pattern, recursive=True)
         if files:
