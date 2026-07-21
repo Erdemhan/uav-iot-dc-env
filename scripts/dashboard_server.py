@@ -141,6 +141,8 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             search_paths = [
                 ("training", os.path.join(project_root, "artifacts", "training")),
                 ("tune", os.path.join(project_root, "artifacts", "tune")),
+                ("scenario_runs", os.path.join(project_root, "artifacts", "scenario_runs")),
+                ("head-node-logs", os.path.join(project_root, "head-node-logs")),
                 ("legacy", os.path.join(project_root, "artifacts"))
             ]
             
