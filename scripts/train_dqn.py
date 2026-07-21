@@ -212,24 +212,25 @@ if __name__ == "__main__":
     
     stopper = EarlyStoppingStopper()
     
-    node_ip = ray.util.get_node_ip_address()
-    node_key = f"node:{node_ip}"
-    resources_per_trial = {"cpu": 1, node_key: 0.001}
-    if GlobalConfig.USE_GPU:
-        resources_per_trial["gpu"] = 1
-
     analysis = tune.run(
         "DQN", 
         name=f"DQN_{args.scenario}",
         config=config.to_dict(),
         stop=stopper, 
-        checkpoint_at_end=True,
-        checkpoint_freq=GlobalConfig.CHECKPOINT_FREQ,
-        storage_path=os.path.abspath(args.output_dir),
-        resources_per_trial=resources_per_trial,
+        checkpoint_at_end=False,
+        checkpoint_freq=0,
         trial_dirname_creator=lambda trial: f"t_{trial.trial_id}",
         callbacks=[ProgressCallback()]
     )
+    
+    try:
+        if analysis and hasattr(analysis, "best_trial") and analysis.best_trial and hasattr(analysis.best_trial, "runner") and analysis.best_trial.runner:
+            ckpt_dir = os.path.abspath(os.path.join(args.output_dir, "checkpoint_001000"))
+            print(f"Saving final model checkpoint to {ckpt_dir}...")
+            ray.get(analysis.best_trial.runner.save.remote(ckpt_dir))
+            print(f"Successfully saved checkpoint to {ckpt_dir}")
+    except Exception as e:
+        print(f"Warning: Could not save final checkpoint: {e}")
     
     print("DQN Training Completed.")
     ray.shutdown()
