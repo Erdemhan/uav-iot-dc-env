@@ -1295,7 +1295,7 @@
                 
                 const trainingRuns = data.runs || [];
                 
-                if (trainingRuns.length === 0) {
+                if (trainingRuns.length === 0 && !queryRun) {
                     select.innerHTML = '<option value="">No Runs Found</option>';
                     return;
                 }
@@ -1307,9 +1307,15 @@
                     select.appendChild(opt);
                 });
                 
-                if (queryRun && trainingRuns.some(r => r.id === queryRun)) {
+                if (queryRun) {
                     selectedRunId = queryRun;
-                } else {
+                    if (!trainingRuns.some(r => r.id === queryRun)) {
+                        const opt = document.createElement('option');
+                        opt.value = queryRun;
+                        opt.innerText = queryRun;
+                        select.appendChild(opt);
+                    }
+                } else if (trainingRuns.length > 0) {
                     selectedRunId = trainingRuns[0].id;
                 }
                 select.value = selectedRunId;
