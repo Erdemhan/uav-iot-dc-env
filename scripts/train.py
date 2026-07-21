@@ -189,6 +189,11 @@ if __name__ == "__main__":
     
     stopper = EarlyStoppingStopper()
     
+    node_key = ray.util.get_current_node_resource_key()
+    resources_per_trial = {"cpu": 1, node_key: 0.001}
+    if GlobalConfig.USE_GPU:
+        resources_per_trial["gpu"] = 1
+
     analysis = tune.run(
         "PPO",
         name=f"PPO_{args.scenario}",
@@ -197,6 +202,7 @@ if __name__ == "__main__":
         checkpoint_at_end=True,
         checkpoint_freq=GlobalConfig.CHECKPOINT_FREQ,
         storage_path=os.path.abspath(args.output_dir),
+        resources_per_trial=resources_per_trial,
         trial_dirname_creator=lambda trial: f"t_{trial.trial_id}",
         callbacks=[ProgressCallback()]
     )
