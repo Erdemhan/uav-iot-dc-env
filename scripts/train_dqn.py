@@ -37,7 +37,7 @@ def env_creator(config):
     env = UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS)
     return ParallelPettingZooEnv(env)
 
-from ray.tune import Callback, SyncConfig
+from ray.tune import Callback
 from ray.tune.stopper import Stopper
 
 class EarlyStoppingStopper(Stopper):
@@ -219,7 +219,7 @@ if __name__ == "__main__":
         stop=stopper, 
         checkpoint_at_end=True,
         checkpoint_freq=GlobalConfig.CHECKPOINT_FREQ,
-        sync_config=SyncConfig(syncer=None),
+        local_dir=args.output_dir,
         trial_dirname_creator=lambda trial: f"t_{trial.trial_id}",
         callbacks=[ProgressCallback()]
     )
