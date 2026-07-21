@@ -5,17 +5,13 @@ from confs.env_config import EnvConfig
 
 
 
-def calculate_path_loss(d: float, fc: float = UAVConfig.FC, eta: float = UAVConfig.ETA) -> float:
+def calculate_path_loss(d: float = 1.0, fc: float = UAVConfig.FC) -> float:
     """
-    Channel Gain (beta_0) calculation.
-    Depending on frequency (fc).
+    Reference Channel Gain (beta_0) calculation at reference distance d0 = 1m.
+    beta_0(fc) = (c / (4 * pi * fc))^2
     """
     c = UAVConfig.C
-    # wavelength lambda
-    lam = c / fc
-    
-    # Path Loss Coeff (Friis based)
-    beta_0 = (1 / eta) * ( (4 * np.pi * fc) / c )**(-2)
+    beta_0 = (c / (4 * np.pi * fc))**2
     return beta_0
 
 def calculate_jammer_power_consumption(p_jam_out: float, frequency: float) -> float:
@@ -26,13 +22,14 @@ def calculate_jammer_power_consumption(p_jam_out: float, frequency: float) -> fl
     return p_jam_out
 
 
-def calculate_received_power(p_tx: float, d: float, beta_0: float) -> float:
+def calculate_received_power(p_tx: float, d: float, beta_0: float, eta: float = UAVConfig.ETA) -> float:
     """
-    Received Power (P_rx) = P_tx * beta_0 / d^2
+    Received Power (P_rx) = P_tx * beta_0 / (d^eta)
     To avoid d=0 issue, d is taken as at least 1m.
+    For Free Space Path Loss (FSPL), eta = 2.0.
     """
     d = np.maximum(d, 1.0)
-    return p_tx * beta_0 / (d**2)
+    return p_tx * beta_0 / (d**eta)
 
 def calculate_sinr(p_rx: float, noise_power: float, jamming_power: float) -> float:
     """

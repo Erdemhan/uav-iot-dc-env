@@ -63,10 +63,10 @@ class QJCConfig:
     Parameters for the Baseline QJC Algorithm (Liao et al. 2025).
     Used in simulation/entities.py and train_baseline.py
     """
-    TAU_0 = 1e-4          # Base Learning Rate
-    GAMMA = 0.9          # Discount Factor
-    TEMP_XI = 5.0        # Softmax Temperature (Xi)
-    MU_OFFSET = 1.1      # Offset for log calculation (mu + offset)
+    TAU_0     = 0.399    # Başlangıç sıcaklık sabiti  | HPO: tune_qjc_phase1_2026-07-21_11-36-04/optuna/best_params.json
+    GAMMA     = 0.887    # İskonto faktörü             | HPO: tune_qjc_phase1_2026-07-21_11-36-04/optuna/best_params.json
+    TEMP_XI   = 1.303    # Sıcaklık bozunma katsayısı | HPO: tune_qjc_phase1_2026-07-21_11-36-04/optuna/best_params.json
+    MU_OFFSET = 1.475    # Kanal merkezi kayma ofseti | HPO: tune_qjc_phase1_2026-07-21_11-36-04/optuna/best_params.json
     TRAIN_EPISODES = GlobalConfig.TRAIN_ITERATIONS * 10  # Baseline episodes (200 episodes @ 100 steps each = 20k steps)
     SAVE_PATH = "baseline_q_table"          # Path to save Q-table
     MAX_POWER_LEVEL = 9                     # Maximum jammer power level (0-9)
@@ -77,57 +77,57 @@ class PPOConfig:
     Used in train.py
     """
 
-    # PPO Hyperparameters
-    LR = 1e-4            # Learning Rate
-    GAMMA = 0.9          # Discount Factor (harmonized with QJC/DQN)
+    # PPO Hyperparameters  |  Kaynak: tune_ppo_phase1_2026-07-17_17-50-43  |  Obj: 16.43
+    LR    = 6.976e-4     # Öğrenme oranı   | HPO: tune_ppo_phase1_2026-07-17_17-50-43/tune_results
+    GAMMA = 0.906        # İskonto faktörü | HPO: tune_ppo_phase1_2026-07-17_17-50-43/tune_results
     TRAIN_BATCH_SIZE = 1000
     ROLLOUT_FRAGMENT_LENGTH = 100
     
     # Model Architecture
-    FCNET_HIDDENS = [256, 256]  # Fully connected hidden layers
+    FCNET_HIDDENS = [512, 256]  # Huni mimarisi (daralan) | HPO: tune_ppo_phase1_2026-07-17_17-50-43/tune_results
 
 class DQNConfig:
     """
     Parameters for Ray RLLib DQN Training.
     Used in train_dqn.py
     """
-    # DQN Hyperparameters
-    LR = 1e-4              # Learning Rate
-    GAMMA = 0.9            # Discount Factor (harmonized with QJC/PPO)
+    # DQN Hyperparameters  |  Kaynak: tune_dqn_phase1_2026-07-18_18-03-23  |  Obj: 14.80
+    LR    = 3.204e-4     # Öğrenme oranı   | HPO: tune_dqn_phase1_2026-07-18_18-03-23/optuna/best_params.json
+    GAMMA = 0.872        # İskonto faktörü | HPO: tune_dqn_phase1_2026-07-18_18-03-23/optuna/best_params.json
     TRAIN_BATCH_SIZE = 1000
     ROLLOUT_FRAGMENT_LENGTH = 100
     
     # DQN-Specific Parameters
-    TARGET_NETWORK_UPDATE_FREQ = 500  # Update target network every N steps
-    DOUBLE_Q = True                   # Use Double DQN
-    DUELING = True                    # Use Dueling DQN
-    REPLAY_BUFFER_CAPACITY = 50000    # Replay buffer size
+    TARGET_NETWORK_UPDATE_FREQ = 2000  # Her N adımda hedef ağ güncelleme | HPO: tune_dqn_phase1_2026-07-18_18-03-23/optuna/best_params.json
+    DOUBLE_Q = True                    # Use Double DQN
+    DUELING = True                     # Use Dueling DQN
+    REPLAY_BUFFER_CAPACITY = 50000     # Replay buffer size
     
     # Training Control (CRITICAL for speed)
     NUM_STEPS_SAMPLED_BEFORE_LEARNING_STARTS = 0  # Start training after collecting initial samples
     TRAINING_INTENSITY = None           # Natural intensity (train_batch_size / (rollout_fragment_length * num_env_runners))
     
     # Model Architecture
-    FCNET_HIDDENS = [256, 256]  # Fully connected hidden layers
+    FCNET_HIDDENS = [128, 512, 512]  # Genişleyen mimari | HPO: tune_dqn_phase1_2026-07-18_18-03-23/optuna/best_params.json
 
 class PPOLSTMConfig:
     """
     Parameters for PPO with LSTM (Recurrent Policy).
     Used in train_ppo_lstm.py
     """
-    # Inherit basic PPO params (could also subclass, but explicit is safer for now)
-    LR = 1e-4
-    GAMMA = 0.9
+    # PPO-LSTM Hyperparameters  |  Kaynak: tune_ppo_lstm_phase1_2026-07-18_19-28-57  |  Obj: 15.14
+    LR    = 5.556e-4     # Öğrenme oranı   | HPO: tune_ppo_lstm_phase1_2026-07-18_19-28-57/optuna/best_params.json
+    GAMMA = 0.865        # İskonto faktörü | HPO: tune_ppo_lstm_phase1_2026-07-18_19-28-57/optuna/best_params.json
     TRAIN_BATCH_SIZE = 1000
     ROLLOUT_FRAGMENT_LENGTH = 100
     
     # LSTM Specifics
     USE_LSTM = True
-    LSTM_CELL_SIZE = 256
-    MAX_SEQ_LEN = 20
+    LSTM_CELL_SIZE = 128  # LSTM hücre boyutu | HPO: tune_ppo_lstm_phase1_2026-07-18_19-28-57/optuna/best_params.json
+    MAX_SEQ_LEN    = 20   # BPTT dizisi uzunluğu | HPO: tune_ppo_lstm_phase1_2026-07-18_19-28-57/optuna/best_params.json
     
     # Model Architecture
-    FCNET_HIDDENS = [256, 256]
+    FCNET_HIDDENS = [256, 512, 512]  # Genişleyen mimari | HPO: tune_ppo_lstm_phase1_2026-07-18_19-28-57/optuna/best_params.json
 
 
 # Helper to dynamically override configurations with tuned parameters if they exist

@@ -1,26 +1,32 @@
 {
+    "_source": {
+        "ppo":      "artifacts/opt-full/tune_ppo_phase1_2026-07-17_17-50-43/optuna/",
+        "dqn":      "artifacts/opt-full/tune_dqn_phase1_2026-07-18_18-03-23/optuna/best_params.json",
+        "ppo_lstm": "artifacts/opt-full/tune_ppo_lstm_phase1_2026-07-18_19-28-57/optuna/best_params.json",
+        "qjc":      "artifacts/opt-full/tune_qjc_phase1_2026-07-21_11-36-04/optuna/best_params.json"
+    },
     "ppo": {
-        "lr": 0.0006975966228982835,
-        "gamma": 0.9062519087603899,
+        "lr":           0.0006975966228982835,
+        "gamma":        0.9062519087603899,
         "architecture": "512,256"
     },
     "dqn": {
-        "lr": 0.0005390902966851641,
-        "gamma": 0.9049256152850913,
-        "architecture": "512,256,256",
-        "target_network_update_freq": 200
+        "lr":                        0.0003204387357042751,
+        "gamma":                     0.8721224348952492,
+        "architecture":              "128,512,512",
+        "target_network_update_freq": 2000
     },
     "ppo_lstm": {
-        "lr": 7.434458739771462e-05,
-        "gamma": 0.8615512851057706,
-        "architecture": "256,128,256",
-        "lstm_cell_size": 32,
-        "max_seq_len": 20
+        "lr":            0.000555620233980527,
+        "gamma":         0.8649384081951536,
+        "architecture":  "256,512,512",
+        "lstm_cell_size": 128,
+        "max_seq_len":    20
     },
     "qjc": {
-        "tau_0": 0.19545294942318395,
-        "gamma": 0.9743938626362372,
-        "temp_xi": 1.84198199266924,
-        "mu_offset": 1.155061003590864
+        "tau_0":     0.39901828703273473,
+        "gamma":     0.8873107877489342,
+        "temp_xi":   1.302940957162261,
+        "mu_offset": 1.475341586361705
     }
 }
