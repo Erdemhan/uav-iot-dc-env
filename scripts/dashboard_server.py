@@ -607,6 +607,12 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(b"404 Not Found")
 
     def _find_rllib_progress(self, run_dir, subfolder):
+        # Check direct path first (harvested runs)
+        direct_path = os.path.join(run_dir, subfolder, "progress.csv")
+        if os.path.exists(direct_path):
+            return direct_path
+            
+        # Fallback to recursive glob (raw tune results)
         pattern = os.path.join(run_dir, subfolder, "**", "progress.csv")
         files = glob.glob(pattern, recursive=True)
         if files:
