@@ -680,3 +680,26 @@ def stop_dashboard():
         DashboardState.server_instance.shutdown()
         DashboardState.server_instance.server_close()
         print("[DASHBOARD] Stopped server.")
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--run-dir", type=str, default=None, help="Path to scenario run directory")
+    args = parser.parse_args()
+    
+    run_dir = args.run_dir
+    if not run_dir:
+        run_dir = get_active_run_dir()
+    if not run_dir or not os.path.exists(run_dir):
+        run_dir = get_project_root()
+        
+    start_dashboard(run_dir, "standalone")
+    
+    # Block main thread since server runs in a daemon thread
+    print(f"[DASHBOARD] Server is running. Access it at http://<HEAD_NODE_IP>:{DashboardState.port}")
+    print("Press Ctrl+C to stop.")
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        stop_dashboard()
