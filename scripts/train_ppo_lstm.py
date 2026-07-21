@@ -202,6 +202,7 @@ if __name__ == "__main__":
         keep_checkpoints_num=GlobalConfig.KEEP_CHECKPOINTS_NUM,
         checkpoint_score_attr=GlobalConfig.CHECKPOINT_SCORE_ATTR,
         storage_path=os.path.abspath(args.output_dir),
+        sync_config=tune.SyncConfig(syncer=None),
         trial_dirname_creator=lambda trial: f"t_{trial.trial_id}",
         callbacks=[ProgressCallback()]
     )
