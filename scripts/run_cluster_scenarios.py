@@ -23,6 +23,7 @@ def wait_for_processes(processes_dict):
     """Wait for a set of processes to finish and report exit statuses"""
     print("\nWaiting for processes to complete...")
     active = list(processes_dict.keys())
+    last_heartbeat = time.time()
     
     while active:
         for name in list(active):
@@ -47,6 +48,13 @@ def wait_for_processes(processes_dict):
                                 print("-----------------------------------")
                     except Exception:
                         pass
+
+        # Print heartbeat every 20 seconds so user knows jobs are actively training
+        if active and (time.time() - last_heartbeat) >= 20:
+            active_list_str = ", ".join(active)
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [Cluster Status] Training in progress across {len(active)} active job(s): {active_list_str}")
+            last_heartbeat = time.time()
+
         time.sleep(5)
     print("All processes in this batch have finished!\n")
 
