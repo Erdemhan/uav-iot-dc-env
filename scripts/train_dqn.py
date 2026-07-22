@@ -3,8 +3,10 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import warnings
 
-# Suppress Ray metrics exporter warnings
+# Suppress Ray metrics exporter warnings and disable cluster storage validation in multi-node mode
 os.environ["RAY_DISABLE_METRICS_EXPORT"] = "1"
+os.environ["RAY_TRAIN_ENABLE_STORAGE_VALIDATION"] = "0"
+os.environ["RAY_CHCKPT_SYNC_TO_DRIVER"] = "1"
 
 # Filter specific warnings to clean up output
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -105,7 +107,7 @@ if __name__ == "__main__":
     runtime_env = {
         "working_dir": project_root,
         "excludes": [".venv", "artifacts", "ray_results", "head-node-logs", ".git", "baseline_q_table", "node_modules"],
-        "env_vars": {"PYTHONPATH": ".", "RAY_CHCKPT_SYNC_TO_DRIVER": "1"}
+        "env_vars": {"PYTHONPATH": ".", "RAY_TRAIN_ENABLE_STORAGE_VALIDATION": "0", "RAY_CHCKPT_SYNC_TO_DRIVER": "1"}
     }
     
     init_kwargs = {
@@ -220,7 +222,7 @@ if __name__ == "__main__":
         checkpoint_at_end=True,
         checkpoint_freq=0,
         storage_path=os.path.expanduser("~/ray_results"),
-        sync_config=tune.SyncConfig(sync_to_driver=True),
+        sync_config=tune.SyncConfig(),
         trial_dirname_creator=lambda trial: f"t_{trial.trial_id}",
         callbacks=[ProgressCallback()]
     )
