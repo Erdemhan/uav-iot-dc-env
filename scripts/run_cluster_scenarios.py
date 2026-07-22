@@ -104,10 +104,8 @@ def main():
     print("#"*80 + "\n")
     
     def make_job_cmd(algo, scenario, output_dir):
-        if args.ray_address:
-            return f"ray job submit --address=http://127.0.0.1:8265 --working-dir=. -- {sys.executable} -u scripts/train.py --algo {algo} --scenario {scenario} --output-dir {output_dir}"
-        else:
-            return f"{sys.executable} -u scripts/train.py --algo {algo} --scenario {scenario} --output-dir {output_dir}"
+        ray_arg = f"--ray-address {args.ray_address}" if args.ray_address else ""
+        return f"{sys.executable} -u scripts/train.py --algo {algo} --scenario {scenario} {ray_arg} --output-dir {output_dir}".strip()
 
     s1_jobs = {
         # Scenario 1-A (Low Power Penalty: w_cost = 0.03)
