@@ -13,7 +13,20 @@ from ray.tune.registry import register_env
 from ray.rllib.env.wrappers.pettingzoo_env import ParallelPettingZooEnv
 
 # Add project root to path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+
+# Initialize Ray with runtime_env so remote worker nodes inherit working_dir and PYTHONPATH
+if not ray.is_initialized():
+    runtime_env = {
+        "working_dir": project_root,
+        "excludes": [".venv", "artifacts", "ray_results", "head-node-logs", ".git", "baseline_q_table", "node_modules"],
+        "env_vars": {"PYTHONPATH": "."}
+    }
+    try:
+        ray.init(address="auto", ignore_reinit_error=True, runtime_env=runtime_env)
+    except Exception:
+        pass
 
 from simulation.pettingzoo_env import UAV_IoT_PZ_Env
 from simulation.controllers import UAVRuleBasedController
@@ -255,19 +268,30 @@ def main():
     # Load env config from metadata
     load_env_config_from_metadata(run_dir_abs)
     
-    # Init Ray once
+    # Init Ray with full runtime_env including working_dir
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    runtime_env = {"env_vars": {"PYTHONPATH": project_root}}
     if not ray.is_initialized():
-        ray.init(
-            ignore_reinit_error=True,
-            log_to_driver=False,
-            runtime_env=runtime_env
-        )
+        runtime_env = {
+            "working_dir": project_root,
+            "excludes": [".venv", "artifacts", "ray_results", "head-node-logs", ".git", "baseline_q_table", "node_modules"],
+            "env_vars": {"PYTHONPATH": "."}
+        }
+        try:
+            ray.init(
+                address="auto",
+                ignore_reinit_error=True,
+                log_to_driver=False,
+                runtime_env=runtime_env
+            )
+        except Exception:
+            pass
         
-    register_env("uav_iot_ppo_v1", env_creator)
-    register_env("uav_iot_dqn_v1", env_creator)
-    register_env("uav_iot_ppo_lstm_v1", env_creator)
+    for name in ["uav_iot_ppo_v1", "uav_iot_dqn_v1", "uav_iot_ppo_lstm_v1", 
+                "uav_iot_ppo_gpu_v1", "uav_iot_dqn_gpu_v1", "uav_iot_ppo_lstm_gpu_v1"]:
+        try:
+            register_env(name, env_creator)
+        except Exception:
+            pass
     
     final_results = {}
     
