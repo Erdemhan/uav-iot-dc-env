@@ -197,7 +197,7 @@ if __name__ == "__main__":
         checkpoint_at_end=True,
         checkpoint_freq=0,
         storage_path=os.path.expanduser("~/ray_results"),
-        sync_config=tune.SyncConfig(syncer=None),
+        sync_config=tune.SyncConfig(sync_to_driver=True),
         trial_dirname_creator=lambda trial: f"t_{trial.trial_id}",
         callbacks=[ProgressCallback()]
     )
