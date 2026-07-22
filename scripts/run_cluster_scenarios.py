@@ -4,6 +4,9 @@ import sys
 import os
 from datetime import datetime
 
+# Ensure project root is in PYTHONPATH
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 def run_cmd(cmd, log_file):
     """Start process and pipe outputs to log file"""
     log_dir = os.path.dirname(log_file)
