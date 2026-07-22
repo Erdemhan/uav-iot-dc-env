@@ -85,11 +85,6 @@ def evaluate_algo(algo_name, run_dir):
             return None
         
         # Ensure custom environment names are registered in Ray Tune registry
-        from ray.tune.registry import register_env
-        from ray.rllib.env.wrappers.pettingzoo_env import ParallelPettingZooEnv
-        from simulation.pettingzoo_env import UAV_IoT_PZ_Env
-        from confs.model_config import GlobalConfig
-
         def eval_env_creator(cfg):
             return ParallelPettingZooEnv(UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS))
 
