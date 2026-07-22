@@ -137,7 +137,10 @@ def main():
     
     # Auto-start Web Dashboard pointing to active run_dir
     try:
-        from scripts.dashboard_server import start_dashboard
+        try:
+            from scripts.dashboard_server import start_dashboard
+        except ImportError:
+            from dashboard_server import start_dashboard
         start_dashboard(run_dir, timestamp, page="index.html")
         print(f"[DASHBOARD] Web Dashboard server automatically launched at http://localhost:5000 (Run Dir: {run_dir})")
     except Exception as e:
