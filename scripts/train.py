@@ -63,7 +63,8 @@ class ClusterGPUTrainer:
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
 
-        for name in [f"uav_iot_{self.algo_name}_v1", f"uav_iot_{self.algo_name}_gpu_v1"]:
+        env_name = f"uav_iot_{self.algo_name}_gpu_v1"
+        for name in [f"uav_iot_{self.algo_name}_v1", env_name]:
             try:
                 register_env(name, env_creator)
             except Exception:
