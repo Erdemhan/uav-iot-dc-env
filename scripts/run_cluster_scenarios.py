@@ -52,10 +52,36 @@ def wait_for_processes(processes_dict):
                     except Exception:
                         pass
 
-        # Print heartbeat every 20 seconds so user knows jobs are actively training
+        # Print heartbeat every 20 seconds so user knows jobs are actively training with current iterations
         if active and (time.time() - last_heartbeat) >= 20:
-            active_list_str = ", ".join(active)
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] [Cluster Status] Training in progress across {len(active)} active job(s): {active_list_str}")
+            from confs.model_config import GlobalConfig
+            total_iters = GlobalConfig.TRAIN_ITERATIONS
+            
+            job_statuses = []
+            for name in active:
+                p, f, log_file = processes_dict[name]
+                run_dir = os.path.dirname(log_file)
+                algo_sub = name.split("_")[-1].lower().replace("-", "_")
+                csv_path = os.path.join(run_dir, algo_sub, "progress.csv")
+                
+                curr_iter = 0
+                curr_reward = "N/A"
+                if os.path.exists(csv_path) and os.path.getsize(csv_path) > 0:
+                    try:
+                        import csv
+                        with open(csv_path, "r", encoding="utf-8") as csv_f:
+                            rows = list(csv.DictReader(csv_f))
+                            if rows:
+                                curr_iter = len(rows)
+                                r_val = float(rows[-1].get("episode_reward_mean", 0.0))
+                                curr_reward = f"{r_val:.2f}"
+                    except Exception:
+                        pass
+                
+                job_statuses.append(f"{name}: Iter {curr_iter}/{total_iters} (Reward: {curr_reward})")
+            
+            status_str = " | ".join(job_statuses)
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [Cluster Status] Active jobs ({len(active)}): {status_str}")
             last_heartbeat = time.time()
 
         time.sleep(5)
