@@ -207,40 +207,40 @@ if __name__ == "__main__":
         .experimental(_validate_config=False)
     )
  
-    # Run Training
-    print(f"Iterations: {GlobalConfig.TRAIN_ITERATIONS}")
+    # Direct RLlib Training Loop (Without Ray Tune overhead)
+    algo = config.build()
+    print(f"Starting DQN training for scenario {args.scenario} ({GlobalConfig.TRAIN_ITERATIONS} iterations)...")
     
-    stopper = EarlyStoppingStopper()
+    best_reward = -float('inf')
+    no_improvement_count = 0
     
-    analysis = tune.run(
-        "DQN", 
-        name=f"DQN_{args.scenario}",
-        config=config.to_dict(),
-        stop=stopper, 
-        checkpoint_at_end=False,
-        checkpoint_freq=0,
-        trial_dirname_creator=lambda trial: f"t_{trial.trial_id}",
-        callbacks=[ProgressCallback()]
-    )
-    
-    try:
-        if analysis and hasattr(analysis, "best_trial") and analysis.best_trial and hasattr(analysis.best_trial, "runner") and analysis.best_trial.runner:
-            ckpt_dir = os.path.abspath(os.path.join(args.output_dir, "checkpoint_001000"))
-            os.makedirs(ckpt_dir, exist_ok=True)
-            print(f"Fetching trained weights from worker to Head Node...")
-            weights = ray.get(analysis.best_trial.runner.get_weights.remote())
-            
-            print(f"Saving model checkpoint locally on Head Node to {ckpt_dir}...")
-            local_algo = config.build()
-            local_algo.set_weights(weights)
-            if hasattr(local_algo, "save_to_path"):
-                local_algo.save_to_path(ckpt_dir)
+    for i in range(1, GlobalConfig.TRAIN_ITERATIONS + 1):
+        result = algo.train()
+        reward = result.get("env_runners/episode_reward_mean") or result.get("episode_reward_mean")
+        reward_str = f"{reward:.2f}" if reward is not None else "N/A"
+        print(f"Iteration {i} - Episode Reward Mean: {reward_str}")
+        
+        # Early Stopping
+        if reward is not None:
+            if reward > best_reward:
+                best_reward = reward
+                no_improvement_count = 0
             else:
-                local_algo.save(checkpoint_dir=ckpt_dir)
-            local_algo.stop()
-            print(f"Successfully saved checkpoint to {ckpt_dir}")
-    except Exception as e:
-        print(f"Warning: Could not save final checkpoint on Head Node: {e}")
+                no_improvement_count += 1
+                
+            if no_improvement_count >= GlobalConfig.EARLY_STOPPING_PATIENCE and reward >= GlobalConfig.EARLY_STOPPING_MIN_REWARD:
+                print(f"\n[Early Stopping] No improvement in reward for {GlobalConfig.EARLY_STOPPING_PATIENCE} iterations. Stopping training.")
+                break
+                
+    ckpt_dir = os.path.abspath(os.path.join(args.output_dir, "checkpoint_001000"))
+    os.makedirs(ckpt_dir, exist_ok=True)
+    print(f"Saving final DQN model checkpoint to {ckpt_dir}...")
+    if hasattr(algo, "save_to_path"):
+        algo.save_to_path(ckpt_dir)
+    else:
+        algo.save(checkpoint_dir=ckpt_dir)
+    print(f"Successfully saved checkpoint to {ckpt_dir}")
     
+    algo.stop()
     print("DQN Training Completed.")
     ray.shutdown()
