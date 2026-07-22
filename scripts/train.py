@@ -41,8 +41,9 @@ def env_creator(config):
 class ProgressTracker:
     """Ray Remote Actor running on Head Node to receive live progress updates from Worker PC GPUs."""
     def record_row(self, output_dir, row):
+        import os
+        import csv
         try:
-            import csv
             os.makedirs(output_dir, exist_ok=True)
             csv_path = os.path.join(output_dir, "progress.csv")
             fieldnames = ["training_iteration", "episode_reward_mean", "timesteps_total", "episodes_total", "time_total_s"]
@@ -52,8 +53,9 @@ class ProgressTracker:
                 if not file_exists or os.path.getsize(csv_path) == 0:
                     writer.writeheader()
                 writer.writerow(row)
-        except Exception:
-            pass
+            print(f"[ProgressTracker] Recorded Iteration {row.get('training_iteration')} (Reward: {row.get('episode_reward_mean')}) to {csv_path}")
+        except Exception as e:
+            print(f"[ProgressTracker Error] Failed to write progress.csv: {e}")
 
 @ray.remote(num_gpus=1)
 class ClusterGPUTrainer:
