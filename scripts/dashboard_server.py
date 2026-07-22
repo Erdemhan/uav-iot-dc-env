@@ -149,7 +149,6 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             
             seen_ids = set()
             for run_group, folder_path in search_paths:
-                print(f"  [DEBUG] Scanning run_group={run_group}, path={folder_path}, exists={os.path.isdir(folder_path)}")
                 if not os.path.isdir(folder_path):
                     continue
                 for item in os.listdir(folder_path):
@@ -162,12 +161,10 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                     # For scenario_runs and head-node-logs, scan one level deeper to find S1-A, S1-B, S2-A, S2-B
                     if run_group in ["scenario_runs", "head-node-logs"]:
                         try:
-                            print(f"    [DEBUG] Scanning scenario subfolders for: {item} under {item_path}")
                             for sub_item in os.listdir(item_path):
                                 sub_item_path = os.path.join(item_path, sub_item)
                                 if not os.path.isdir(sub_item_path):
                                     continue
-                                print(f"      [DEBUG] Found folder: {sub_item}")
                                 if sub_item in ["S1-A", "S1-B", "S2-A", "S2-B"]:
                                     run_id = f"{run_group}/{item}/{sub_item}"
                                     if run_id in seen_ids:
@@ -181,9 +178,8 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                                         "date_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime))
                                     })
                                     seen_ids.add(run_id)
-                                    print(f"        [DEBUG] Added run_id: {run_id}")
-                        except Exception as e:
-                            print(f"    [DEBUG] Exception in scenario subfolder scan: {e}")
+                        except Exception:
+                            pass
                     else:
                         run_id = item
                         if run_group != "legacy":
@@ -194,7 +190,6 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                             
                         meta_path = os.path.join(item_path, "metadata.json")
                         status_path = os.path.join(item_path, "status.json")
-                        print(f"    [DEBUG] Checking normal folder: {item}, metadata_exists={os.path.exists(meta_path)}, status_exists={os.path.exists(status_path)}")
                         if os.path.exists(meta_path) or os.path.exists(status_path):
                             run_type = "training"
                             algo_name = ""
@@ -208,7 +203,7 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                                             run_type = "hpo"
                                         elif phase == 2:
                                             run_type = "reward"
-                                except:
+                                except Exception:
                                     pass
                             
                             mtime = os.path.getmtime(item_path)
@@ -220,10 +215,8 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                                 "date_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime))
                             })
                             seen_ids.add(run_id)
-                            print(f"      [DEBUG] Added normal run_id: {run_id}")
             # Sort by mtime descending
             runs.sort(key=lambda x: x["mtime"], reverse=True)
-            print(f"[DEBUG] list_runs output: {[r['id'] for r in runs]}")
             self.wfile.write(json.dumps({"runs": runs}).encode("utf-8"))
             return
 
