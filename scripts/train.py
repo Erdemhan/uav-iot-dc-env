@@ -169,7 +169,7 @@ class ClusterGPUTrainer:
 
         for i in range(1, GlobalConfig.TRAIN_ITERATIONS + 1):
             result = algo.train()
-            reward = result.get("env_runners/episode_reward_mean") or result.get("episode_reward_mean")
+            reward = result.get("episode_reward_mean") or result.get("env_runners/episode_reward_mean")
             reward_str = f"{reward:.2f}" if reward is not None else "N/A"
             print(f"Iteration {i}/{GlobalConfig.TRAIN_ITERATIONS} - Episode Reward Mean: {reward_str}")
 
@@ -184,17 +184,10 @@ class ClusterGPUTrainer:
                     print(f"\n[Early Stopping] No improvement in reward for {GlobalConfig.EARLY_STOPPING_PATIENCE} iterations. Stopping training.")
                     break
 
-        ckpt_dir = os.path.abspath(os.path.join(self.output_dir, "checkpoint_001000"))
-        os.makedirs(ckpt_dir, exist_ok=True)
-        print(f"Saving final {self.algo_name.upper()} GPU model checkpoint to {ckpt_dir}...")
-        if hasattr(algo, "save_to_path"):
-            algo.save_to_path(ckpt_dir)
-        else:
-            algo.save(checkpoint_dir=ckpt_dir)
-        print(f"Successfully saved GPU checkpoint to {ckpt_dir}")
-
+        # Return trained policy weights to Head Node driver
+        weights = algo.get_weights()
         algo.stop()
-        return True
+        return weights
 
 if __name__ == "__main__":
     from core.logger import setup_console_logging
@@ -292,9 +285,46 @@ if __name__ == "__main__":
         lstm_hp=lstm_hp
     )
 
-    print(f"Dispatched {args.algo.upper()} training task to a GPU Worker PC in the Ray Cluster...")
-    success = ray.get(gpu_trainer.train_on_gpu.remote())
-    print(f"{args.algo.upper()} GPU Training Completed Successfully: {success}")
+    print(f"Dispatched {args.algo.upper()} GPU training task to a Worker PC in the Ray Cluster...")
+    weights = ray.get(gpu_trainer.train_on_gpu.remote())
+
+    # Build local algorithm on Head Node to save the final checkpoint to Head Node disk
+    print(f"Saving final {args.algo.upper()} checkpoint on Head Node to {args.output_dir}...")
+    dummy_env = UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS)
+    obs_space = dummy_env.observation_space("jammer_0")
+    act_space = dummy_env.action_space("jammer_0")
+    node_obs = dummy_env.observation_space("node_0")
+    node_act = dummy_env.action_space("node_0")
+
+    if args.algo == "ppo":
+        local_cfg = PPOConfig().environment(f"uav_iot_{args.algo}_v1", env_config=env_cfg).framework("torch").env_runners(num_env_runners=0).training(model={"fcnet_hiddens": PPOHyperparams.FCNET_HIDDENS}, train_batch_size=PPOHyperparams.TRAIN_BATCH_SIZE, lr=PPOHyperparams.LR, gamma=PPOHyperparams.GAMMA)
+    elif args.algo == "dqn":
+        local_cfg = DQNConfig().environment(f"uav_iot_{args.algo}_v1", env_config=env_cfg).framework("torch").env_runners(num_env_runners=0).training(model={"fcnet_hiddens": DQNHyperparams.FCNET_HIDDENS}, gamma=DQNHyperparams.GAMMA, lr=DQNHyperparams.LR, train_batch_size=DQNHyperparams.TRAIN_BATCH_SIZE, target_network_update_freq=DQNHyperparams.TARGET_NETWORK_UPDATE_FREQ, double_q=DQNHyperparams.DOUBLE_Q, dueling=DQNHyperparams.DUELING, replay_buffer_config={"type": "ReplayBuffer", "capacity": DQNHyperparams.REPLAY_BUFFER_CAPACITY}, num_steps_sampled_before_learning_starts=DQNHyperparams.NUM_STEPS_SAMPLED_BEFORE_LEARNING_STARTS, training_intensity=DQNHyperparams.TRAINING_INTENSITY)
+    elif args.algo == "ppo_lstm":
+        local_cfg = PPOConfig().environment(f"uav_iot_{args.algo}_v1", env_config=env_cfg).framework("torch").env_runners(num_env_runners=0).training(model={"fcnet_hiddens": PPOLSTMConfig.FCNET_HIDDENS, "use_lstm": PPOLSTMConfig.USE_LSTM, "lstm_cell_size": PPOLSTMConfig.LSTM_CELL_SIZE, "max_seq_len": PPOLSTMConfig.MAX_SEQ_LEN}, train_batch_size=PPOLSTMConfig.TRAIN_BATCH_SIZE, lr=PPOLSTMConfig.LR, gamma=PPOLSTMConfig.GAMMA)
+
+    local_cfg = (
+        local_cfg
+        .multi_agent(policies={"jammer_policy": (None, obs_space, act_space, {}), "node_policy": (None, node_obs, node_act, {})}, policy_mapping_fn=lambda agent_id, *args, **kwargs: "jammer_policy" if agent_id == "jammer_0" else "node_policy", policies_to_train=["jammer_policy"])
+        .api_stack(enable_rl_module_and_learner=False, enable_env_runner_and_connector_v2=False)
+        .resources(num_gpus=0)
+        .debugging(log_level="WARN")
+    )
+    if args.algo == "dqn":
+        local_cfg = local_cfg.experimental(_validate_config=False)
+
+    local_algo = local_cfg.build()
+    local_algo.set_weights(weights)
+
+    ckpt_dir = os.path.abspath(os.path.join(args.output_dir, "checkpoint_001000"))
+    os.makedirs(ckpt_dir, exist_ok=True)
+    if hasattr(local_algo, "save_checkpoint"):
+        local_algo.save_checkpoint(ckpt_dir)
+    else:
+        local_algo.save(checkpoint_dir=ckpt_dir)
+
+    print(f"Successfully saved final checkpoint to Head Node disk: {ckpt_dir}")
+    local_algo.stop()
 
     if ray.is_initialized():
         ray.shutdown()
