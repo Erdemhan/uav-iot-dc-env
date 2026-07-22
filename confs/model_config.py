@@ -40,7 +40,7 @@ class GlobalConfig:
     # EARLY_STOPPING_PATIENCE: Tüm zamanların en iyi (maksimum) ödülünden sonra 
     # kaç eğitim iterasyonu boyunca artış olmazsa eğitimin duracağını belirtir.
     # Not: 1 iterasyon = 1000 adım (10 epizot) -> 100 iterasyon = 100,000 adım (1000 epizot)
-    EARLY_STOPPING_PATIENCE = 100
+    EARLY_STOPPING_PATIENCE = 1000
     
     # EARLY_STOPPING_MIN_REWARD: Sabır sayacının devreye girmesi için ajanın ulaşması gereken 
     # minimum ortalama ödül barajıdır (Bu baraj aşılana kadar erken durdurma tetiklenmez).
