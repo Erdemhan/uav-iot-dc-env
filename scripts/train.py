@@ -69,6 +69,16 @@ class ClusterGPUTrainer:
         except Exception:
             pass
 
+        # Apply self.env_cfg dynamically inside ClusterGPUTrainer actor
+        if "num_nodes" in self.env_cfg:
+            EnvConfig.NUM_NODES = int(self.env_cfg["num_nodes"])
+        if "num_uavs" in self.env_cfg:
+            EnvConfig.NUM_UAVS = int(self.env_cfg["num_uavs"])
+        if "area_size" in self.env_cfg:
+            EnvConfig.AREA_SIZE = float(self.env_cfg["area_size"])
+        if "w_cost" in self.env_cfg:
+            EnvConfig.W_COST = float(self.env_cfg["w_cost"])
+
         dummy_env = UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS)
         obs_space = dummy_env.observation_space("jammer_0")
         act_space = dummy_env.action_space("jammer_0")

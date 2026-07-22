@@ -524,16 +524,6 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
 
         # Serve real-time progress
         if path == "/api/progress":
-            print(f"[DEBUG] /api/progress called. run_dir={run_dir}")
-            if os.path.exists(run_dir):
-                try:
-                    print(f"  [DEBUG] Contents of run_dir {run_dir}: {os.listdir(run_dir)}")
-                    for sub in os.listdir(run_dir):
-                        sub_path = os.path.join(run_dir, sub)
-                        if os.path.isdir(sub_path):
-                            print(f"    [DEBUG] Contents of subfolder {sub}: {os.listdir(sub_path)}")
-                except Exception as e:
-                    print(f"  [DEBUG] Error listing run_dir: {e}")
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             # Avoid caching
@@ -602,7 +592,6 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             
             for name, config in algos.items():
                 csv_path = config["csv_finder"]()
-                print(f"    [DEBUG] Algo: {name}, resolved_csv={csv_path}, exists={os.path.exists(csv_path) if csv_path else False}")
                 history, reward, steps = config["parser"](csv_path)
                 
                 status = "PENDING"
