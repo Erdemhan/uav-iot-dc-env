@@ -124,6 +124,14 @@ def main():
     run_dir = os.path.join("artifacts", "scenario_runs", timestamp)
     os.makedirs(run_dir, exist_ok=True)
     
+    # Auto-start Web Dashboard pointing to active run_dir
+    try:
+        from scripts.dashboard_server import start_dashboard
+        start_dashboard(run_dir, timestamp, page="index.html")
+        print(f"[DASHBOARD] Web Dashboard server automatically launched at http://localhost:5000 (Run Dir: {run_dir})")
+    except Exception as e:
+        print(f"[DASHBOARD] Warning: Could not auto-start dashboard: {e}")
+    
     ray_arg = f"--ray-address {args.ray_address}" if args.ray_address else ""
 
     print("=" * 80)
