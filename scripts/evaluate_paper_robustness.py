@@ -1,5 +1,9 @@
 import os
 import sys
+# Force CPU mode for evaluation on Head Node to prevent CUDA Error 302
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
 import argparse
 import numpy as np
 import json
@@ -82,60 +86,99 @@ def find_latest_checkpoint(base_dir):
     if not ckpt_dirs: return None
     return max(ckpt_dirs, key=os.path.getmtime)
 
-def evaluate_algo(algo_name, run_dir):
-    print(f"\n--- Evaluating {algo_name} ---")
+@ray.remote(num_gpus=1)
+def evaluate_algo_remote(algo_name, checkpoint_bytes, baseline_bytes, env_cfg_dict):
+    """Executes evaluation loop on a Ray Cluster Worker PC with GPU access."""
+    import os
+    import sys
+    import numpy as np
+    import copy
+    from ray.tune.registry import register_env
+    from ray.rllib.env.wrappers.pettingzoo_env import ParallelPettingZooEnv
+    from ray.rllib.algorithms.algorithm import Algorithm
+
+    # Apply env_cfg_dict dynamically on Worker PC
+    from confs.env_config import EnvConfig
+    from confs.model_config import GlobalConfig, PPOLSTMConfig, QJCConfig
+    from confs.opt_config import OptConfig
+    from simulation.pettingzoo_env import UAV_IoT_PZ_Env
+
+    if "NUM_NODES" in env_cfg_dict: EnvConfig.NUM_NODES = env_cfg_dict["NUM_NODES"]
+    if "NUM_UAVS" in env_cfg_dict: EnvConfig.NUM_UAVS = env_cfg_dict["NUM_UAVS"]
+    if "AREA_SIZE" in env_cfg_dict: EnvConfig.AREA_SIZE = env_cfg_dict["AREA_SIZE"]
+    if "ATTACKER_POS_X" in env_cfg_dict: EnvConfig.ATTACKER_POS_X = env_cfg_dict["ATTACKER_POS_X"]
+    if "ATTACKER_POS_Y" in env_cfg_dict: EnvConfig.ATTACKER_POS_Y = env_cfg_dict["ATTACKER_POS_Y"]
+    if "MAX_JAMMING_POWER" in env_cfg_dict: EnvConfig.MAX_JAMMING_POWER = env_cfg_dict["MAX_JAMMING_POWER"]
+    if "P_TX_NODE" in env_cfg_dict: EnvConfig.P_TX_NODE = env_cfg_dict["P_TX_NODE"]
+    if "P_TX_UAV" in env_cfg_dict: EnvConfig.P_TX_UAV = env_cfg_dict["P_TX_UAV"]
+    if "MAX_STEPS" in env_cfg_dict: EnvConfig.MAX_STEPS = env_cfg_dict["MAX_STEPS"]
+    if "STEP_TIME" in env_cfg_dict: EnvConfig.STEP_TIME = env_cfg_dict["STEP_TIME"]
+    if "UAV_START_X" in env_cfg_dict: EnvConfig.UAV_START_X = env_cfg_dict["UAV_START_X"]
+    if "UAV_START_Y" in env_cfg_dict: EnvConfig.UAV_START_Y = env_cfg_dict["UAV_START_Y"]
+    if "UAV_START_Z" in env_cfg_dict: EnvConfig.UAV_START_Z = env_cfg_dict["UAV_START_Z"]
+    if "UAV_SPEED" in env_cfg_dict: EnvConfig.UAV_SPEED = env_cfg_dict["UAV_SPEED"]
+    if "W_SUCCESS" in env_cfg_dict: EnvConfig.W_SUCCESS = env_cfg_dict["W_SUCCESS"]
+    if "W_TRACKING" in env_cfg_dict: EnvConfig.W_TRACKING = env_cfg_dict["W_TRACKING"]
+    if "W_COST" in env_cfg_dict: EnvConfig.W_COST = env_cfg_dict["W_COST"]
+
+    def eval_env_creator(cfg):
+        return ParallelPettingZooEnv(UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS))
+
+    for name in ["uav_iot_ppo_v1", "uav_iot_dqn_v1", "uav_iot_ppo_lstm_v1", 
+                "uav_iot_ppo_gpu_v1", "uav_iot_dqn_gpu_v1", "uav_iot_ppo_lstm_gpu_v1"]:
+        try:
+            register_env(name, eval_env_creator)
+        except Exception:
+            pass
+
     results = {m: [] for m in METRICS}
-    
-    # Setup Ray for RL algos
     algo_agent = None
     lstm_cell_size = 0
-    
-    if algo_name in ["PPO", "DQN", "PPO-LSTM"]:
-        algo_dir = os.path.join(run_dir, algo_name.lower().replace("-", "_"))
-        ckpt = find_latest_checkpoint(algo_dir)
-        if not ckpt:
-            print(f"Checkpoint not found for {algo_name} in {algo_dir}")
-            return None
-        
-        # Ensure custom environment names are registered in Ray Tune registry
-        def eval_env_creator(cfg):
-            return ParallelPettingZooEnv(UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS))
 
-        for name in ["uav_iot_ppo_v1", "uav_iot_dqn_v1", "uav_iot_ppo_lstm_v1", 
-                    "uav_iot_ppo_gpu_v1", "uav_iot_dqn_gpu_v1", "uav_iot_ppo_lstm_gpu_v1"]:
-            try:
-                register_env(name, eval_env_creator)
-            except Exception:
-                pass
+    if checkpoint_bytes:
+        tmp_dir = f"/tmp/eval_ckpt_{algo_name.lower().replace('-', '_')}"
+        if os.path.exists(tmp_dir):
+            import shutil
+            shutil.rmtree(tmp_dir)
+        os.makedirs(tmp_dir, exist_ok=True)
+        for rel_path, data in checkpoint_bytes.items():
+            dest = os.path.join(tmp_dir, rel_path)
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            with open(dest, "wb") as fp:
+                fp.write(data)
 
         try:
-            algo_agent = Algorithm.from_checkpoint(ckpt)
+            algo_agent = Algorithm.from_checkpoint(tmp_dir)
         except Exception as e:
-            print(f"Error loading {algo_name}: {e}")
+            print(f"Error loading {algo_name} on Worker PC: {e}")
             return None
-            
+
         if algo_name == "PPO-LSTM":
             lstm_cell_size = PPOLSTMConfig.LSTM_CELL_SIZE
 
-    elif algo_name == "Baseline":
-        pass
+    tmp_baseline_dir = None
+    if baseline_bytes:
+        tmp_baseline_dir = f"/tmp/baseline_{algo_name.lower()}"
+        os.makedirs(tmp_baseline_dir, exist_ok=True)
+        for rel_path, data in baseline_bytes.items():
+            dest = os.path.join(tmp_baseline_dir, rel_path)
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            with open(dest, "wb") as fp:
+                fp.write(data)
 
-    # Loop over seeds
-    for seed in SEEDS:
+    seeds = OptConfig.EVAL_SEEDS
+    for seed in seeds:
         env = UAV_IoT_PZ_Env(logger=None, auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS)
         obs, infos = env.reset(seed=seed)
-        
         lstm_state = [np.zeros(lstm_cell_size, dtype=np.float32), np.zeros(lstm_cell_size, dtype=np.float32)] if algo_name == "PPO-LSTM" else []
-        
-        if algo_name == "Baseline":
-             env.attacker.load_model(os.path.join(run_dir, "baseline"))
-             env.attacker.temp_xi = 0 # Greedy
-             env.attacker.channel_counts = np.zeros(env.attacker.num_channels) # Reset counts for online adaptation
-        
+
+        if algo_name == "Baseline" and tmp_baseline_dir:
+            env.attacker.load_model(tmp_baseline_dir)
+            env.attacker.temp_xi = 0
+            env.attacker.channel_counts = np.zeros(env.attacker.num_channels)
+
         terminated = False
         steps = 0
-        
-        # Episode Metrics
         ep_jammed = 0
         ep_reachable = 0
         ep_tracking_all = 0
@@ -147,19 +190,16 @@ def evaluate_algo(algo_name, run_dir):
         ep_power_idle_steps = 0
         ep_sinr_sum = 0
         ep_sinr_count = 0
-        
+
         while not terminated and steps < EnvConfig.MAX_STEPS:
             actions = {}
             steps += 1
-            
-            # --- Get Action ---
             jam_action = 0
-            
+
             if algo_name == "Baseline":
-                 jam_ch = env.attacker.select_channel_qjc()
-                 jam_p = QJCConfig.MAX_POWER_LEVEL
-                 jam_action = jam_ch * 10 + jam_p if GlobalConfig.FLATTEN_ACTIONS else np.array([jam_ch, jam_p])
-            
+                jam_ch = env.attacker.select_channel_qjc()
+                jam_p = QJCConfig.MAX_POWER_LEVEL
+                jam_action = jam_ch * 10 + jam_p if GlobalConfig.FLATTEN_ACTIONS else np.array([jam_ch, jam_p])
             elif algo_agent:
                 if "jammer_0" in obs:
                     jam_obs = obs["jammer_0"]
@@ -173,39 +213,33 @@ def evaluate_algo(algo_name, run_dir):
                                 jam_action = res
                         else:
                             jam_action = algo_agent.compute_single_action(jam_obs, policy_id="jammer_policy", explore=False)
-                    except:
+                    except Exception:
                         jam_action = 0
-                        
+
             actions["jammer_0"] = jam_action
-            
             for ag in env.agents:
                 if "node" in ag: actions[ag] = 0
-                
-            # --- Step ---
+
             obs, rewards, terms, truncs, infos = env.step(actions)
             terminated = any(terms.values()) or any(truncs.values())
-            
+
             if algo_name == "Baseline":
                 r_jam = rewards.get("jammer_0", 0)
                 env.attacker.update_qjc(jam_ch, r_jam)
-            
-            # --- Collect Stats ---
+
             reachable_count = sum(1 for n in env.nodes if n.connection_status != 1)
             jammed_c = infos["jammer_0"]["jammed_count"]
-            
             ep_jammed += jammed_c
             if reachable_count > 0:
                 ep_reachable += reachable_count
-            
-            # 2. Tracking
+
             closest_uav = min(env.uavs, key=lambda uav: np.linalg.norm(uav.position - env.attacker.position))
             ch_match = (env.attacker.current_channel == closest_uav.current_channel)
             if ch_match:
                 ep_tracking_all += 1
                 if reachable_count > 0:
                     ep_tracking_reachable += 1
-                
-            # 3. Power
+
             current_power = infos["jammer_0"]["jammer_cost"]
             ep_power_sum += current_power
             if reachable_count > 0:
@@ -214,24 +248,19 @@ def evaluate_algo(algo_name, run_dir):
             else:
                 ep_power_idle_sum += current_power
                 ep_power_idle_steps += 1
-            
-            # 4. SINR
+
             step_sinr_sum = 0
             step_sinr_n = 0
             for i in range(EnvConfig.NUM_NODES):
                 s = infos["jammer_0"].get(f"node_{i}_sinr", 0)
                 step_sinr_sum += s
                 step_sinr_n += 1
-            
             if step_sinr_n > 0:
                 step_avg_sinr = step_sinr_sum / step_sinr_n
                 step_avg_sinr_db = 10 * np.log10(max(step_avg_sinr, 1e-12))
                 ep_sinr_sum += step_avg_sinr_db
                 ep_sinr_count += 1
-                
-        # --- End Episode ---
-        
-        # Calculate Episode Averages
+
         val_jsr = (ep_jammed / ep_reachable) * 100 if ep_reachable > 0 else 0.0
         val_track_all = (ep_tracking_all / steps) * 100 if steps > 0 else 0.0
         val_track_reach = (ep_tracking_reachable / ep_reachable) * 100 if ep_reachable > 0 else 0.0
@@ -241,7 +270,7 @@ def evaluate_algo(algo_name, run_dir):
         val_power_active = ep_power_active_sum / ep_power_active_steps if ep_power_active_steps > 0 else 0.0
         val_power_idle = ep_power_idle_sum / ep_power_idle_steps if ep_power_idle_steps > 0 else 0.0
         val_sinr = ep_sinr_sum / ep_sinr_count if ep_sinr_count > 0 else 0.0
-        
+
         results["JSR"].append(val_jsr)
         results["Tracking_Acc"].append(val_track_all)
         results["Track_Reachable"].append(val_track_reach)
@@ -251,7 +280,7 @@ def evaluate_algo(algo_name, run_dir):
         results["Power_Active"].append(val_power_active)
         results["Power_Idle"].append(val_power_idle)
         results["SINR"].append(val_sinr)
-        
+
     return results
 
 def main():
@@ -293,39 +322,99 @@ def main():
         except Exception:
             pass
     
+    # Extract env_cfg_dict from EnvConfig
+    env_cfg_dict = {
+        "NUM_NODES": EnvConfig.NUM_NODES,
+        "NUM_UAVS": EnvConfig.NUM_UAVS,
+        "AREA_SIZE": EnvConfig.AREA_SIZE,
+        "ATTACKER_POS_X": EnvConfig.ATTACKER_POS_X,
+        "ATTACKER_POS_Y": EnvConfig.ATTACKER_POS_Y,
+        "MAX_JAMMING_POWER": EnvConfig.MAX_JAMMING_POWER,
+        "P_TX_NODE": EnvConfig.P_TX_NODE,
+        "P_TX_UAV": EnvConfig.P_TX_UAV,
+        "MAX_STEPS": EnvConfig.MAX_STEPS,
+        "STEP_TIME": EnvConfig.STEP_TIME,
+        "UAV_START_X": EnvConfig.UAV_START_X,
+        "UAV_START_Y": EnvConfig.UAV_START_Y,
+        "UAV_START_Z": EnvConfig.UAV_START_Z,
+        "UAV_SPEED": EnvConfig.UAV_SPEED,
+        "W_SUCCESS": EnvConfig.W_SUCCESS,
+        "W_TRACKING": EnvConfig.W_TRACKING,
+        "W_COST": EnvConfig.W_COST,
+    }
+
     final_results = {}
-    
+    pending_tasks = {}
+
     for algo in ALGOS:
-        res = evaluate_algo(algo, run_dir_abs)
-        if res:
-            final_results[algo] = res
-            
-            # Print quick stats
-            print(f"  > JSR: {np.mean(res['JSR']):.1f}% ± {np.std(res['JSR']):.1f}")
-            print(f"  > Track (All Steps): {np.mean(res['Tracking_Acc']):.1f}%")
-            print(f"  > Track (Reachable): {np.mean(res['Track_Reachable']):.1f}%")
-            print(f"  > Power Gap: {np.mean(res['Power_Gap']):.1f}%")
-            print(f"  > Channel Gap: {np.mean(res['Channel_Gap']):.1f}%")
-            print(f"  > Power (Overall Avg): {np.mean(res['Power']):.3f} W")
-            print(f"  > Power (Active Collection): {np.mean(res['Power_Active']):.3f} W")
-            print(f"  > Power (Idle / Transit): {np.mean(res['Power_Idle']):.3f} W")
-            print(f"  > SINR: {np.mean(res['SINR']):.2f} dB")
-            
-    ray.shutdown()
-    
+        print(f"\n---> Dispatching Remote Evaluation for {algo} to Worker PC (num_gpus=1)...")
+        checkpoint_bytes = None
+        baseline_bytes = None
+
+        if algo in ["PPO", "DQN", "PPO-LSTM"]:
+            algo_dir = os.path.join(run_dir_abs, algo.lower().replace("-", "_"))
+            ckpt_dir = find_latest_checkpoint(algo_dir)
+            if ckpt_dir and os.path.exists(ckpt_dir):
+                checkpoint_bytes = {}
+                for root, dirs, files in os.walk(ckpt_dir):
+                    for f in files:
+                        full_p = os.path.join(root, f)
+                        rel_p = os.path.relpath(full_p, ckpt_dir)
+                        with open(full_p, "rb") as fp:
+                            checkpoint_bytes[rel_p] = fp.read()
+            else:
+                print(f"  [WARN] Checkpoint not found for {algo} in {algo_dir}")
+                continue
+
+        elif algo == "Baseline":
+            base_dir = os.path.join(run_dir_abs, "baseline")
+            if os.path.exists(base_dir):
+                baseline_bytes = {}
+                for root, dirs, files in os.walk(base_dir):
+                    for f in files:
+                        full_p = os.path.join(root, f)
+                        rel_p = os.path.relpath(full_p, base_dir)
+                        with open(full_p, "rb") as fp:
+                            baseline_bytes[rel_p] = fp.read()
+
+        future = evaluate_algo_remote.options(num_gpus=1).remote(algo, checkpoint_bytes, baseline_bytes, env_cfg_dict)
+        pending_tasks[algo] = future
+
+    # Gather results on Head Node
+    for algo, future in pending_tasks.items():
+        try:
+            print(f"\n--- Gathering Evaluation Results for {algo} from Worker PC ---")
+            res = ray.get(future)
+            if res:
+                final_results[algo] = res
+                print(f"  > JSR: {np.mean(res['JSR']):.1f}% ± {np.std(res['JSR']):.1f}")
+                print(f"  > Track (All Steps): {np.mean(res['Tracking_Acc']):.1f}%")
+                print(f"  > Track (Reachable): {np.mean(res['Track_Reachable']):.1f}%")
+                print(f"  > Power Gap: {np.mean(res['Power_Gap']):.1f}%")
+                print(f"  > Channel Gap: {np.mean(res['Channel_Gap']):.1f}%")
+                print(f"  > Power (Overall Avg): {np.mean(res['Power']):.3f} W")
+                print(f"  > Power (Active Collection): {np.mean(res['Power_Active']):.3f} W")
+                print(f"  > Power (Idle / Transit): {np.mean(res['Power_Idle']):.3f} W")
+                print(f"  > SINR: {np.mean(res['SINR']):.2f} dB")
+        except Exception as e:
     comparison_dir = os.path.join(run_dir_abs, "comparison")
     os.makedirs(comparison_dir, exist_ok=True)
     
-    # Plotting first so images are ready when JSON is available
+    # Plotting on Head Node
     plot_comparison(final_results, comparison_dir)
     plot_loss_decomposition(final_results, comparison_dir)
     
-    # Save JSON at the very end to prevent race condition in web dashboard
+    # Save JSON on Head Node
     out_file = os.path.join(comparison_dir, "robustness_results_30seeds.json")
     with open(out_file, "w") as f:
         json.dump(final_results, f, indent=4)
         
     print(f"\nSaved results and plots to {comparison_dir}")
+
+    try:
+        os._exit(0)
+    except Exception:
+        pass
 
 def plot_comparison(results, output_dir):
     import seaborn as sns
