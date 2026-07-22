@@ -411,10 +411,10 @@ def plot_loss_decomposition(results, output_dir):
     # Total sums to 100%
     fig, ax = plt.subplots(figsize=(9, 6))
     
-    jsr_m = [np.mean(results[a]["JSR"]) for a in ALGOS]
-    pwr_m = [np.mean(results[a]["Power_Gap"]) for a in ALGOS]
-    ch_m  = [np.mean(results[a]["Channel_Gap"]) for a in ALGOS]
-    jsr_s = [np.std(results[a]["JSR"]) for a in ALGOS]
+    jsr_m = [np.mean(results[a]["JSR"]) if a in results else 0.0 for a in ALGOS]
+    pwr_m = [np.mean(results[a]["Power_Gap"]) if a in results else 0.0 for a in ALGOS]
+    ch_m  = [np.mean(results[a]["Channel_Gap"]) if a in results else 0.0 for a in ALGOS]
+    jsr_s = [np.std(results[a]["JSR"]) if a in results else 0.0 for a in ALGOS]
     
     x = np.arange(len(ALGOS))
     w = 0.55
