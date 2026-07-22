@@ -21,7 +21,7 @@ from ray.rllib.env.wrappers.pettingzoo_env import ParallelPettingZooEnv
 from ray.tune.registry import register_env
 
 from simulation.pettingzoo_env import UAV_IoT_PZ_Env
-from confs.model_config import GlobalConfig, PPOConfig as PPOHyperparams, DQNHyperparams, PPOLSTMConfig
+from confs.model_config import GlobalConfig, PPOConfig as PPOHyperparams, DQNConfig as DQNHyperparams, PPOLSTMConfig
 from confs.env_config import EnvConfig
 
 def env_creator(config):
