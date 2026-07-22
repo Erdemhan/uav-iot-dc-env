@@ -183,34 +183,75 @@ class ClusterGPUTrainer:
         best_reward = -float('inf')
         no_improvement_count = 0
         self.progress_rows = []
+        last_valid_reward = None
         import time
         start_time = time.time()
+
+        def extract_reward(res_dict):
+            p_reward = res_dict.get("policy_reward_mean")
+            if isinstance(p_reward, dict):
+                if "jammer_policy" in p_reward and p_reward["jammer_policy"] is not None and not np.isnan(p_reward["jammer_policy"]):
+                    return float(p_reward["jammer_policy"])
+                for k, v in p_reward.items():
+                    if "jammer" in k and v is not None and not np.isnan(v):
+                        return float(v)
+
+            if "policy_reward_mean/jammer_policy" in res_dict:
+                v = res_dict["policy_reward_mean/jammer_policy"]
+                if v is not None and not np.isnan(v):
+                    return float(v)
+
+            for k in ["episode_reward_mean", "env_runners/episode_reward_mean"]:
+                v = res_dict.get(k)
+                if v is not None and not np.isnan(v):
+                    return float(v)
+
+            hist = res_dict.get("hist_stats", {})
+            if isinstance(hist, dict):
+                for k in ["policy_jammer_policy_reward", "episode_reward"]:
+                    if k in hist and hist[k] and len(hist[k]) > 0:
+                        vals = [x for x in hist[k] if x is not None and not np.isnan(x)]
+                        if vals:
+                            return float(np.mean(vals))
+
+            env_runners = res_dict.get("env_runners", {})
+            if isinstance(env_runners, dict):
+                p_r = env_runners.get("policy_reward_mean")
+                if isinstance(p_r, dict) and "jammer_policy" in p_r:
+                    v = p_r["jammer_policy"]
+                    if v is not None and not np.isnan(v):
+                        return float(v)
+
+            return None
 
         for i in range(1, GlobalConfig.TRAIN_ITERATIONS + 1):
             result = algo.train()
             
-            # Extract mean reward specifically for jammer_policy in multi-agent setup
-            reward = None
-            if "policy_reward_mean" in result and isinstance(result["policy_reward_mean"], dict):
-                if "jammer_policy" in result["policy_reward_mean"]:
-                    reward = result["policy_reward_mean"]["jammer_policy"]
-                elif len(result["policy_reward_mean"]) > 0:
-                    reward = list(result["policy_reward_mean"].values())[0]
-            if reward is None:
-                reward = result.get("episode_reward_mean") or result.get("env_runners/episode_reward_mean")
+            if i == 1:
+                print(f"[Worker GPU Debug] Iteration 1 policy_reward_mean = {result.get('policy_reward_mean')}")
+                print(f"[Worker GPU Debug] Iteration 1 episode_reward_mean = {result.get('episode_reward_mean')}")
+            
+            reward = extract_reward(result)
+            if reward is not None:
+                last_valid_reward = reward
+                reward_val = reward
+            elif last_valid_reward is not None:
+                reward_val = last_valid_reward
+            else:
+                reward_val = None
 
-            reward_val = float(reward) if (reward is not None and not np.isnan(reward)) else 0.0
-            reward_str = f"{reward_val:.2f}" if reward is not None else "N/A"
+            reward_str = f"{reward_val:.2f}" if reward_val is not None else "N/A"
             print(f"Iteration {i}/{GlobalConfig.TRAIN_ITERATIONS} - Episode Reward Mean ({self.algo_name.upper()}): {reward_str}")
 
             timesteps = result.get("timesteps_total") or result.get("num_env_steps_sampled") or (i * 2000)
-            self.progress_rows.append({
-                "training_iteration": i,
-                "episode_reward_mean": reward_val,
-                "timesteps_total": timesteps,
-                "episodes_total": result.get("episodes_total", i),
-                "time_total_s": round(time.time() - start_time, 2)
-            })
+            if reward_val is not None:
+                self.progress_rows.append({
+                    "training_iteration": i,
+                    "episode_reward_mean": reward_val,
+                    "timesteps_total": timesteps,
+                    "episodes_total": result.get("episodes_total", i),
+                    "time_total_s": round(time.time() - start_time, 2)
+                })
 
             if reward is not None:
                 if reward > best_reward:
