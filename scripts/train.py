@@ -247,7 +247,7 @@ class ClusterGPUTrainer:
         algo.stop()
         return {
             "checkpoint_bytes": checkpoint_bytes,
-            "progress_rows": progress_rows
+            "progress_rows": self.progress_rows
         }
 
 if __name__ == "__main__":
