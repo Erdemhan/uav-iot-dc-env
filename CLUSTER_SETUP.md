@@ -37,7 +37,7 @@ Bu adımı otomatik olarak gerçekleştirmek için bir PowerShell betiği hazır
 1. Windows PowerShell terminalini **Yönetici Olarak (Run as Administrator)** açın.
 2. Proje dizinine giderek aşağıdaki komutu çalıştırın:
    ```powershell
-   powershell -ExecutionPolicy Bypass -File scripts\setup_host_wsl.ps1
+   powershell -ExecutionPolicy Bypass -File setup\setup_host_wsl.ps1
    ```
 3. Script; Windows Güvenlik Duvarı kurallarını otomatik açacak, `%USERPROFILE%\.wslconfig` dosyasını oluşturarak Mirrored Networking modunu aktif edecek ve **bilgisayarın toplam RAM miktarını otomatik algılayıp 3GB güvenli Windows payı çıkararak kalan tüm bellek limitini (örn. 32GB RAM için 29GB) WSL2'ye tahsis edecektir.** Bu sayede paralel RLlib işçilerinin (workers) bellek yetersizliğinden çökmesi (OOM) tamamen engellenir.
 4. **Not:** Eğer sistemde WSL2 ilk defa kurulduysa, script sizden bilgisayarı yeniden başlatmanızı isteyecektir. Yeniden başlattıktan sonra scripti bir kez daha çalıştırarak kurulumu tamamlayın.
@@ -101,7 +101,7 @@ To add another node to this Ray cluster, run:
 Bu scripti işçi bilgisayarın WSL2 (Ubuntu) ortamına aktarıp çalıştırmak için aşağıdaki yöntemlerden birini seçebilirsiniz:
 
 ### Yöntem A: Windows Üzerinden Kopyalama (Flash Bellek veya Ağ Paylaşımı)
-1. Head (ana) bilgisayardaki `scripts/setup_worker_wsl.sh` dosyasını bir flash bellek veya ağ üzerinden işçi bilgisayardaki Windows ortamına kopyalayın (Örn: `C:\` dizinine veya Masaüstüne).
+1. Head (ana) bilgisayardaki `setup/setup_worker_wsl.sh` dosyasını bir flash bellek veya ağ üzerinden işçi bilgisayardaki Windows ortamına kopyalayın (Örn: `C:\` dizinine veya Masaüstüne).
 2. İşçi bilgisayarda WSL Ubuntu terminalini açın:
    ```bash
    wsl
@@ -130,7 +130,7 @@ Herhangi bir dosya taşıma işlemiyle uğraşmak istemiyorsanız:
    ```bash
    nano ~/setup_worker_wsl.sh
    ```
-3. Projedeki `scripts/setup_worker_wsl.sh` dosyasının içeriğini kopyalayın ve terminale yapıştırın. `Ctrl+O` ardından `Enter` ile kaydedip `Ctrl+X` ile çıkın.
+3. Projedeki `setup/setup_worker_wsl.sh` dosyasının içeriğini kopyalayın ve terminale yapıştırın. `Ctrl+O` ardından `Enter` ile kaydedip `Ctrl+X` ile çıkın.
 4. Betiği çalıştırın:
    ```bash
    chmod +x ~/setup_worker_wsl.sh
