@@ -323,10 +323,14 @@ def main():
             
             print(f"\n---> Evaluating Robustness & Generating Plots for Scenario {scen}...")
             eval_cmd = f"{sys.executable} scripts/evaluate_paper_robustness.py --run-dir {scen_dir}"
-            subprocess.run(eval_cmd, shell=True)
+            ret = subprocess.run(eval_cmd, shell=True)
+            if ret.returncode != 0:
+                print(f"[WARNING] Robustness evaluation for Scenario {scen} finished with non-zero exit code: {ret.returncode}")
+            else:
+                print(f"[OK] Robustness evaluation & plots completed for Scenario {scen}")
 
     print("\n" + "="*80)
-    print("  ALL SCENARIOS & EVALUATIONS COMPLETED SUCCESSFULLY!")
+    print("  ALL SCENARIOS & EVALUATIONS COMPLETED!")
     print(f"  Artifacts, Robustness Evaluation, and Plots saved under: {run_dir}")
     print("="*80 + "\n")
 
