@@ -245,9 +245,6 @@ class ClusterGPUTrainer:
 
             timesteps = result.get("timesteps_total") or result.get("num_env_steps_sampled") or (i * 2000)
             if reward_val is not None:
-                row_dict = {
-                    "training_iteration": i,
-            if reward_val is not None:
                 self.progress_rows.append({
                     "training_iteration": i,
                     "episode_reward_mean": reward_val,
