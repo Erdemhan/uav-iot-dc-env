@@ -184,19 +184,29 @@ class ClusterGPUTrainer:
                     print(f"\n[Early Stopping] No improvement in reward for {GlobalConfig.EARLY_STOPPING_PATIENCE} iterations. Stopping training.")
                     break
 
-        ckpt_dir = os.path.abspath(os.path.join(self.output_dir, "checkpoint_001000"))
-        os.makedirs(ckpt_dir, exist_ok=True)
-        print(f"Saving final {self.algo_name.upper()} GPU model checkpoint to {ckpt_dir}...")
-        
-        # Use formal RLlib Old API Stack checkpoint method directly on Worker PC
+        # Save checkpoint to temporary folder on Worker PC
+        tmp_ckpt = f"/tmp/ckpt_{self.algo_name}_{self.scenario}"
+        if os.path.exists(tmp_ckpt):
+            import shutil
+            shutil.rmtree(tmp_ckpt)
+        os.makedirs(tmp_ckpt, exist_ok=True)
+
         if hasattr(algo, "save_checkpoint"):
-            algo.save_checkpoint(ckpt_dir)
+            algo.save_checkpoint(tmp_ckpt)
         else:
-            algo.save(checkpoint_dir=ckpt_dir)
-            
-        print(f"Successfully saved GPU checkpoint to {ckpt_dir}")
+            algo.save(checkpoint_dir=tmp_ckpt)
+
+        # Read checkpoint binary files into dictionary to transfer over Ray Object Store
+        checkpoint_bytes = {}
+        for root, dirs, files in os.walk(tmp_ckpt):
+            for f in files:
+                full_path = os.path.join(root, f)
+                rel_path = os.path.relpath(full_path, tmp_ckpt)
+                with open(full_path, "rb") as fp:
+                    checkpoint_bytes[rel_path] = fp.read()
+
         algo.stop()
-        return True
+        return checkpoint_bytes
 
 if __name__ == "__main__":
     from core.logger import setup_console_logging
@@ -210,7 +220,6 @@ if __name__ == "__main__":
 
     setup_console_logging(f"train_{args.algo}")
 
-    # Ensure output_dir is an absolute path for remote workers
     abs_output_dir = os.path.abspath(args.output_dir)
 
     # Apply scenario config dynamically
@@ -298,8 +307,18 @@ if __name__ == "__main__":
     )
 
     print(f"Dispatched {args.algo.upper()} GPU training task to a Worker PC in the Ray Cluster...")
-    success = ray.get(gpu_trainer.train_on_gpu.remote())
-    print(f"{args.algo.upper()} GPU Training Completed Successfully: {success}")
+    checkpoint_bytes = ray.get(gpu_trainer.train_on_gpu.remote())
+
+    # Write checkpoint files directly onto Head Node disk
+    ckpt_dir = os.path.abspath(os.path.join(abs_output_dir, "checkpoint_001000"))
+    os.makedirs(ckpt_dir, exist_ok=True)
+    for rel_path, content in checkpoint_bytes.items():
+        dest_path = os.path.join(ckpt_dir, rel_path)
+        os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+        with open(dest_path, "wb") as fp:
+            fp.write(content)
+
+    print(f"Successfully transferred and saved final checkpoint to Head Node disk: {ckpt_dir}")
 
     try:
         ray.kill(gpu_trainer)
