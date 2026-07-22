@@ -37,30 +37,10 @@ def env_creator(config):
         
     return ParallelPettingZooEnv(UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS))
 
-@ray.remote
-class ProgressTracker:
-    """Ray Remote Actor running on Head Node to receive live progress updates from Worker PC GPUs."""
-    def record_row(self, output_dir, row):
-        import os
-        import csv
-        try:
-            os.makedirs(output_dir, exist_ok=True)
-            csv_path = os.path.join(output_dir, "progress.csv")
-            fieldnames = ["training_iteration", "episode_reward_mean", "timesteps_total", "episodes_total", "time_total_s"]
-            file_exists = os.path.exists(csv_path)
-            with open(csv_path, "a", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=fieldnames)
-                if not file_exists or os.path.getsize(csv_path) == 0:
-                    writer.writeheader()
-                writer.writerow(row)
-            print(f"[ProgressTracker] Recorded Iteration {row.get('training_iteration')} (Reward: {row.get('episode_reward_mean')}) to {csv_path}")
-        except Exception as e:
-            print(f"[ProgressTracker Error] Failed to write progress.csv: {e}")
-
-@ray.remote(num_gpus=1)
+@ray.remote(num_gpus=1, max_concurrency=2)
 class ClusterGPUTrainer:
     """Ray Remote Actor guaranteed to run on a Worker PC with an active GPU."""
-    def __init__(self, algo_name, scenario, output_dir, env_cfg, ppo_hp=None, dqn_hp=None, lstm_hp=None, progress_tracker=None):
+    def __init__(self, algo_name, scenario, output_dir, env_cfg, ppo_hp=None, dqn_hp=None, lstm_hp=None):
         self.algo_name = algo_name
         self.scenario = scenario
         self.output_dir = output_dir
@@ -68,7 +48,6 @@ class ClusterGPUTrainer:
         self.ppo_hp = ppo_hp
         self.dqn_hp = dqn_hp
         self.lstm_hp = lstm_hp
-        self.progress_tracker = progress_tracker
         self.progress_rows = []
 
     def get_progress(self):
@@ -268,17 +247,14 @@ class ClusterGPUTrainer:
             if reward_val is not None:
                 row_dict = {
                     "training_iteration": i,
+            if reward_val is not None:
+                self.progress_rows.append({
+                    "training_iteration": i,
                     "episode_reward_mean": reward_val,
                     "timesteps_total": timesteps,
                     "episodes_total": result.get("episodes_total", i),
                     "time_total_s": round(time.time() - start_time, 2)
-                }
-                self.progress_rows.append(row_dict)
-                if self.progress_tracker is not None:
-                    try:
-                        self.progress_tracker.record_row.remote(self.output_dir, row_dict)
-                    except Exception:
-                        pass
+                })
 
             if reward is not None:
                 if reward > best_reward:
@@ -405,17 +381,7 @@ if __name__ == "__main__":
         "GAMMA": PPOLSTMConfig.GAMMA,
     }
 
-    # Instantiate Head Node ProgressTracker Actor pinned strictly to the Head Node
-    try:
-        from ray.util.scheduling_strategies import NodeAffinitySchedulingStrategy
-        head_node_id = ray.get_runtime_context().get_node_id()
-        progress_tracker = ProgressTracker.options(
-            scheduling_strategy=NodeAffinitySchedulingStrategy(node_id=head_node_id, soft=False)
-        ).remote()
-    except Exception:
-        progress_tracker = ProgressTracker.remote()
-
-    # Instantiate ClusterGPUTrainer on a Worker PC with 1 GPU!
+    # Instantiate ClusterGPUTrainer on a Worker PC with 1 GPU (max_concurrency=2 for live non-blocking status)!
     gpu_trainer = ClusterGPUTrainer.remote(
         algo_name=args.algo,
         scenario=args.scenario,
@@ -423,12 +389,34 @@ if __name__ == "__main__":
         env_cfg=env_cfg,
         ppo_hp=ppo_hp,
         dqn_hp=dqn_hp,
-        lstm_hp=lstm_hp,
-        progress_tracker=progress_tracker
+        lstm_hp=lstm_hp
     )
 
     print(f"Dispatched {args.algo.upper()} GPU training task to a Worker PC in the Ray Cluster...")
-    res = ray.get(gpu_trainer.train_on_gpu.remote())
+    train_future = gpu_trainer.train_on_gpu.remote()
+
+    import csv
+    import time
+    csv_path = os.path.join(abs_output_dir, "progress.csv")
+    fieldnames = ["training_iteration", "episode_reward_mean", "timesteps_total", "episodes_total", "time_total_s"]
+
+    # Poll live progress every 2 seconds from Head Node driver process while training runs on Worker GPU
+    while True:
+        ready, _ = ray.wait([train_future], timeout=2.0)
+        try:
+            current_rows = ray.get(gpu_trainer.get_progress.remote())
+            if current_rows:
+                os.makedirs(abs_output_dir, exist_ok=True)
+                with open(csv_path, "w", newline="", encoding="utf-8") as f:
+                    writer = csv.DictWriter(f, fieldnames=fieldnames)
+                    writer.writeheader()
+                    writer.writerows(current_rows)
+        except Exception:
+            pass
+        if ready:
+            break
+
+    res = ray.get(train_future)
 
     checkpoint_bytes = res["checkpoint_bytes"] if isinstance(res, dict) else res
     progress_rows = res.get("progress_rows", []) if isinstance(res, dict) else []
