@@ -649,40 +649,18 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(b"404 Not Found")
 
     def _find_rllib_progress(self, run_dir, subfolder):
-        # 1. Check direct path first (harvested runs after completion)
+        # 1. Check direct path first (harvested runs after completion or active run dir)
         direct_path = os.path.join(run_dir, subfolder, "progress.csv")
         if os.path.exists(direct_path):
             return direct_path
             
-        # 2. Live fallback: Check active ray_results on head node if training is still running
-        try:
-            scenario = os.path.basename(run_dir)
-            if scenario.startswith("S"):
-                scenario = scenario[1:] # convert "S1-A" to "1-A"
-                
-            algo_prefixes = {
-                "ppo": "PPO",
-                "dqn": "DQN",
-                "ppo_lstm": "PPO_LSTM"
-            }
-            prefix = algo_prefixes.get(subfolder)
-            if prefix:
-                home = os.path.expanduser("~")
-                ray_results_dir = os.path.join(home, "ray_results")
-                search_pattern = os.path.join(ray_results_dir, f"{prefix}_{scenario}", "**", "progress.csv")
-                files = glob.glob(search_pattern, recursive=True)
-                if files:
-                    newest = max(files, key=os.path.getmtime)
-                    print(f"      [DEBUG] Live progress fallback found: {newest}")
-                    return newest
-        except Exception as e:
-            print(f"      [DEBUG] Error in live progress fallback: {e}")
-            
-        # 3. Fallback to recursive glob in run_dir
+        # 2. Check recursive subfolder pattern within current run_dir only
         pattern = os.path.join(run_dir, subfolder, "**", "progress.csv")
         files = glob.glob(pattern, recursive=True)
         if files:
             return max(files, key=os.path.getmtime)
+
+        # Do NOT fall back to ~/ray_results from old historical runs
         return None
 
 
