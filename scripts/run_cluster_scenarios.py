@@ -103,38 +103,44 @@ def main():
     print("  Scheduling jobs (PPO, DQN, PPO-LSTM x A/B)")
     print("#"*80 + "\n")
     
+    def make_job_cmd(script_name, scenario, output_dir):
+        if args.ray_address:
+            return f"ray job submit --address=http://127.0.0.1:8265 --working-dir=. -- {sys.executable} -u {script_name} --scenario {scenario} --output-dir {output_dir}"
+        else:
+            return f"{sys.executable} -u {script_name} --scenario {scenario} --output-dir {output_dir}"
+
     s1_jobs = {
         # Scenario 1-A (Low Power Penalty: w_cost = 0.03)
         "S1-A_PPO": (
-            f"{sys.executable} -u scripts/train.py --scenario 1-A {ray_arg} --output-dir {os.path.join(run_dir, 'S1-A', 'ppo')}".strip(),
+            make_job_cmd("scripts/train.py", "1-A", os.path.join(run_dir, 'S1-A', 'ppo')),
             os.path.join(run_dir, "S1-A", "ppo.log")
         ),
         "S1-A_DQN": (
-            f"{sys.executable} -u scripts/train_dqn.py --scenario 1-A {ray_arg} --output-dir {os.path.join(run_dir, 'S1-A', 'dqn')}".strip(),
+            make_job_cmd("scripts/train_dqn.py", "1-A", os.path.join(run_dir, 'S1-A', 'dqn')),
             os.path.join(run_dir, "S1-A", "dqn.log")
         ),
         "S1-A_PPO-LSTM": (
-            f"{sys.executable} -u scripts/train_ppo_lstm.py --scenario 1-A {ray_arg} --output-dir {os.path.join(run_dir, 'S1-A', 'ppo_lstm')}".strip(),
+            make_job_cmd("scripts/train_ppo_lstm.py", "1-A", os.path.join(run_dir, 'S1-A', 'ppo_lstm')),
             os.path.join(run_dir, "S1-A", "ppo_lstm.log")
         ),
         # Scenario 1-B (High Power Penalty: w_cost = 0.3)
         "S1-B_PPO": (
-            f"{sys.executable} -u scripts/train.py --scenario 1-B {ray_arg} --output-dir {os.path.join(run_dir, 'S1-B', 'ppo')}".strip(),
+            make_job_cmd("scripts/train.py", "1-B", os.path.join(run_dir, 'S1-B', 'ppo')),
             os.path.join(run_dir, "S1-B", "ppo.log")
         ),
         "S1-B_DQN": (
-            f"{sys.executable} -u scripts/train_dqn.py --scenario 1-B {ray_arg} --output-dir {os.path.join(run_dir, 'S1-B', 'dqn')}".strip(),
+            make_job_cmd("scripts/train_dqn.py", "1-B", os.path.join(run_dir, 'S1-B', 'dqn')),
             os.path.join(run_dir, "S1-B", "dqn.log")
         ),
         "S1-B_PPO-LSTM": (
-            f"{sys.executable} -u scripts/train_ppo_lstm.py --scenario 1-B {ray_arg} --output-dir {os.path.join(run_dir, 'S1-B', 'ppo_lstm')}".strip(),
+            make_job_cmd("scripts/train_ppo_lstm.py", "1-B", os.path.join(run_dir, 'S1-B', 'ppo_lstm')),
             os.path.join(run_dir, "S1-B", "ppo_lstm.log")
         )
     }
 
     active_s1 = {}
     for name, (cmd, log_file) in s1_jobs.items():
-        print(f"Launching {name}...")
+        print(f"Launching {name} via Ray Job Submit...")
         p, f = run_cmd(cmd, log_file)
         active_s1[name] = (p, f)
         
@@ -173,28 +179,28 @@ def main():
     s2_jobs = {
         # Scenario 2-A (Low Power Penalty: w_cost = 0.03)
         "S2-A_PPO": (
-            f"{sys.executable} -u scripts/train.py --scenario 2-A {ray_arg} --output-dir {os.path.join(run_dir, 'S2-A', 'ppo')}".strip(),
+            make_job_cmd("scripts/train.py", "2-A", os.path.join(run_dir, 'S2-A', 'ppo')),
             os.path.join(run_dir, "S2-A", "ppo.log")
         ),
         "S2-A_DQN": (
-            f"{sys.executable} -u scripts/train_dqn.py --scenario 2-A {ray_arg} --output-dir {os.path.join(run_dir, 'S2-A', 'dqn')}".strip(),
+            make_job_cmd("scripts/train_dqn.py", "2-A", os.path.join(run_dir, 'S2-A', 'dqn')),
             os.path.join(run_dir, "S2-A", "dqn.log")
         ),
         "S2-A_PPO-LSTM": (
-            f"{sys.executable} -u scripts/train_ppo_lstm.py --scenario 2-A {ray_arg} --output-dir {os.path.join(run_dir, 'S2-A', 'ppo_lstm')}".strip(),
+            make_job_cmd("scripts/train_ppo_lstm.py", "2-A", os.path.join(run_dir, 'S2-A', 'ppo_lstm')),
             os.path.join(run_dir, "S2-A", "ppo_lstm.log")
         ),
         # Scenario 2-B (High Power Penalty: w_cost = 0.3)
         "S2-B_PPO": (
-            f"{sys.executable} -u scripts/train.py --scenario 2-B {ray_arg} --output-dir {os.path.join(run_dir, 'S2-B', 'ppo')}".strip(),
+            make_job_cmd("scripts/train.py", "2-B", os.path.join(run_dir, 'S2-B', 'ppo')),
             os.path.join(run_dir, "S2-B", "ppo.log")
         ),
         "S2-B_DQN": (
-            f"{sys.executable} -u scripts/train_dqn.py --scenario 2-B {ray_arg} --output-dir {os.path.join(run_dir, 'S2-B', 'dqn')}".strip(),
+            make_job_cmd("scripts/train_dqn.py", "2-B", os.path.join(run_dir, 'S2-B', 'dqn')),
             os.path.join(run_dir, "S2-B", "dqn.log")
         ),
         "S2-B_PPO-LSTM": (
-            f"{sys.executable} -u scripts/train_ppo_lstm.py --scenario 2-B {ray_arg} --output-dir {os.path.join(run_dir, 'S2-B', 'ppo_lstm')}".strip(),
+            make_job_cmd("scripts/train_ppo_lstm.py", "2-B", os.path.join(run_dir, 'S2-B', 'ppo_lstm')),
             os.path.join(run_dir, "S2-B", "ppo_lstm.log")
         )
     }

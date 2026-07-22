@@ -163,6 +163,14 @@ if __name__ == "__main__":
         "w_cost": float(EnvConfig.W_COST)
     }
  
+    # Check CUDA availability safely to prevent Error 302 on machines without working CUDA libraries
+    use_gpu = GlobalConfig.USE_GPU and torch.cuda.is_available()
+    try:
+        if use_gpu:
+            _ = torch.cuda.device_count()
+    except Exception:
+        use_gpu = False
+
     config = (
         DQNConfig()
         .environment("uav_iot_dqn_v1", env_config=env_cfg)
@@ -202,7 +210,7 @@ if __name__ == "__main__":
         .api_stack(enable_rl_module_and_learner=False,
                    enable_env_runner_and_connector_v2=False)
         # FAIRNESS: Match PPO's GPU usage
-        .resources(num_gpus=1 if GlobalConfig.USE_GPU else 0)
+        .resources(num_gpus=1 if use_gpu else 0)
         .debugging(log_level="WARN")
         .experimental(_validate_config=False)
     )
