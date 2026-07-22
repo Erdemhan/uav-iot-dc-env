@@ -48,6 +48,11 @@ class ClusterGPUTrainer:
         self.ppo_hp = ppo_hp
         self.dqn_hp = dqn_hp
         self.lstm_hp = lstm_hp
+        self.progress_rows = []
+
+    def get_progress(self):
+        """Returns current training progress rows for real-time polling by Head Node."""
+        return list(self.progress_rows)
 
     def train_on_gpu(self):
         import torch
@@ -177,19 +182,29 @@ class ClusterGPUTrainer:
 
         best_reward = -float('inf')
         no_improvement_count = 0
-        progress_rows = []
+        self.progress_rows = []
         import time
         start_time = time.time()
 
         for i in range(1, GlobalConfig.TRAIN_ITERATIONS + 1):
             result = algo.train()
-            reward = result.get("episode_reward_mean") or result.get("env_runners/episode_reward_mean")
-            reward_val = float(reward) if reward is not None else 0.0
+            
+            # Extract mean reward specifically for jammer_policy in multi-agent setup
+            reward = None
+            if "policy_reward_mean" in result and isinstance(result["policy_reward_mean"], dict):
+                if "jammer_policy" in result["policy_reward_mean"]:
+                    reward = result["policy_reward_mean"]["jammer_policy"]
+                elif len(result["policy_reward_mean"]) > 0:
+                    reward = list(result["policy_reward_mean"].values())[0]
+            if reward is None:
+                reward = result.get("episode_reward_mean") or result.get("env_runners/episode_reward_mean")
+
+            reward_val = float(reward) if (reward is not None and not np.isnan(reward)) else 0.0
             reward_str = f"{reward_val:.2f}" if reward is not None else "N/A"
-            print(f"Iteration {i}/{GlobalConfig.TRAIN_ITERATIONS} - Episode Reward Mean: {reward_str}")
+            print(f"Iteration {i}/{GlobalConfig.TRAIN_ITERATIONS} - Episode Reward Mean ({self.algo_name.upper()}): {reward_str}")
 
             timesteps = result.get("timesteps_total") or result.get("num_env_steps_sampled") or (i * 2000)
-            progress_rows.append({
+            self.progress_rows.append({
                 "training_iteration": i,
                 "episode_reward_mean": reward_val,
                 "timesteps_total": timesteps,
@@ -334,12 +349,34 @@ if __name__ == "__main__":
     )
 
     print(f"Dispatched {args.algo.upper()} GPU training task to a Worker PC in the Ray Cluster...")
-    res = ray.get(gpu_trainer.train_on_gpu.remote())
+    train_future = gpu_trainer.train_on_gpu.remote()
+
+    import csv
+    import time
+    csv_path = os.path.join(abs_output_dir, "progress.csv")
+    fieldnames = ["training_iteration", "episode_reward_mean", "timesteps_total", "episodes_total", "time_total_s"]
+
+    # Poll live progress every 2 seconds while waiting for training to complete
+    while True:
+        ready, _ = ray.wait([train_future], timeout=2.0)
+        try:
+            current_rows = ray.get(gpu_trainer.get_progress.remote())
+            if current_rows:
+                with open(csv_path, "w", newline="", encoding="utf-8") as f:
+                    writer = csv.DictWriter(f, fieldnames=fieldnames)
+                    writer.writeheader()
+                    writer.writerows(current_rows)
+        except Exception:
+            pass
+        if ready:
+            break
+
+    res = ray.get(train_future)
 
     checkpoint_bytes = res["checkpoint_bytes"] if isinstance(res, dict) else res
     progress_rows = res.get("progress_rows", []) if isinstance(res, dict) else []
 
-    # Write checkpoint files directly onto Head Node disk
+    # Write final checkpoint files directly onto Head Node disk
     ckpt_dir = os.path.abspath(os.path.join(abs_output_dir, "checkpoint_001000"))
     os.makedirs(ckpt_dir, exist_ok=True)
     for rel_path, content in checkpoint_bytes.items():
@@ -350,16 +387,13 @@ if __name__ == "__main__":
 
     print(f"Successfully transferred and saved final checkpoint to Head Node disk: {ckpt_dir}")
 
-    # Write progress.csv directly to abs_output_dir
+    # Write final progress.csv to abs_output_dir
     if progress_rows:
-        import csv
-        csv_path = os.path.join(abs_output_dir, "progress.csv")
-        fieldnames = ["training_iteration", "episode_reward_mean", "timesteps_total", "episodes_total", "time_total_s"]
         with open(csv_path, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(progress_rows)
-        print(f"Successfully saved progress.csv to Head Node disk: {csv_path}")
+        print(f"Successfully saved final progress.csv to Head Node disk: {csv_path}")
 
     # Instant clean exit without sending cascading ray.kill signals across cluster
     os._exit(0)
