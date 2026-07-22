@@ -16,5 +16,10 @@
 
 ## Debugging and Problem Solving Guidelines
 
-- **No Guesswork on Failures:** When a failure or unexpected behavior occurs (e.g., server connection issues, empty data grids, path resolution errors), never guess the cause or propose speculative solutions. Always add comprehensive debug logs, verify exact output states, test raw endpoints locally, and identify the root cause before implementing any code changes.
+- **STRICT NO-GUESSWORK POLICY & LOG FIRST RULE:**
+  When any error, failed process (e.g., `FAILED (code 1)`), exception, or unexpected behavior occurs:
+  1. **NEVER guess, speculate, or infer the cause** of a failure without empirical log evidence.
+  2. **NEVER modify any source code** before inspecting and reading the exact log file or traceback.
+  3. **Mandatory First Step:** The VERY FIRST action MUST be to inspect the actual log file (e.g., `cat <run_dir>/S1-A/ppo.log`) or ask the user to share the log file output.
+  4. Base every diagnosis and solution strictly on verified, un-truncated log evidence.
 

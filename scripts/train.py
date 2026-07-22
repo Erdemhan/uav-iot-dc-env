@@ -103,7 +103,7 @@ if __name__ == "__main__":
     runtime_env = {
         "working_dir": project_root,
         "excludes": [".venv", "artifacts", "ray_results", "head-node-logs", ".git", "baseline_q_table", "node_modules"],
-        "env_vars": {"PYTHONPATH": "."}
+        "env_vars": {"PYTHONPATH": ".", "RAY_CHCKPT_SYNC_TO_DRIVER": "1"}
     }
     
     init_kwargs = {
@@ -196,6 +196,8 @@ if __name__ == "__main__":
         stop=stopper, 
         checkpoint_at_end=True,
         checkpoint_freq=0,
+        storage_path=os.path.expanduser("~/ray_results"),
+        sync_config=tune.SyncConfig(syncer=None),
         trial_dirname_creator=lambda trial: f"t_{trial.trial_id}",
         callbacks=[ProgressCallback()]
     )
