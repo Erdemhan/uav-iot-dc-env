@@ -63,11 +63,11 @@ class ClusterGPUTrainer:
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
 
-        env_name = f"uav_iot_{self.algo_name}_gpu_v1"
-        try:
-            register_env(env_name, env_creator)
-        except Exception:
-            pass
+        for name in [f"uav_iot_{self.algo_name}_v1", f"uav_iot_{self.algo_name}_gpu_v1"]:
+            try:
+                register_env(name, env_creator)
+            except Exception:
+                pass
 
         # Apply self.env_cfg dynamically inside ClusterGPUTrainer actor
         if "num_nodes" in self.env_cfg:

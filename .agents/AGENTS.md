@@ -8,7 +8,10 @@
 
 ## MCP Server Guidelines
 
-- **Active codebase-memory usage:** The codebase-memory MCP server is integrated. Always ensure the project is indexed and use graph/codebase memory tools where appropriate. See [.agents/mcp.md](file:///c:/Users/Erdemhan/Desktop/OneDrive%20-%20erciyes.edu.tr/okul_msi/Projeler/DR%20TEZ/uav-iot-dc-env/.agents/mcp.md) for detailed instructions.
+- **Mandatory codebase-memory Integration:** The `codebase-memory` MCP server is fully configured.
+- **Proactive Semantic Research:** Use `search_graph`, `query_graph`, `get_code_snippet`, and `trace_path` before reading raw files or editing shared code modules.
+- **Automatic Graph Re-indexing:** Always run `index_repository` (via `call_mcp_tool`) after creating new scripts, changing class/function signatures, or updating project configurations.
+- **Reference Documentation:** See [.agents/mcp.md](file:///c:/Users/Erdemhan/Desktop/OneDrive%20-%20erciyes.edu.tr/okul_msi/Projeler/DR%20TEZ/uav-iot-dc-env/.agents/mcp.md) for full tool capabilities and usage patterns.
 
 ## Testing and Code Verification Guidelines
 

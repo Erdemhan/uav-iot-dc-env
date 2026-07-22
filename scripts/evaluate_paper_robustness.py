@@ -84,6 +84,22 @@ def evaluate_algo(algo_name, run_dir):
             print(f"Checkpoint not found for {algo_name} in {algo_dir}")
             return None
         
+        # Ensure custom environment names are registered in Ray Tune registry
+        from ray.tune.registry import register_env
+        from ray.rllib.env.wrappers.pettingzoo_env import ParallelPettingZooEnv
+        from simulation.pettingzoo_env import UAV_IoT_PZ_Env
+        from confs.model_config import GlobalConfig
+
+        def eval_env_creator(cfg):
+            return ParallelPettingZooEnv(UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS))
+
+        for name in ["uav_iot_ppo_v1", "uav_iot_dqn_v1", "uav_iot_ppo_lstm_v1", 
+                    "uav_iot_ppo_gpu_v1", "uav_iot_dqn_gpu_v1", "uav_iot_ppo_lstm_gpu_v1"]:
+            try:
+                register_env(name, eval_env_creator)
+            except Exception:
+                pass
+
         try:
             algo_agent = Algorithm.from_checkpoint(ckpt)
         except Exception as e:
