@@ -26,15 +26,52 @@ def wait_for_processes(processes_dict):
     
     while active:
         for name in list(active):
-            p, f = processes_dict[name]
+            p, f, log_file = processes_dict[name]
             exit_code = p.poll()
             if exit_code is not None:
                 f.close()
                 active.remove(name)
-                status = "SUCCESS" if exit_code == 0 else f"FAILED (code {exit_code})"
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] Process {name} finished with status: {status}")
+                if exit_code == 0:
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Process {name} finished with status: SUCCESS")
+                else:
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Process {name} finished with status: FAILED (code {exit_code}) (Log: {log_file})")
+                    # Print last 5 lines of log file directly to console on failure
+                    try:
+                        if os.path.exists(log_file):
+                            with open(log_file, "r", encoding="utf-8", errors="ignore") as lf:
+                                lines = [line.strip() for line in lf.readlines() if line.strip()]
+                                tail_lines = lines[-5:] if len(lines) >= 5 else lines
+                                print(f"--- [ERROR LOG TAIL: {name}] ---")
+                                for line in tail_lines:
+                                    print(f"  {line}")
+                                print("-----------------------------------")
+                    except Exception:
+                        pass
         time.sleep(5)
     print("All processes in this batch have finished!\n")
+
+def verify_checkpoints(run_dir, scenario_name):
+    """Verifies that checkpoint folders exist and reports their sizes on disk"""
+    print("\n" + "=" * 80)
+    print(f"  CHECKPOINT VERIFICATION SUMMARY ({scenario_name})")
+    print("=" * 80)
+    
+    algos = ["ppo", "dqn", "ppo_lstm"]
+    for algo in algos:
+        algo_dir = os.path.join(run_dir, algo)
+        ckpt_dir = os.path.join(algo_dir, "checkpoint_001000")
+        
+        if os.path.exists(ckpt_dir) and os.path.isdir(ckpt_dir):
+            total_size = 0
+            for dirpath, dirnames, filenames in os.walk(ckpt_dir):
+                for f in filenames:
+                    fp = os.path.join(dirpath, f)
+                    total_size += os.path.getsize(fp)
+            size_mb = total_size / (1024 * 1024)
+            print(f"  [OK] {scenario_name} | {algo.upper():<10} -> Checkpoint VERIFIED! Location: {ckpt_dir} ({size_mb:.2f} MB)")
+        else:
+            print(f"  [WARNING] {scenario_name} | {algo.upper():<10} -> Checkpoint MISSING at: {ckpt_dir}")
+    print("=" * 80 + "\n")
 
 def copy_ray_progress_to_run_dir(scenario, algo, target_dir):
     """Finds the latest progress.csv under ~/ray_results/{algo_prefix}_{scenario}/t_*/progress.csv and copies it"""
@@ -138,17 +175,15 @@ def main():
 
     active_s1 = {}
     for name, (cmd, log_file) in s1_jobs.items():
-        print(f"Launching {name} via Ray Job Submit...")
+        print(f"Launching {name}...")
         p, f = run_cmd(cmd, log_file)
-        active_s1[name] = (p, f)
+        active_s1[name] = (p, f, log_file)
         
     wait_for_processes(active_s1)
     
-    # Copy RLlib progress logs from ~/ray_results
-    print("Collecting Scenario 1 progress logs from Ray results...")
+    # Verify Scenario 1 checkpoints on disk
     for scen in ["1-A", "1-B"]:
-        for algo in ["ppo", "dqn", "ppo_lstm"]:
-            copy_ray_progress_to_run_dir(scen, algo, os.path.join(run_dir, f"S{scen}", algo))
+        verify_checkpoints(os.path.join(run_dir, f"S{scen}"), f"Scenario {scen}")
 
     # ----------------------------------------------------
     # LOCAL BASELINES FOR SCENARIO 1 (QJC)
@@ -207,15 +242,13 @@ def main():
     for name, (cmd, log_file) in s2_jobs.items():
         print(f"Launching {name}...")
         p, f = run_cmd(cmd, log_file)
-        active_s2[name] = (p, f)
+        active_s2[name] = (p, f, log_file)
         
     wait_for_processes(active_s2)
     
-    # Copy RLlib progress logs from ~/ray_results
-    print("Collecting Scenario 2 progress logs from Ray results...")
+    # Verify Scenario 2 checkpoints on disk
     for scen in ["2-A", "2-B"]:
-        for algo in ["ppo", "dqn", "ppo_lstm"]:
-            copy_ray_progress_to_run_dir(scen, algo, os.path.join(run_dir, f"S{scen}", algo))
+        verify_checkpoints(os.path.join(run_dir, f"S{scen}"), f"Scenario {scen}")
 
     # ----------------------------------------------------
     # LOCAL BASELINES FOR SCENARIO 2 (QJC)

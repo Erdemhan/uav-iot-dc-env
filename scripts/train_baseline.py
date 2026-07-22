@@ -130,11 +130,11 @@ def main():
         csv_writer.writerow([episode + 1, total_reward, mean_reward])
         training_log.flush()
         
-        # Dynamic logging interval (at least every episode for short runs, or 0.5% for long runs)
-        log_interval = max(1, TRAIN_EPISODES // 200)
+        # Clean logging interval (every 20% of training episodes)
+        log_interval = max(10, TRAIN_EPISODES // 5)
         
-        if (episode + 1) % log_interval == 0:
-            print(f"Episode {episode+1}/{TRAIN_EPISODES} - Total Reward: {total_reward:.2f} - Q-Table: {np.round(learned_q_table, 2)}")
+        if (episode + 1) % log_interval == 0 or episode + 1 == TRAIN_EPISODES:
+            print(f"Episode {episode+1}/{TRAIN_EPISODES} - Total Reward: {total_reward:.2f}")
 
     # Close training log
     training_log.close()

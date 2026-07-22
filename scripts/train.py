@@ -301,5 +301,12 @@ if __name__ == "__main__":
     success = ray.get(gpu_trainer.train_on_gpu.remote())
     print(f"{args.algo.upper()} GPU Training Completed Successfully: {success}")
 
+    try:
+        ray.kill(gpu_trainer)
+    except Exception:
+        pass
+
     if ray.is_initialized():
         ray.shutdown()
+
+    sys.exit(0)
