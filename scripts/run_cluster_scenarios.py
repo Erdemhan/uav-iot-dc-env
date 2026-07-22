@@ -103,37 +103,37 @@ def main():
     print("  Scheduling jobs (PPO, DQN, PPO-LSTM x A/B)")
     print("#"*80 + "\n")
     
-    def make_job_cmd(script_name, scenario, output_dir):
+    def make_job_cmd(algo, scenario, output_dir):
         if args.ray_address:
-            return f"ray job submit --address=http://127.0.0.1:8265 --working-dir=. -- {sys.executable} -u {script_name} --scenario {scenario} --output-dir {output_dir}"
+            return f"ray job submit --address=http://127.0.0.1:8265 --working-dir=. -- {sys.executable} -u scripts/train.py --algo {algo} --scenario {scenario} --output-dir {output_dir}"
         else:
-            return f"{sys.executable} -u {script_name} --scenario {scenario} --output-dir {output_dir}"
+            return f"{sys.executable} -u scripts/train.py --algo {algo} --scenario {scenario} --output-dir {output_dir}"
 
     s1_jobs = {
         # Scenario 1-A (Low Power Penalty: w_cost = 0.03)
         "S1-A_PPO": (
-            make_job_cmd("scripts/train.py", "1-A", os.path.join(run_dir, 'S1-A', 'ppo')),
+            make_job_cmd("ppo", "1-A", os.path.join(run_dir, 'S1-A', 'ppo')),
             os.path.join(run_dir, "S1-A", "ppo.log")
         ),
         "S1-A_DQN": (
-            make_job_cmd("scripts/train_dqn.py", "1-A", os.path.join(run_dir, 'S1-A', 'dqn')),
+            make_job_cmd("dqn", "1-A", os.path.join(run_dir, 'S1-A', 'dqn')),
             os.path.join(run_dir, "S1-A", "dqn.log")
         ),
         "S1-A_PPO-LSTM": (
-            make_job_cmd("scripts/train_ppo_lstm.py", "1-A", os.path.join(run_dir, 'S1-A', 'ppo_lstm')),
+            make_job_cmd("ppo_lstm", "1-A", os.path.join(run_dir, 'S1-A', 'ppo_lstm')),
             os.path.join(run_dir, "S1-A", "ppo_lstm.log")
         ),
         # Scenario 1-B (High Power Penalty: w_cost = 0.3)
         "S1-B_PPO": (
-            make_job_cmd("scripts/train.py", "1-B", os.path.join(run_dir, 'S1-B', 'ppo')),
+            make_job_cmd("ppo", "1-B", os.path.join(run_dir, 'S1-B', 'ppo')),
             os.path.join(run_dir, "S1-B", "ppo.log")
         ),
         "S1-B_DQN": (
-            make_job_cmd("scripts/train_dqn.py", "1-B", os.path.join(run_dir, 'S1-B', 'dqn')),
+            make_job_cmd("dqn", "1-B", os.path.join(run_dir, 'S1-B', 'dqn')),
             os.path.join(run_dir, "S1-B", "dqn.log")
         ),
         "S1-B_PPO-LSTM": (
-            make_job_cmd("scripts/train_ppo_lstm.py", "1-B", os.path.join(run_dir, 'S1-B', 'ppo_lstm')),
+            make_job_cmd("ppo_lstm", "1-B", os.path.join(run_dir, 'S1-B', 'ppo_lstm')),
             os.path.join(run_dir, "S1-B", "ppo_lstm.log")
         )
     }
@@ -179,28 +179,28 @@ def main():
     s2_jobs = {
         # Scenario 2-A (Low Power Penalty: w_cost = 0.03)
         "S2-A_PPO": (
-            make_job_cmd("scripts/train.py", "2-A", os.path.join(run_dir, 'S2-A', 'ppo')),
+            make_job_cmd("ppo", "2-A", os.path.join(run_dir, 'S2-A', 'ppo')),
             os.path.join(run_dir, "S2-A", "ppo.log")
         ),
         "S2-A_DQN": (
-            make_job_cmd("scripts/train_dqn.py", "2-A", os.path.join(run_dir, 'S2-A', 'dqn')),
+            make_job_cmd("dqn", "2-A", os.path.join(run_dir, 'S2-A', 'dqn')),
             os.path.join(run_dir, "S2-A", "dqn.log")
         ),
         "S2-A_PPO-LSTM": (
-            make_job_cmd("scripts/train_ppo_lstm.py", "2-A", os.path.join(run_dir, 'S2-A', 'ppo_lstm')),
+            make_job_cmd("ppo_lstm", "2-A", os.path.join(run_dir, 'S2-A', 'ppo_lstm')),
             os.path.join(run_dir, "S2-A", "ppo_lstm.log")
         ),
         # Scenario 2-B (High Power Penalty: w_cost = 0.3)
         "S2-B_PPO": (
-            make_job_cmd("scripts/train.py", "2-B", os.path.join(run_dir, 'S2-B', 'ppo')),
+            make_job_cmd("ppo", "2-B", os.path.join(run_dir, 'S2-B', 'ppo')),
             os.path.join(run_dir, "S2-B", "ppo.log")
         ),
         "S2-B_DQN": (
-            make_job_cmd("scripts/train_dqn.py", "2-B", os.path.join(run_dir, 'S2-B', 'dqn')),
+            make_job_cmd("dqn", "2-B", os.path.join(run_dir, 'S2-B', 'dqn')),
             os.path.join(run_dir, "S2-B", "dqn.log")
         ),
         "S2-B_PPO-LSTM": (
-            make_job_cmd("scripts/train_ppo_lstm.py", "2-B", os.path.join(run_dir, 'S2-B', 'ppo_lstm')),
+            make_job_cmd("ppo_lstm", "2-B", os.path.join(run_dir, 'S2-B', 'ppo_lstm')),
             os.path.join(run_dir, "S2-B", "ppo_lstm.log")
         )
     }
