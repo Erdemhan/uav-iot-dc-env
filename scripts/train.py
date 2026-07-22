@@ -177,12 +177,25 @@ class ClusterGPUTrainer:
 
         best_reward = -float('inf')
         no_improvement_count = 0
+        progress_rows = []
+        import time
+        start_time = time.time()
 
         for i in range(1, GlobalConfig.TRAIN_ITERATIONS + 1):
             result = algo.train()
             reward = result.get("episode_reward_mean") or result.get("env_runners/episode_reward_mean")
-            reward_str = f"{reward:.2f}" if reward is not None else "N/A"
+            reward_val = float(reward) if reward is not None else 0.0
+            reward_str = f"{reward_val:.2f}" if reward is not None else "N/A"
             print(f"Iteration {i}/{GlobalConfig.TRAIN_ITERATIONS} - Episode Reward Mean: {reward_str}")
+
+            timesteps = result.get("timesteps_total") or result.get("num_env_steps_sampled") or (i * 2000)
+            progress_rows.append({
+                "training_iteration": i,
+                "episode_reward_mean": reward_val,
+                "timesteps_total": timesteps,
+                "episodes_total": result.get("episodes_total", i),
+                "time_total_s": round(time.time() - start_time, 2)
+            })
 
             if reward is not None:
                 if reward > best_reward:
@@ -217,7 +230,10 @@ class ClusterGPUTrainer:
                     checkpoint_bytes[rel_path] = fp.read()
 
         algo.stop()
-        return checkpoint_bytes
+        return {
+            "checkpoint_bytes": checkpoint_bytes,
+            "progress_rows": progress_rows
+        }
 
 if __name__ == "__main__":
     from core.logger import setup_console_logging
@@ -318,7 +334,10 @@ if __name__ == "__main__":
     )
 
     print(f"Dispatched {args.algo.upper()} GPU training task to a Worker PC in the Ray Cluster...")
-    checkpoint_bytes = ray.get(gpu_trainer.train_on_gpu.remote())
+    res = ray.get(gpu_trainer.train_on_gpu.remote())
+
+    checkpoint_bytes = res["checkpoint_bytes"] if isinstance(res, dict) else res
+    progress_rows = res.get("progress_rows", []) if isinstance(res, dict) else []
 
     # Write checkpoint files directly onto Head Node disk
     ckpt_dir = os.path.abspath(os.path.join(abs_output_dir, "checkpoint_001000"))
@@ -330,6 +349,17 @@ if __name__ == "__main__":
             fp.write(content)
 
     print(f"Successfully transferred and saved final checkpoint to Head Node disk: {ckpt_dir}")
+
+    # Write progress.csv directly to abs_output_dir
+    if progress_rows:
+        import csv
+        csv_path = os.path.join(abs_output_dir, "progress.csv")
+        fieldnames = ["training_iteration", "episode_reward_mean", "timesteps_total", "episodes_total", "time_total_s"]
+        with open(csv_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(progress_rows)
+        print(f"Successfully saved progress.csv to Head Node disk: {csv_path}")
 
     # Instant clean exit without sending cascading ray.kill signals across cluster
     os._exit(0)

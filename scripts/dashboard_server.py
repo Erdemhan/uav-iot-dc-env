@@ -611,6 +611,11 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                     if hasattr(trainer, "stdout_log") and trainer.stdout_log:
                         logs = trainer.stdout_log.get(trainer_key, [])
                 
+                if status == "PENDING" and history:
+                    current_iteration = len(history)
+                    progress = round(min(1.0, current_iteration / total_iterations) * 100, 1)
+                    status = "COMPLETED" if current_iteration >= total_iterations else "RUNNING"
+
                 response_data["algorithms"][name] = {
                     "status": status,
                     "progress": progress,
