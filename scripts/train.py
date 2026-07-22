@@ -320,12 +320,5 @@ if __name__ == "__main__":
 
     print(f"Successfully transferred and saved final checkpoint to Head Node disk: {ckpt_dir}")
 
-    try:
-        ray.kill(gpu_trainer)
-    except Exception:
-        pass
-
-    if ray.is_initialized():
-        ray.shutdown()
-
-    sys.exit(0)
+    # Instant clean exit without sending cascading ray.kill signals across cluster
+    os._exit(0)
