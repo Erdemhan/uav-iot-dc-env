@@ -590,7 +590,7 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                 status = "PENDING"
                 progress = 0
                 current_iteration = 0
-                total_iterations = 100
+                total_iterations = GlobalConfig.TRAIN_ITERATIONS
                 logs = []
                 
                 if disk_status and "algorithms" in disk_status and name in disk_status["algorithms"]:

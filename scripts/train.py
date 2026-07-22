@@ -403,8 +403,15 @@ if __name__ == "__main__":
         "GAMMA": PPOLSTMConfig.GAMMA,
     }
 
-    # Instantiate Head Node ProgressTracker Actor
-    progress_tracker = ProgressTracker.remote()
+    # Instantiate Head Node ProgressTracker Actor pinned strictly to the Head Node
+    try:
+        from ray.util.scheduling_strategies import NodeAffinitySchedulingStrategy
+        head_node_id = ray.get_runtime_context().get_node_id()
+        progress_tracker = ProgressTracker.options(
+            scheduling_strategy=NodeAffinitySchedulingStrategy(node_id=head_node_id, soft=False)
+        ).remote()
+    except Exception:
+        progress_tracker = ProgressTracker.remote()
 
     # Instantiate ClusterGPUTrainer on a Worker PC with 1 GPU!
     gpu_trainer = ClusterGPUTrainer.remote(
