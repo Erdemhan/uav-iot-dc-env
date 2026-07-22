@@ -395,8 +395,9 @@ def main():
                 print(f"  > Power (Overall Avg): {np.mean(res['Power']):.3f} W")
                 print(f"  > Power (Active Collection): {np.mean(res['Power_Active']):.3f} W")
                 print(f"  > Power (Idle / Transit): {np.mean(res['Power_Idle']):.3f} W")
-                print(f"  > SINR: {np.mean(res['SINR']):.2f} dB")
         except Exception as e:
+            print(f"  [ERROR] Failed to evaluate {algo} on Worker PC: {e}")
+
     comparison_dir = os.path.join(run_dir_abs, "comparison")
     os.makedirs(comparison_dir, exist_ok=True)
     
