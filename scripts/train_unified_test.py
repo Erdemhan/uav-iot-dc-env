@@ -13,14 +13,13 @@ os.environ["RAY_DEDUP_LOGS"] = "0"
 os.environ["PYTHONUNBUFFERED"] = "1"
 
 import ray
-from ray.util.placement_group import placement_group
 from confs.model_config import GlobalConfig, PPOConfig, DQNConfig, PPOLSTMConfig
 from confs.env_config import EnvConfig
 
 # Direct import of HPO's exact trainable function from tune_models.py!
 from scripts.tune_models import train_rllib_trial
 
-@ray.remote
+@ray.remote(num_gpus=1)
 class HPOTrainableActor:
     """Remote actor wrapping HPO's exact execution by directly invoking train_rllib_trial with live console log streaming."""
     def __init__(self, config):
@@ -134,13 +133,8 @@ def main():
     out_dir = os.path.join(PROJECT_ROOT, "artifacts", "scenario-unified-test", timestamp, f"S{args.scenario}", algo_upper.lower())
     os.makedirs(out_dir, exist_ok=True)
 
-    # Exact Ray core placement group with STRICT_PACK strategy matching HPO
-    bundles = [{"CPU": 1, "GPU": 1}] + [{"CPU": 1}] * args.num_workers
-    pg = placement_group(bundles, strategy="STRICT_PACK")
-    ray.get(pg.ready())
-
-    print(f"Dispatching HPO remote actor to Worker GPU with STRICT_PACK placement group (Workers: {args.num_workers})...")
-    actor = HPOTrainableActor.options(placement_group=pg).remote(trial_config)
+    print(f"Dispatching HPO remote actor to Worker GPU (Workers: {args.num_workers})...")
+    actor = HPOTrainableActor.remote(trial_config)
     
     start_t = time.time()
     train_future = actor.run_training.remote()
