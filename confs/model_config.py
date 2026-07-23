@@ -33,7 +33,7 @@ class GlobalConfig:
     """
     RANDOM_SEED = 42            # Random seed for reproducibility
     FLATTEN_ACTIONS = True      # Flatten MultiDiscrete to Discrete for DQN compatibility
-    TRAIN_ITERATIONS = 20       # Number of training iterations (20-iteration verification mode)
+    TRAIN_ITERATIONS = 1000       # Number of training iterations (20-iteration verification mode)
     TRAIN_BATCH_SIZE = 1000     # Steps collected per iteration (PPO/DQN)
     
     # Early Stopping Parameters
