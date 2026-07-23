@@ -101,9 +101,14 @@ class UnifiedClusterGPUTrainer:
 
         # Load Tuned Hyperparameters
         if self.algo_name == "ppo":
-            lr = self.ppo_hp.LR if self.ppo_hp else PPOHyperparams.LR
-            gamma = self.ppo_hp.GAMMA if self.ppo_hp else PPOHyperparams.GAMMA
-            hidden_layers = self.ppo_hp.MODEL_CONFIG["fcnet_hiddens"] if self.ppo_hp else PPOHyperparams.MODEL_CONFIG["fcnet_hiddens"]
+            lr = getattr(self.ppo_hp, "LR", PPOHyperparams.LR) if self.ppo_hp else PPOHyperparams.LR
+            gamma = getattr(self.ppo_hp, "GAMMA", PPOHyperparams.GAMMA) if self.ppo_hp else PPOHyperparams.GAMMA
+            if self.ppo_hp and hasattr(self.ppo_hp, "FCNET_HIDDENS"):
+                hidden_layers = self.ppo_hp.FCNET_HIDDENS
+            elif self.ppo_hp and hasattr(self.ppo_hp, "MODEL_CONFIG"):
+                hidden_layers = self.ppo_hp.MODEL_CONFIG.get("fcnet_hiddens", PPOHyperparams.FCNET_HIDDENS)
+            else:
+                hidden_layers = PPOHyperparams.FCNET_HIDDENS
             
             config = (
                 PPOConfig()
@@ -139,9 +144,14 @@ class UnifiedClusterGPUTrainer:
             )
 
         elif self.algo_name == "dqn":
-            lr = self.dqn_hp.LR if self.dqn_hp else DQNHyperparams.LR
-            gamma = self.dqn_hp.GAMMA if self.dqn_hp else DQNHyperparams.GAMMA
-            hidden_layers = self.dqn_hp.MODEL_CONFIG["fcnet_hiddens"] if self.dqn_hp else DQNHyperparams.MODEL_CONFIG["fcnet_hiddens"]
+            lr = getattr(self.dqn_hp, "LR", DQNHyperparams.LR) if self.dqn_hp else DQNHyperparams.LR
+            gamma = getattr(self.dqn_hp, "GAMMA", DQNHyperparams.GAMMA) if self.dqn_hp else DQNHyperparams.GAMMA
+            if self.dqn_hp and hasattr(self.dqn_hp, "FCNET_HIDDENS"):
+                hidden_layers = self.dqn_hp.FCNET_HIDDENS
+            elif self.dqn_hp and hasattr(self.dqn_hp, "MODEL_CONFIG"):
+                hidden_layers = self.dqn_hp.MODEL_CONFIG.get("fcnet_hiddens", DQNHyperparams.FCNET_HIDDENS)
+            else:
+                hidden_layers = DQNHyperparams.FCNET_HIDDENS
             target_freq = getattr(self.dqn_hp, "TARGET_NETWORK_UPDATE_FREQ", 2000) if self.dqn_hp else 2000
 
             config = (
@@ -178,9 +188,14 @@ class UnifiedClusterGPUTrainer:
             )
 
         elif self.algo_name in ["ppo_lstm", "ppo-lstm"]:
-            lr = self.lstm_hp.LR if self.lstm_hp else PPOLSTMConfig.LR
-            gamma = self.lstm_hp.GAMMA if self.lstm_hp else PPOLSTMConfig.GAMMA
-            hidden_layers = self.lstm_hp.MODEL_CONFIG["fcnet_hiddens"] if self.lstm_hp else PPOLSTMConfig.MODEL_CONFIG["fcnet_hiddens"]
+            lr = getattr(self.lstm_hp, "LR", PPOLSTMConfig.LR) if self.lstm_hp else PPOLSTMConfig.LR
+            gamma = getattr(self.lstm_hp, "GAMMA", PPOLSTMConfig.GAMMA) if self.lstm_hp else PPOLSTMConfig.GAMMA
+            if self.lstm_hp and hasattr(self.lstm_hp, "FCNET_HIDDENS"):
+                hidden_layers = self.lstm_hp.FCNET_HIDDENS
+            elif self.lstm_hp and hasattr(self.lstm_hp, "MODEL_CONFIG"):
+                hidden_layers = self.lstm_hp.MODEL_CONFIG.get("fcnet_hiddens", PPOLSTMConfig.FCNET_HIDDENS)
+            else:
+                hidden_layers = PPOLSTMConfig.FCNET_HIDDENS
             lstm_cell_size = getattr(self.lstm_hp, "LSTM_CELL_SIZE", 128) if self.lstm_hp else 128
             max_seq_len = getattr(self.lstm_hp, "MAX_SEQ_LEN", 20) if self.lstm_hp else 20
 
