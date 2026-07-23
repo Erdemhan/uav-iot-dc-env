@@ -172,7 +172,7 @@ class UnifiedClusterGPUTrainer:
                     double_q=DQNHyperparams.DOUBLE_Q,
                     dueling=DQNHyperparams.DUELING,
                     replay_buffer_config={"type": "ReplayBuffer", "capacity": DQNHyperparams.REPLAY_BUFFER_CAPACITY},
-                    num_steps_sampled_before_learning_starts=0
+                    num_steps_sampled_before_learning_starts=1000
                 )
                 .multi_agent(
                     policies={
