@@ -11,29 +11,16 @@ os.environ["RAY_OVERRIDE_JOB_RUNTIME_ENV"] = "1"
 os.environ["RAY_DEDUP_LOGS"] = "0"
 os.environ["PYTHONUNBUFFERED"] = "1"
 
-import numpy as np
-import core.physics
-from confs.env_config import EnvConfig
-from confs.config import UAVConfig
-
-# Override calculate_path_loss with OLD Friis formula (with 1/eta factor as of July 18)
-def old_calculate_path_loss(d: float = 1.0, fc: float = UAVConfig.FC, eta: float = UAVConfig.ETA) -> float:
-    c = UAVConfig.C
-    beta_0 = (1 / eta) * ( (4 * np.pi * fc) / c )**(-2)
-    return beta_0
-
-core.physics.calculate_path_loss = old_calculate_path_loss
-print("[OLD PHYSICS EMBEDDED] Overrode core.physics.calculate_path_loss with pre-July 22 formula (1/eta factor).")
-
 import ray
 from ray import tune
+from confs.env_config import EnvConfig
 from confs.model_config import GlobalConfig
 from scripts.tune_models import train_rllib_trial
 
 def main():
     print("\n==================================================")
     print(" 30-SECOND OLD PHYSICS EMPIRICAL TUNE.RUN VERIFICATION TEST")
-    print(" Testing pre-July 22 physics formula on Worker GPU")
+    print(" Testing pre-July 22 physics formula directly inside core/physics.py")
     print("==================================================\n")
 
     # Set Scenario 1-A EnvConfig
@@ -72,7 +59,7 @@ def main():
     out_dir = os.path.join(PROJECT_ROOT, "artifacts", "hpo_old_physics_test_run")
     os.makedirs(out_dir, exist_ok=True)
 
-    print("Starting tune.run() test with OLD physics formula on Worker GPU...")
+    print("Starting tune.run() test with pre-July 22 physics formula on Worker GPU...")
     start_t = time.time()
     analysis = tune.run(
         train_rllib_trial,

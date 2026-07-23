@@ -5,13 +5,15 @@ from confs.env_config import EnvConfig
 
 
 
-def calculate_path_loss(d: float = 1.0, fc: float = UAVConfig.FC) -> float:
+def calculate_path_loss(d: float = 1.0, fc: float = UAVConfig.FC, eta: float = UAVConfig.ETA) -> float:
     """
     Reference Channel Gain (beta_0) calculation at reference distance d0 = 1m.
-    beta_0(fc) = (c / (4 * pi * fc))^2
     """
     c = UAVConfig.C
-    beta_0 = (c / (4 * np.pi * fc))**2
+    # CORRECT IEEE FORMULA (COMMENTED OUT FOR EMPIRICAL COMPARISON TEST):
+    # beta_0 = (c / (4 * np.pi * fc))**2
+    # PRE-JULY 22 FORMULA (WITH 1/ETA FACTOR AS USED IN JULY 18 HPO):
+    beta_0 = (1 / eta) * ((4 * np.pi * fc) / c)**(-2)
     return beta_0
 
 def calculate_jammer_power_consumption(p_jam_out: float, frequency: float) -> float:
