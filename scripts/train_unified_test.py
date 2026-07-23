@@ -115,10 +115,25 @@ def main():
     res = ray.get(future)
     elapsed = round(time.time() - start_t, 2)
 
+    timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+    out_dir = os.path.join(PROJECT_ROOT, "artifacts", "scenario-unified-test", timestamp, f"S{args.scenario}", algo_upper.lower())
+    os.makedirs(out_dir, exist_ok=True)
+
+    results_file = os.path.join(out_dir, "results.json")
+    config_file = os.path.join(out_dir, "trial_config.json")
+
+    with open(results_file, "w", encoding="utf-8") as f:
+        json.dump(res, f, indent=2)
+
+    with open(config_file, "w", encoding="utf-8") as f:
+        json.dump(trial_config, f, indent=2)
+
     print(f"\n==================================================")
     print(f" DIRECT HPO EXECUTION COMPLETED ({elapsed}s)")
     print(f" Algorithm: {algo_upper} | Scenario: {args.scenario}")
     print(f" Result: {json.dumps(res, indent=2)}")
+    print(f" Saved Results To: {results_file}")
+    print(f" Saved Config To:  {config_file}")
     print(f"==================================================\n")
 
 if __name__ == "__main__":
