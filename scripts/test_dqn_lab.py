@@ -149,9 +149,14 @@ def main():
         "W_COST": EnvConfig.W_COST
     }
 
-    # Initialize Ray
+    # Initialize Ray with runtime_env for cluster workers
     if not ray.is_initialized():
-        ray.init(ignore_reinit_error=True)
+        runtime_env = {
+            "working_dir": PROJECT_ROOT,
+            "excludes": [".venv", "artifacts", "ray_results", "head-node-logs", ".git", "baseline_q_table", "node_modules"],
+            "env_vars": {"PYTHONPATH": "."}
+        }
+        ray.init(ignore_reinit_error=True, runtime_env=runtime_env)
 
     env_name = f"uav_iot_dqn_lab_{args.scenario.lower()}_v1"
     register_env(env_name, env_creator)
