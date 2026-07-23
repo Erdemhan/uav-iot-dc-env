@@ -321,7 +321,7 @@ def main():
     print("  PHASE 3: GENERATING REWARD LEARNING CURVES")
     print("="*80 + "\n")
     
-    plot_cmd = f"{sys.executable} scripts/plot_scenario_learning_curves.py --run-dir {run_dir}"
+    plot_cmd = f"{sys.executable} visualization/plot_scenario_learning_curves.py --run-dir {run_dir}"
     subprocess.run(plot_cmd, shell=True)
 
     # ----------------------------------------------------
