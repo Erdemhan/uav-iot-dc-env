@@ -117,13 +117,13 @@ class UnifiedClusterGPUTrainer:
                 .debugging(seed=GlobalConfig.RANDOM_SEED)
                 .env_runners(
                     num_env_runners=GlobalConfig.NUM_WORKERS,
-                    rollout_fragment_length=GlobalConfig.ROLLOUT_FRAGMENT_LENGTH
+                    rollout_fragment_length=100
                 )
                 .training(
                     model={"fcnet_hiddens": hidden_layers},
                     gamma=gamma,
                     lr=lr,
-                    train_batch_size=GlobalConfig.TRAIN_BATCH_SIZE,
+                    train_batch_size=1000,
                     sgd_minibatch_size=PPOHyperparams.SGD_MINIBATCH_SIZE,
                     num_sgd_iter=PPOHyperparams.NUM_SGD_ITER,
                     clip_param=PPOHyperparams.CLIP_PARAM,
@@ -161,13 +161,13 @@ class UnifiedClusterGPUTrainer:
                 .debugging(seed=GlobalConfig.RANDOM_SEED)
                 .env_runners(
                     num_env_runners=GlobalConfig.NUM_WORKERS,
-                    rollout_fragment_length=GlobalConfig.ROLLOUT_FRAGMENT_LENGTH
+                    rollout_fragment_length=100
                 )
                 .training(
                     model={"fcnet_hiddens": hidden_layers},
                     gamma=gamma,
                     lr=lr,
-                    train_batch_size=GlobalConfig.TRAIN_BATCH_SIZE,
+                    train_batch_size=1000,
                     target_network_update_freq=target_freq,
                     double_q=DQNHyperparams.DOUBLE_Q,
                     dueling=DQNHyperparams.DUELING,
@@ -213,13 +213,13 @@ class UnifiedClusterGPUTrainer:
                 .debugging(seed=GlobalConfig.RANDOM_SEED)
                 .env_runners(
                     num_env_runners=GlobalConfig.NUM_WORKERS,
-                    rollout_fragment_length=GlobalConfig.ROLLOUT_FRAGMENT_LENGTH
+                    rollout_fragment_length=100
                 )
                 .training(
                     model=model_cfg,
                     gamma=gamma,
                     lr=lr,
-                    train_batch_size=GlobalConfig.TRAIN_BATCH_SIZE,
+                    train_batch_size=1000,
                     sgd_minibatch_size=PPOLSTMConfig.SGD_MINIBATCH_SIZE,
                     num_sgd_iter=PPOLSTMConfig.NUM_SGD_ITER,
                     clip_param=PPOLSTMConfig.CLIP_PARAM,
