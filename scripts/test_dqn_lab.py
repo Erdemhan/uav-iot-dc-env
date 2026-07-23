@@ -18,14 +18,13 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(PROJECT_ROOT)
 
 import ray
-from ray import tune
 from ray.tune.registry import register_env
 from ray.rllib.env.wrappers.pettingzoo_env import ParallelPettingZooEnv
 from ray.rllib.algorithms.dqn import DQNConfig as RLlibDQNConfig
 
 from simulation.pettingzoo_env import UAV_IoT_PZ_Env
 from confs.env_config import EnvConfig
-from confs.model_config import GlobalConfig, DQNConfig as DQNHyperparams
+from confs.model_config import GlobalConfig
 from confs.opt_config import OptConfig
 
 def env_creator(config):
@@ -116,20 +115,140 @@ def run_30seeds_eval(algo_agent, env_cfg):
         "sinr_mean": float(np.mean(ep_sinrs))
     }
 
+@ray.remote(num_gpus=1, max_concurrency=2)
+class LabDQNClusterGPUTrainer:
+    """Ray Remote Actor guaranteed to run on a Worker PC with an active GPU."""
+    def __init__(self, scenario, iterations, eval_freq, num_workers, env_cfg_dict):
+        self.scenario = scenario
+        self.iterations = iterations
+        self.eval_freq = eval_freq
+        self.num_workers = num_workers
+        self.env_cfg_dict = env_cfg_dict
+        self.progress_rows = []
+
+    def get_progress(self):
+        return list(self.progress_rows)
+
+    def train_on_gpu(self):
+        import torch
+        import random
+        torch.set_num_threads(2)
+        random.seed(GlobalConfig.RANDOM_SEED)
+        torch.manual_seed(GlobalConfig.RANDOM_SEED)
+        np.random.seed(GlobalConfig.RANDOM_SEED)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(GlobalConfig.RANDOM_SEED)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+
+        if "num_nodes" in self.env_cfg_dict: EnvConfig.NUM_NODES = int(self.env_cfg_dict["num_nodes"])
+        if "num_uavs" in self.env_cfg_dict: EnvConfig.NUM_UAVS = int(self.env_cfg_dict["num_uavs"])
+        if "area_size" in self.env_cfg_dict: EnvConfig.AREA_SIZE = float(self.env_cfg_dict["area_size"])
+        if "w_cost" in self.env_cfg_dict: EnvConfig.W_COST = float(self.env_cfg_dict["w_cost"])
+
+        env_name = f"uav_iot_dqn_lab_{self.scenario.lower()}_gpu_v1"
+        try:
+            register_env(env_name, env_creator)
+        except Exception:
+            pass
+
+        dummy_env = UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS)
+        obs_space = dummy_env.observation_space("jammer_0")
+        act_space = dummy_env.action_space("jammer_0")
+        node_obs = dummy_env.observation_space("node_0")
+        node_act = dummy_env.action_space("node_0")
+
+        cfg_obj = (
+            RLlibDQNConfig()
+            .environment(env_name, env_config=self.env_cfg_dict)
+            .framework("torch")
+            .debugging(seed=GlobalConfig.RANDOM_SEED)
+            .env_runners(num_env_runners=self.num_workers, rollout_fragment_length=100)
+            .training(
+                model={"fcnet_hiddens": [128, 512, 512]},
+                gamma=0.8721224348952492,
+                lr=0.0003204387357042751,
+                train_batch_size=1000,
+                target_network_update_freq=2000,
+                double_q=True,
+                dueling=True,
+                replay_buffer_config={"type": "ReplayBuffer", "capacity": 50000},
+                num_steps_sampled_before_learning_starts=0,
+            )
+            .multi_agent(
+                policies={
+                    "jammer_policy": (None, obs_space, act_space, {}),
+                    "node_policy": (None, node_obs, node_act, {}),
+                },
+                policy_mapping_fn=lambda agent_id, *args, **kwargs: "jammer_policy" if agent_id == "jammer_0" else "node_policy",
+                policies_to_train=["jammer_policy"],
+            )
+            .api_stack(enable_rl_module_and_learner=False, enable_env_runner_and_connector_v2=False)
+            .resources(num_gpus=1)
+            .debugging(log_level="WARN")
+        )
+
+        algo = cfg_obj.build()
+        print(f"[Worker GPU] DQN initialized on Worker PC with GPU for scenario {self.scenario}...")
+
+        start_time = time.time()
+        last_eval = {"jsr_mean": 0.0, "jsr_std": 0.0, "track_mean": 0.0, "power_mean": 0.0, "sinr_mean": 0.0}
+
+        for i in range(1, self.iterations + 1):
+            res = algo.train()
+            ep_reward = res.get("episode_reward_mean", 0.0)
+
+            if i % self.eval_freq == 0 or i == self.iterations:
+                last_eval = run_30seeds_eval(algo, self.env_cfg_dict)
+                elapsed = round(time.time() - start_time, 2)
+                print(f"[Worker GPU] Iter {i:4d}/{self.iterations} | Reward: {ep_reward:6.2f} | 30-Seed Eval JSR: {last_eval['jsr_mean']:5.2f}% ± {last_eval['jsr_std']:4.2f}% | Track: {last_eval['track_mean']:5.2f}% | Power: {last_eval['power_mean']:.3f}W ({elapsed}s)")
+
+            self.progress_rows.append({
+                "iteration": i,
+                "episode_reward_mean": ep_reward,
+                "eval_jsr_mean": last_eval["jsr_mean"],
+                "eval_jsr_std": last_eval["jsr_std"],
+                "eval_track_mean": last_eval["track_mean"],
+                "eval_power_mean": last_eval["power_mean"],
+                "eval_sinr_mean": last_eval["sinr_mean"],
+                "time_s": round(time.time() - start_time, 2)
+            })
+
+        # Save Checkpoint to Worker PC tmp
+        tmp_ckpt = f"/tmp/ckpt_dqn_lab_{self.scenario}"
+        if os.path.exists(tmp_ckpt):
+            import shutil
+            shutil.rmtree(tmp_ckpt)
+        os.makedirs(tmp_ckpt, exist_ok=True)
+        algo.save(checkpoint_dir=tmp_ckpt)
+
+        checkpoint_bytes = {}
+        for root, dirs, files in os.walk(tmp_ckpt):
+            for f in files:
+                full_path = os.path.join(root, f)
+                rel_path = os.path.relpath(full_path, tmp_ckpt)
+                with open(full_path, "rb") as fp:
+                    checkpoint_bytes[rel_path] = fp.read()
+
+        algo.stop()
+        return {
+            "checkpoint_bytes": checkpoint_bytes,
+            "progress_rows": self.progress_rows
+        }
+
 def main():
-    parser = argparse.ArgumentParser(description="Lab DQN Empirical Verification Script (1 Machine GPU STRICT_PACK)")
+    parser = argparse.ArgumentParser(description="Lab DQN Empirical Verification Script (Ray Cluster Remote GPU Actor)")
     parser.add_argument("--scenario", type=str, default="1-A", choices=["1-A", "1-B", "2-A", "2-B"], help="Scenario ID")
     parser.add_argument("--iterations", type=int, default=1000, help="Training iterations")
     parser.add_argument("--eval-freq", type=int, default=5, help="30-seed evaluation frequency (every N iterations)")
-    parser.add_argument("--num-workers", type=int, default=10, help="Rollout workers (STRICT_PACK)")
+    parser.add_argument("--num-workers", type=int, default=10, help="Rollout workers per trial")
     args = parser.parse_args()
 
     print(f"\n==================================================")
-    print(f" LAB DQN VERIFICATION RUN: Scenario {args.scenario}")
+    print(f" LAB DQN CLUSTER GPU VERIFICATION RUN: Scenario {args.scenario}")
     print(f" Iterations: {args.iterations} | Workers: {args.num_workers} | Eval Freq: {args.eval_freq}")
     print(f"==================================================\n")
 
-    # Set Scenario Config
     if args.scenario == "1-A":
         EnvConfig.NUM_NODES = 15; EnvConfig.NUM_UAVS = 1; EnvConfig.AREA_SIZE = 500.0; EnvConfig.W_COST = 0.03
     elif args.scenario == "1-B":
@@ -149,7 +268,6 @@ def main():
         "W_COST": EnvConfig.W_COST
     }
 
-    # Initialize Ray with runtime_env for cluster workers
     if not ray.is_initialized():
         runtime_env = {
             "working_dir": PROJECT_ROOT,
@@ -158,105 +276,66 @@ def main():
         }
         ray.init(ignore_reinit_error=True, runtime_env=runtime_env)
 
-    env_name = f"uav_iot_dqn_lab_{args.scenario.lower()}_v1"
-    register_env(env_name, env_creator)
-
-    dummy_env = UAV_IoT_PZ_Env(auto_uav=True, flatten_actions=GlobalConfig.FLATTEN_ACTIONS)
-    obs_space = dummy_env.observation_space("jammer_0")
-    act_space = dummy_env.action_space("jammer_0")
-    node_obs = dummy_env.observation_space("node_0")
-    node_act = dummy_env.action_space("node_0")
-
-    # Build DQN Config with Trial #64 parameters
-    cfg_obj = (
-        RLlibDQNConfig()
-        .environment(env_name, env_config=env_cfg_dict)
-        .framework("torch")
-        .debugging(seed=GlobalConfig.RANDOM_SEED)
-        .env_runners(num_env_runners=args.num_workers, rollout_fragment_length=100)
-        .training(
-            model={"fcnet_hiddens": [128, 512, 512]},
-            gamma=0.8721224348952492,
-            lr=0.0003204387357042751,
-            train_batch_size=1000,
-            target_network_update_freq=2000,
-            double_q=True,
-            dueling=True,
-            replay_buffer_config={"type": "ReplayBuffer", "capacity": 50000},
-            num_steps_sampled_before_learning_starts=0,
-        )
-        .multi_agent(
-            policies={
-                "jammer_policy": (None, obs_space, act_space, {}),
-                "node_policy": (None, node_obs, node_act, {}),
-            },
-            policy_mapping_fn=lambda agent_id, *args, **kwargs: "jammer_policy" if agent_id == "jammer_0" else "node_policy",
-            policies_to_train=["jammer_policy"],
-        )
-        .api_stack(enable_rl_module_and_learner=False, enable_env_runner_and_connector_v2=False)
-        .resources(num_gpus=1)
-        .debugging(log_level="WARN")
+    # Instantiate LabDQNClusterGPUTrainer on Worker PC with 1 GPU!
+    trainer_actor = LabDQNClusterGPUTrainer.remote(
+        scenario=args.scenario,
+        iterations=args.iterations,
+        eval_freq=args.eval_freq,
+        num_workers=args.num_workers,
+        env_cfg_dict=env_cfg_dict
     )
 
-    algo = cfg_obj.build()
-    print("[OK] DQN Algorithm built successfully with HPO Trial #64 hyperparameters.")
+    print(f"Dispatched DQN GPU training actor to a Worker PC in the Ray Cluster...")
+    train_future = trainer_actor.train_on_gpu.remote()
 
-    # Output directory
     out_dir = os.path.join(PROJECT_ROOT, "artifacts", "test_dqn_lab", f"S{args.scenario}")
     os.makedirs(out_dir, exist_ok=True)
     csv_path = os.path.join(out_dir, "progress_dqn_lab.csv")
-
     fieldnames = ["iteration", "episode_reward_mean", "eval_jsr_mean", "eval_jsr_std", "eval_track_mean", "eval_power_mean", "eval_sinr_mean", "time_s"]
-    progress_rows = []
 
-    start_time = time.time()
-    last_eval = {"jsr_mean": 0.0, "jsr_std": 0.0, "track_mean": 0.0, "power_mean": 0.0, "sinr_mean": 0.0}
+    # Poll progress every 3 seconds from Head Node while Worker GPU executes training
+    while True:
+        ready, _ = ray.wait([train_future], timeout=3.0)
+        try:
+            current_rows = ray.get(trainer_actor.get_progress.remote())
+            if current_rows:
+                with open(csv_path, "w", newline="", encoding="utf-8") as f:
+                    writer = csv.DictWriter(f, fieldnames=fieldnames)
+                    writer.writeheader()
+                    writer.writerows(current_rows)
+        except Exception:
+            pass
+        if ready:
+            break
 
-    print("\nStarting Training & Periodic Evaluation Loop...")
-    for i in range(1, args.iterations + 1):
-        res = algo.train()
-        ep_reward = res.get("episode_reward_mean", 0.0)
+    res = ray.get(train_future)
+    checkpoint_bytes = res["checkpoint_bytes"]
+    progress_rows = res["progress_rows"]
 
-        # Run 30-seed evaluation
-        if i % args.eval_freq == 0 or i == args.iterations:
-            last_eval = run_30seeds_eval(algo, env_cfg_dict)
-            elapsed = round(time.time() - start_time, 2)
-            print(f"Iter {i:4d}/{args.iterations} | Train Reward: {ep_reward:6.2f} | 30-Seed Eval JSR: {last_eval['jsr_mean']:5.2f}% ± {last_eval['jsr_std']:4.2f}% | Track: {last_eval['track_mean']:5.2f}% | Power: {last_eval['power_mean']:.3f}W ({elapsed}s)")
+    # Write progress CSV and Checkpoint to Head Node disk
+    if progress_rows:
+        with open(csv_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(progress_rows)
 
-        row = {
-            "iteration": i,
-            "episode_reward_mean": ep_reward,
-            "eval_jsr_mean": last_eval["jsr_mean"],
-            "eval_jsr_std": last_eval["jsr_std"],
-            "eval_track_mean": last_eval["track_mean"],
-            "eval_power_mean": last_eval["power_mean"],
-            "eval_sinr_mean": last_eval["sinr_mean"],
-            "time_s": round(time.time() - start_time, 2)
-        }
-        progress_rows.append(row)
-
-        # Save live CSV
-        if i % 10 == 0 or i == args.iterations:
-            with open(csv_path, "w", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=fieldnames)
-                writer.writeheader()
-                writer.writerows(progress_rows)
-
-    # Save Checkpoint
     ckpt_dir = os.path.join(out_dir, "checkpoint_001000")
     os.makedirs(ckpt_dir, exist_ok=True)
-    algo.save(checkpoint_dir=ckpt_dir)
-    print(f"\n[OK] Checkpoint saved successfully to: {ckpt_dir}")
+    for rel_path, content in checkpoint_bytes.items():
+        dest = os.path.join(ckpt_dir, rel_path)
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        with open(dest, "wb") as fp:
+            fp.write(content)
 
+    last_eval = progress_rows[-1] if progress_rows else {}
     print("\n==================================================")
-    print(" LAB DQN VERIFICATION COMPLETED")
-    print(f" Final 1000th Iter 30-Seed JSR:   {last_eval['jsr_mean']:.2f}% ± {last_eval['jsr_std']:.2f}%")
-    print(f" Final 1000th Iter Tracking Acc: {last_eval['track_mean']:.2f}%")
-    print(f" Final 1000th Iter Avg Power:    {last_eval['power_mean']:.3f} W")
+    print(" LAB DQN CLUSTER GPU VERIFICATION COMPLETED")
+    print(f" Final 1000th Iter 30-Seed JSR:   {last_eval.get('eval_jsr_mean', 0.0):.2f}% ± {last_eval.get('eval_jsr_std', 0.0):.2f}%")
+    print(f" Final 1000th Iter Tracking Acc: {last_eval.get('eval_track_mean', 0.0):.2f}%")
+    print(f" Final 1000th Iter Avg Power:    {last_eval.get('eval_power_mean', 0.0):.3f} W")
     print(f" Progress CSV Saved: {csv_path}")
+    print(f" Checkpoint Saved:   {ckpt_dir}")
     print("==================================================\n")
-
-    algo.stop()
 
 if __name__ == "__main__":
     main()
