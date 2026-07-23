@@ -17,7 +17,7 @@ from confs.env_config import EnvConfig
 # Direct import of HPO's exact trainable function!
 from scripts.tune_models import train_rllib_trial
 
-@ray.remote(num_gpus=1, max_concurrency=2)
+@ray.remote(num_gpus=1)
 def run_hpo_trainable_remote(config):
     """Remote actor wrapper executing HPO's exact train_rllib_trial function on Worker GPU."""
     return train_rllib_trial(config)
