@@ -11,16 +11,28 @@ os.environ["RAY_OVERRIDE_JOB_RUNTIME_ENV"] = "1"
 os.environ["RAY_DEDUP_LOGS"] = "0"
 os.environ["PYTHONUNBUFFERED"] = "1"
 
+import numpy as np
+import core.physics
+from confs.env_config import UAVConfig, EnvConfig
+
+# Override calculate_path_loss with OLD Friis formula (with 1/eta factor as of July 18)
+def old_calculate_path_loss(d: float = 1.0, fc: float = UAVConfig.FC, eta: float = UAVConfig.ETA) -> float:
+    c = UAVConfig.C
+    beta_0 = (1 / eta) * ( (4 * np.pi * fc) / c )**(-2)
+    return beta_0
+
+core.physics.calculate_path_loss = old_calculate_path_loss
+print("[OLD PHYSICS EMBEDDED] Overrode core.physics.calculate_path_loss with pre-July 22 formula (1/eta factor).")
+
 import ray
 from ray import tune
-from confs.env_config import EnvConfig
 from confs.model_config import GlobalConfig
 from scripts.tune_models import train_rllib_trial
 
 def main():
     print("\n==================================================")
-    print(" 30-SECOND EMPIRICAL TUNE.RUN VERIFICATION TEST")
-    print(" Running tune.run() for 5 iterations on Worker GPU")
+    print(" 30-SECOND OLD PHYSICS EMPIRICAL TUNE.RUN VERIFICATION TEST")
+    print(" Testing pre-July 22 physics formula on Worker GPU")
     print("==================================================\n")
 
     # Set Scenario 1-A EnvConfig
@@ -56,10 +68,10 @@ def main():
     bundles = [{"CPU": 1, "GPU": 1}] + [{"CPU": 1}] * 10
     trial_resources = PlacementGroupFactory(bundles, strategy="STRICT_PACK")
 
-    out_dir = os.path.join(PROJECT_ROOT, "artifacts", "hpo_test_run")
+    out_dir = os.path.join(PROJECT_ROOT, "artifacts", "hpo_old_physics_test_run")
     os.makedirs(out_dir, exist_ok=True)
 
-    print("Starting tune.run() single trial test on Worker GPU...")
+    print("Starting tune.run() test with OLD physics formula on Worker GPU...")
     start_t = time.time()
     analysis = tune.run(
         train_rllib_trial,
@@ -67,7 +79,7 @@ def main():
         resources_per_trial=trial_resources,
         num_samples=1,
         storage_path=out_dir,
-        name="test_trial64",
+        name="test_trial64_old_physics",
         verbose=1
     )
     elapsed = round(time.time() - start_t, 2)
@@ -76,8 +88,8 @@ def main():
     last_result = trial.last_result
 
     print(f"\n==================================================")
-    print(f" TUNE.RUN EMPIRICAL TEST COMPLETED IN {elapsed}s")
-    print(f" Iteration 5 Results:")
+    print(f" OLD PHYSICS EMPIRICAL TEST COMPLETED IN {elapsed}s")
+    print(f" Iteration 5 Results (Expected HPO Target: Power=0.240889W, Obj=-0.722667):")
     print(f"   JSR:      {last_result.get('jsr', 0.0):.2f}%")
     print(f"   Tracking: {last_result.get('tracking_acc', 0.0):.2f}%")
     print(f"   Power:    {last_result.get('power', 0.0):.6f} W")
