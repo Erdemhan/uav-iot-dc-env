@@ -13,7 +13,7 @@ os.environ["RAY_DEDUP_LOGS"] = "0"
 os.environ["PYTHONUNBUFFERED"] = "1"
 
 import ray
-from ray.tune import PlacementGroupFactory
+from ray.util.placement_group import placement_group
 from confs.model_config import GlobalConfig, PPOConfig, DQNConfig, PPOLSTMConfig
 from confs.env_config import EnvConfig
 
@@ -134,12 +134,13 @@ def main():
     out_dir = os.path.join(PROJECT_ROOT, "artifacts", "scenario-unified-test", timestamp, f"S{args.scenario}", algo_upper.lower())
     os.makedirs(out_dir, exist_ok=True)
 
-    # Exact placement group bundles matching HPO (STRICT_PACK strategy)
+    # Exact Ray core placement group with STRICT_PACK strategy matching HPO
     bundles = [{"CPU": 1, "GPU": 1}] + [{"CPU": 1}] * args.num_workers
-    placement_group = PlacementGroupFactory(bundles, strategy="STRICT_PACK")
+    pg = placement_group(bundles, strategy="STRICT_PACK")
+    ray.get(pg.ready())
 
     print(f"Dispatching HPO remote actor to Worker GPU with STRICT_PACK placement group (Workers: {args.num_workers})...")
-    actor = HPOTrainableActor.options(scheduling_strategy=placement_group).remote(trial_config)
+    actor = HPOTrainableActor.options(placement_group=pg).remote(trial_config)
     
     start_t = time.time()
     train_future = actor.run_training.remote()
