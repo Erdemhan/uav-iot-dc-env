@@ -14,7 +14,7 @@ os.environ["PYTHONUNBUFFERED"] = "1"
 import numpy as np
 import core.physics
 from confs.env_config import EnvConfig
-from confs.model_config import UAVConfig
+from confs.config import UAVConfig
 
 # Override calculate_path_loss with OLD Friis formula (with 1/eta factor as of July 18)
 def old_calculate_path_loss(d: float = 1.0, fc: float = UAVConfig.FC, eta: float = UAVConfig.ETA) -> float:
