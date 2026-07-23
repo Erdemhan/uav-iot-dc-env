@@ -3,6 +3,8 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import warnings
 import argparse
+import json
+import time
 
 # Suppress Ray metrics exporter warnings and allow job environment override
 os.environ["RAY_DISABLE_METRICS_EXPORT"] = "1"
@@ -23,6 +25,7 @@ from ray.tune.registry import register_env
 from simulation.pettingzoo_env import UAV_IoT_PZ_Env
 from confs.model_config import GlobalConfig, PPOConfig as PPOHyperparams, DQNConfig as DQNHyperparams, PPOLSTMConfig
 from confs.env_config import EnvConfig
+from scripts.tune_models import run_30seeds_eval
 
 def env_creator(config):
     # Override EnvConfig dynamically for remote workers
@@ -184,7 +187,13 @@ class ClusterGPUTrainer:
         no_improvement_count = 0
         self.progress_rows = []
         last_valid_reward = None
-        import time
+        
+        last_objective = 0.0
+        last_jsr = 0.0
+        last_track = 0.0
+        last_power = 0.0
+        last_sinr = 0.0
+        
         start_time = time.time()
 
         def extract_reward(res_dict):
@@ -224,13 +233,12 @@ class ClusterGPUTrainer:
 
             return None
 
+        phase_num = 1 if "1" in str(self.scenario) else 2
+        algo_name_upper = "PPO" if self.algo_name == "ppo" else ("DQN" if self.algo_name == "dqn" else "PPO-LSTM")
+        lstm_size = self.lstm_hp.get("LSTM_CELL_SIZE", 256) if self.lstm_hp else 256
+
         for i in range(1, GlobalConfig.TRAIN_ITERATIONS + 1):
             result = algo.train()
-            
-            if i == 1:
-                print(f"[Worker GPU Debug] Iteration 1 policy_reward_mean = {result.get('policy_reward_mean')}")
-                print(f"[Worker GPU Debug] Iteration 1 episode_reward_mean = {result.get('episode_reward_mean')}")
-            
             reward = extract_reward(result)
             if reward is not None:
                 last_valid_reward = reward
@@ -238,20 +246,38 @@ class ClusterGPUTrainer:
             elif last_valid_reward is not None:
                 reward_val = last_valid_reward
             else:
-                reward_val = None
+                reward_val = 0.0
 
-            reward_str = f"{reward_val:.2f}" if reward_val is not None else "N/A"
-            print(f"Iteration {i}/{GlobalConfig.TRAIN_ITERATIONS} - Episode Reward Mean ({self.algo_name.upper()}): {reward_str}")
+            # Run 30-seed robustness evaluation every 5 iterations or at final iteration
+            if i % 5 == 0 or i == GlobalConfig.TRAIN_ITERATIONS or i == 1:
+                eval_metrics = run_30seeds_eval(
+                    algo_agent=algo,
+                    algo_name=algo_name_upper,
+                    env_config=self.env_cfg,
+                    phase=phase_num,
+                    lstm_cell_size=lstm_size
+                )
+                last_objective = eval_metrics["objective"]
+                last_jsr = eval_metrics["jsr"]
+                last_track = eval_metrics["tracking_acc"]
+                last_power = eval_metrics["power"]
+                last_sinr = eval_metrics["sinr"]
+
+            print(f"[WORKER GPU] Iter {i:4d}/{GlobalConfig.TRAIN_ITERATIONS} | 30-Seed JSR: {last_jsr:6.2f}% | Track: {last_track:6.2f}% | Power: {last_power:.3f}W | Obj: {last_objective:.2f}", flush=True)
 
             timesteps = result.get("timesteps_total") or result.get("num_env_steps_sampled") or (i * 2000)
-            if reward_val is not None:
-                self.progress_rows.append({
-                    "training_iteration": i,
-                    "episode_reward_mean": reward_val,
-                    "timesteps_total": timesteps,
-                    "episodes_total": result.get("episodes_total", i),
-                    "time_total_s": round(time.time() - start_time, 2)
-                })
+            self.progress_rows.append({
+                "training_iteration": i,
+                "episode_reward_mean": reward_val,
+                "jsr": last_jsr,
+                "tracking_acc": last_track,
+                "power": last_power,
+                "objective": last_objective,
+                "sinr": last_sinr,
+                "timesteps_total": timesteps,
+                "episodes_total": result.get("episodes_total", i * 10),
+                "time_total_s": round(time.time() - start_time, 2)
+            })
 
             if reward is not None:
                 if reward > best_reward:
@@ -393,9 +419,8 @@ if __name__ == "__main__":
     train_future = gpu_trainer.train_on_gpu.remote()
 
     import csv
-    import time
     csv_path = os.path.join(abs_output_dir, "progress.csv")
-    fieldnames = ["training_iteration", "episode_reward_mean", "timesteps_total", "episodes_total", "time_total_s"]
+    fieldnames = ["training_iteration", "episode_reward_mean", "jsr", "tracking_acc", "power", "objective", "sinr", "timesteps_total", "episodes_total", "time_total_s"]
 
     # Poll live progress every 2 seconds from Head Node driver process while training runs on Worker GPU
     while True:
