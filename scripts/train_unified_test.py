@@ -247,15 +247,15 @@ class UnifiedClusterGPUTrainer:
         start_time = time.time()
         last_eval = {"jsr": 0.0, "tracking_acc": 0.0, "power": 0.0, "objective": -99999.0, "sinr": 0.0}
 
-        for i in range(1, GlobalConfig.MAX_ITERATIONS + 1):
+        for i in range(1, GlobalConfig.TRAIN_ITERATIONS + 1):
             res = algo.train()
             ep_reward = res.get("episode_reward_mean", 0.0)
 
             # Run HPO 30-seed evaluation
-            if i % self.eval_freq == 0 or i == GlobalConfig.MAX_ITERATIONS:
+            if i % self.eval_freq == 0 or i == GlobalConfig.TRAIN_ITERATIONS:
                 last_eval = run_30seeds_eval(algo, self.algo_name, self.env_cfg, phase=1)
                 elapsed = round(time.time() - start_time, 2)
-                print(f"[UNIFIED GPU WORKER] Iter {i:4d}/{GlobalConfig.MAX_ITERATIONS} | Train Reward: {ep_reward:6.2f} | 30-Seed Eval JSR: {last_eval['jsr']:5.2f}% | Track: {last_eval['tracking_acc']:5.2f}% | Power: {last_eval['power']:.3f}W | Obj: {last_eval['objective']:.2f} ({elapsed}s)")
+                print(f"[UNIFIED GPU WORKER] Iter {i:4d}/{GlobalConfig.TRAIN_ITERATIONS} | Train Reward: {ep_reward:6.2f} | 30-Seed Eval JSR: {last_eval['jsr']:5.2f}% | Track: {last_eval['tracking_acc']:5.2f}% | Power: {last_eval['power']:.3f}W | Obj: {last_eval['objective']:.2f} ({elapsed}s)")
 
                 # Track best checkpoint in memory
                 if last_eval["objective"] > best_objective:
