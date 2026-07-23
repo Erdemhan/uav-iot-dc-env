@@ -9,6 +9,8 @@ sys.path.append(PROJECT_ROOT)
 
 os.environ["RAY_DISABLE_METRICS_EXPORT"] = "1"
 os.environ["RAY_OVERRIDE_JOB_RUNTIME_ENV"] = "1"
+os.environ["RAY_DEDUP_LOGS"] = "0"
+os.environ["PYTHONUNBUFFERED"] = "1"
 
 import ray
 from confs.model_config import GlobalConfig, PPOConfig, DQNConfig, PPOLSTMConfig
@@ -19,13 +21,30 @@ from scripts.tune_models import train_rllib_trial
 
 @ray.remote(num_gpus=1, max_concurrency=2)
 class HPOTrainableActor:
-    """Remote actor wrapping HPO's exact execution by directly invoking train_rllib_trial."""
+    """Remote actor wrapping HPO's exact execution by directly invoking train_rllib_trial with live console log streaming."""
     def __init__(self, config):
         self.config = config
 
     def run_training(self):
-        # Directly invoke HPO's exact train_rllib_trial function from tune_models.py!
-        return train_rllib_trial(self.config)
+        from ray import tune
+        old_report = getattr(tune, "report", None)
+
+        def live_report(metrics):
+            i = metrics.get("training_iteration", 0)
+            jsr = metrics.get("jsr", 0.0)
+            track = metrics.get("tracking_acc", 0.0)
+            power = metrics.get("power", 0.0)
+            obj = metrics.get("objective", 0.0)
+            if i % 5 == 0 or i == self.config.get("iterations", 1000):
+                print(f"[WORKER GPU] Iter {i:4d}/{self.config.get('iterations', 1000)} | 30-Seed JSR: {jsr:5.2f}% | Track: {track:5.2f}% | Power: {power:.3f}W | Obj: {obj:.2f}", flush=True)
+                sys.stdout.flush()
+
+        tune.report = live_report
+        try:
+            return train_rllib_trial(self.config)
+        finally:
+            if old_report:
+                tune.report = old_report
 
 def main():
     parser = argparse.ArgumentParser(description="Unified Test Trainer directly executing HPO's exact train_rllib_trial code.")
@@ -106,7 +125,7 @@ def main():
         runtime_env = {
             "working_dir": PROJECT_ROOT,
             "excludes": [".venv", "artifacts", "ray_results", "head-node-logs", ".git", "baseline_q_table", "node_modules"],
-            "env_vars": {"PYTHONPATH": "."}
+            "env_vars": {"PYTHONPATH": ".", "RAY_DEDUP_LOGS": "0", "PYTHONUNBUFFERED": "1"}
         }
         ray.init(ignore_reinit_error=True, runtime_env=runtime_env)
 
