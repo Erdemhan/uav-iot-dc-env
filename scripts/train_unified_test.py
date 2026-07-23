@@ -48,7 +48,17 @@ def main():
     elif args.scenario == "2-B":
         EnvConfig.NUM_NODES = 30; EnvConfig.NUM_UAVS = 2; EnvConfig.AREA_SIZE = 1000.0; EnvConfig.W_COST = 0.3
 
-    # Construct exact HPO trial config dict
+    env_cfg_dict = {
+        "W_SUCCESS": EnvConfig.W_SUCCESS,
+        "W_TRACKING": EnvConfig.W_TRACKING,
+        "W_COST": EnvConfig.W_COST,
+        "num_nodes": int(EnvConfig.NUM_NODES),
+        "num_uavs": int(EnvConfig.NUM_UAVS),
+        "area_size": float(EnvConfig.AREA_SIZE),
+        "w_cost": float(EnvConfig.W_COST)
+    }
+
+    # Construct exact HPO trial config dict matching tune_models.py
     if algo_upper == "DQN":
         trial_config = {
             "algo": "DQN",
@@ -58,7 +68,9 @@ def main():
             "target_network_update_freq": 2000,
             "num_workers": args.num_workers,
             "num_gpus": 1,
-            "iterations": args.iterations
+            "iterations": args.iterations,
+            "phase": 1,
+            "env_config": env_cfg_dict
         }
     elif algo_upper == "PPO":
         trial_config = {
@@ -68,7 +80,9 @@ def main():
             "architecture": "512,256",
             "num_workers": args.num_workers,
             "num_gpus": 1,
-            "iterations": args.iterations
+            "iterations": args.iterations,
+            "phase": 1,
+            "env_config": env_cfg_dict
         }
     elif algo_upper == "PPO-LSTM":
         trial_config = {
@@ -80,7 +94,9 @@ def main():
             "max_seq_len": PPOLSTMConfig.MAX_SEQ_LEN,
             "num_workers": args.num_workers,
             "num_gpus": 1,
-            "iterations": args.iterations
+            "iterations": args.iterations,
+            "phase": 1,
+            "env_config": env_cfg_dict
         }
 
     # Initialize Ray with runtime_env for cluster workers
