@@ -814,7 +814,7 @@ def main():
     with open(tuned_cfg_path, "w", encoding="utf-8") as f:
         json.dump(current_tuned, f, indent=4)
     print(f"[OK] Saved tuned configurations to: {tuned_cfg_path}")
-    print(f"     When PPO, DQN and QJC are all done, run the main experiments using: python scripts/run_experiments.py")
+    print(f"     When PPO, DQN and QJC are all done, run the main experiments using: python scripts/run_cluster_scenarios.py")
         
     # Save all trials database
     trials_data = []
