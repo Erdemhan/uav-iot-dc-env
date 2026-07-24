@@ -160,6 +160,10 @@ class ClusterGPUTrainer:
                 )
             )
 
+        from ray.tune.execution.placement_group_factory import PlacementGroupFactory
+        bundles = [{"CPU": 1, "GPU": 1}] + [{"CPU": 1}] * GlobalConfig.NUM_WORKERS
+        pg_factory = PlacementGroupFactory(bundles, strategy="STRICT_PACK")
+
         config = (
             config
             .multi_agent(
@@ -173,7 +177,7 @@ class ClusterGPUTrainer:
             )
             .api_stack(enable_rl_module_and_learner=False,
                        enable_env_runner_and_connector_v2=False)
-            .resources(num_gpus=1)
+            .resources(placement_group_factory=pg_factory)
             .debugging(log_level="WARN")
         )
         if self.algo_name == "dqn":
