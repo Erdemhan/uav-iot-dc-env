@@ -127,20 +127,20 @@ class ClusterPPODeterminismTester:
 
 def main():
     print("=========================================================================")
-    print("  CLUSTER PPO DETERMINISM TEST (Dispatched to Worker GPU)")
+    print("  PARALLEL CLUSTER PPO DETERMINISM TEST (2 Worker GPUs Simultaneous)")
     print("=========================================================================\n")
 
-    tester = ClusterPPODeterminismTester.remote()
+    print("[1/2] Instantiating 2 Parallel Remote Actors on Worker GPUs...")
+    tester1 = ClusterPPODeterminismTester.remote()
+    tester2 = ClusterPPODeterminismTester.remote()
 
-    print("[1/2] Dispatched RUN 1 (10 Iterations, Seed=42) to Worker GPU...")
-    fut1 = tester.run_single_test.remote(test_name="run1", seed=42, num_iterations=10)
-    run1_results = ray.get(fut1)
-    print("      [OK] RUN 1 Completed successfully.\n")
+    print("[2/2] Launching RUN 1 and RUN 2 simultaneously in parallel...")
+    fut1 = tester1.run_single_test.remote(test_name="run1", seed=42, num_iterations=10)
+    fut2 = tester2.run_single_test.remote(test_name="run2", seed=42, num_iterations=10)
 
-    print("[2/2] Dispatched RUN 2 (10 Iterations, Seed=42) to Worker GPU...")
-    fut2 = tester.run_single_test.remote(test_name="run2", seed=42, num_iterations=10)
-    run2_results = ray.get(fut2)
-    print("      [OK] RUN 2 Completed successfully.\n")
+    print("      Waiting for both parallel GPU runs to complete...")
+    run1_results, run2_results = ray.get([fut1, fut2])
+    print("      [OK] Both Parallel Worker GPU runs completed successfully.\n")
 
     print("=========================================================================")
     print("  KARŞILAŞTIRMA TABLOSU: RUN 1 vs RUN 2 (Tam Float Değerleri)")
