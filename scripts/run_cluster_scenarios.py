@@ -155,7 +155,12 @@ def main():
     parser.add_argument("--ray-address", type=str, default="auto", 
                         help="Ray cluster address. Default 'auto' to run all 6 jobs concurrently across the 6-PC cluster.")
     parser.add_argument("--skip-qjc", action="store_true", help="Skip running local QJC baseline")
+    parser.add_argument("--algos", type=str, default=None, help="Comma-separated list of algorithms to run (e.g. ppo, dqn, ppo_lstm)")
     args = parser.parse_args()
+
+    allowed_algos = None
+    if args.algos:
+        allowed_algos = [a.strip().lower().replace("-", "_") for a in args.algos.split(",")]
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     run_dir = os.path.join("artifacts", "scenario_runs", timestamp)
@@ -178,6 +183,8 @@ def main():
     print(f"Ray Cluster Orchestrator: {timestamp}")
     print(f"Ray Address: {args.ray_address}")
     print(f"Logs Directory: {run_dir}")
+    if allowed_algos:
+        print(f"Algorithm Filter Active: {allowed_algos}")
     print("=" * 80)
 
     # ----------------------------------------------------
@@ -220,6 +227,9 @@ def main():
             os.path.join(run_dir, "S1-B", "ppo_lstm.log")
         )
     }
+
+    if allowed_algos:
+        s1_jobs = {k: v for k, v in s1_jobs.items() if any(a in k.lower().replace("-", "_") for a in allowed_algos)}
 
     active_s1 = {}
     for name, (cmd, log_file) in s1_jobs.items():
