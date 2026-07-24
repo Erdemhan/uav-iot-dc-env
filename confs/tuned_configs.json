@@ -1,6 +1,6 @@
 {
     "_source": {
-        "ppo":      "artifacts/opt-full/tune_ppo_phase1_2026-07-17_17-50-43/optuna/",
+        "ppo":      "artifacts/opt-full/tune_ppo_phase1_2026-07-17_17-50-43/optuna/best_params.json",
         "dqn":      "artifacts/opt-full/tune_dqn_phase1_2026-07-18_18-03-23/optuna/best_params.json",
         "ppo_lstm": "artifacts/opt-full/tune_ppo_lstm_phase1_2026-07-18_19-28-57/optuna/best_params.json",
         "qjc":      "artifacts/opt-full/tune_qjc_phase1_2026-07-21_11-36-04/optuna/best_params.json"

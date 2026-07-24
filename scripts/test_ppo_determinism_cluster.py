@@ -143,11 +143,12 @@ def main():
     print("      [OK] RUN 2 Completed successfully.\n")
 
     print("=========================================================================")
-    print("  COMPARISON TABLE: RUN 1 vs RUN 2 (Exact Float Values)")
+    print("  KARŞILAŞTIRMA TABLOSU: RUN 1 vs RUN 2 (Tam Float Değerleri)")
     print("=========================================================================")
-    print(f"{'Iter':<6} | {'Run 1 Objective':<22} | {'Run 2 Objective':<22} | {'Absolute Diff':<18}")
+    print(f"{'Iter':<6} | {'Run 1 Objective':<22} | {'Run 2 Objective':<22} | {'Mutlak Fark':<18}")
     print("-" * 75)
 
+    comparison_details = []
     max_diff = 0.0
     for r1, r2 in zip(run1_results, run2_results):
         obj1 = r1["objective"]
@@ -155,17 +156,48 @@ def main():
         diff = abs(obj1 - obj2)
         if diff > max_diff:
             max_diff = diff
+        
         print(f"{r1['iter']:<6d} | {obj1:<22.15f} | {obj2:<22.15f} | {diff:<18.15f}")
+        comparison_details.append({
+            "iter": r1["iter"],
+            "run1_obj": obj1,
+            "run2_obj": obj2,
+            "abs_diff": diff,
+            "is_identical": diff == 0.0
+        })
 
     print("-" * 75)
-    print(f"Maximum Objective Difference across all 10 iterations: {max_diff:.15f}")
+    print(f"10 İterasyon Boyunca Maksimum Objective Farkı: {max_diff:.15f}")
 
     if max_diff == 0.0:
-        print("\n[VERIFICATION SUCCESS] PPO runs on Worker GPU are 100% DETERMINISTIC and IDENTICAL!")
+        verdict = "VERIFICATION_SUCCESS_100_PERCENT_IDENTICAL"
+        print("\n[SONUÇ: BİREBİR AYNI] PPO koşumları aynı Worker GPU üzerinde %100 DETERMINISTIK ve BİREBİR AYNI çıktı!")
     elif max_diff < 1e-6:
-        print("\n[VERIFICATION NOTICE] Minor floating-point GPU precision difference detected.")
+        verdict = "VERIFICATION_NOTICE_MINOR_FLOAT_DIFF"
+        print(f"\n[SONUÇ: ÇOK KÜÇÜK FARK] Mikro GPU hassasiyet farkı tespit edildi (Maks Fark: {max_diff:.15f}).")
     else:
-        print(f"\n[VERIFICATION RESULT] Non-zero difference detected ({max_diff:.6f}).")
+        verdict = "VERIFICATION_RESULT_DIFFERENT"
+        print(f"\n[SONUÇ: FARKLILIK VAR] İki koşum arasında fark tespit edildi (Maks Fark: {max_diff:.6f}).")
+
+    # Save log to disk
+    artifacts_dir = os.path.join(project_root, "artifacts")
+    os.makedirs(artifacts_dir, exist_ok=True)
+    log_json_path = os.path.join(artifacts_dir, "ppo_determinism_test_results.json")
+    
+    save_data = {
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "verdict": verdict,
+        "max_diff": max_diff,
+        "run1_results": run1_results,
+        "run2_results": run2_results,
+        "comparison_details": comparison_details
+    }
+    
+    with open(log_json_path, "w", encoding="utf-8") as f:
+        json.dump(save_data, f, indent=4)
+        
+    print(f"\n[LOG DOKÜMANI SAKLANDI] Tüm sonuçlar ve log dosyası kaydedildi:")
+    print(f"👉 {log_json_path}")
 
 if __name__ == "__main__":
     main()
