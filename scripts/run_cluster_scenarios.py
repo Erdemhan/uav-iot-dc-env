@@ -229,7 +229,7 @@ def main():
     }
 
     if allowed_algos:
-        s1_jobs = {k: v for k, v in s1_jobs.items() if any(a in k.lower().replace("-", "_") for a in allowed_algos)}
+        s1_jobs = {k: v for k, v in s1_jobs.items() if k.split("_")[-1].lower().replace("-", "_") in allowed_algos}
 
     active_s1 = {}
     for name, (cmd, log_file) in s1_jobs.items():
@@ -297,7 +297,7 @@ def main():
     }
 
     if allowed_algos:
-        s2_jobs = {k: v for k, v in s2_jobs.items() if any(a in k.lower().replace("-", "_") for a in allowed_algos)}
+        s2_jobs = {k: v for k, v in s2_jobs.items() if k.split("_")[-1].lower().replace("-", "_") in allowed_algos}
 
     active_s2 = {}
     for name, (cmd, log_file) in s2_jobs.items():
