@@ -404,19 +404,8 @@ if __name__ == "__main__":
         "GAMMA": PPOLSTMConfig.GAMMA,
     }
 
-    # Create official Ray STRICT_PACK Placement Group (1 GPU + 1 Learner CPU + 10 Worker CPUs = 11 CPUs)
-    from ray.util.placement_group import placement_group
-    pg = placement_group([{"CPU": 1, "GPU": 1}] + [{"CPU": 1}] * GlobalConfig.NUM_WORKERS, strategy="STRICT_PACK")
-    try:
-        ray.get(pg.ready(), timeout=10.0)
-    except Exception:
-        pass
-
-    # Instantiate ClusterGPUTrainer with STRICT_PACK placement group options
-    gpu_trainer = ClusterGPUTrainer.options(
-        placement_group=pg,
-        placement_group_capture_child_tasks=True
-    ).remote(
+    # Instantiate ClusterGPUTrainer on a Worker PC with 1 GPU (max_concurrency=2 for live non-blocking status)!
+    gpu_trainer = ClusterGPUTrainer.remote(
         algo_name=args.algo,
         scenario=args.scenario,
         output_dir=abs_output_dir,
