@@ -38,20 +38,21 @@ def env_creator(config):
 @ray.remote(num_gpus=1)
 class ClusterPPODeterminismTester:
     """Ray Remote Actor running on a Worker PC with 1 GPU to test PPO determinism."""
-    def run_single_test(self, test_name, seed=42, num_iterations=10):
+    def run_single_test(self, test_name, seed=42, num_iterations=10, use_torch_seed=False):
         import torch
         import numpy as np
         import random
         from ray.rllib.algorithms.ppo import PPOConfig
 
-        # Apply seeds strictly inside Worker GPU process
-        random.seed(seed)
-        torch.manual_seed(seed)
-        np.random.seed(seed)
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed_all(seed)
-            torch.backends.cudnn.deterministic = True
-            torch.backends.cudnn.benchmark = False
+        # Only apply torch manual seed if explicitly enabled
+        if use_torch_seed:
+            random.seed(seed)
+            torch.manual_seed(seed)
+            np.random.seed(seed)
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed_all(seed)
+                torch.backends.cudnn.deterministic = True
+                torch.backends.cudnn.benchmark = False
 
         env_name = f"uav_iot_ppo_det_{test_name}_v1"
         try:
@@ -127,20 +128,21 @@ class ClusterPPODeterminismTester:
 
 def main():
     print("=========================================================================")
-    print("  PARALLEL CLUSTER PPO DETERMINISM TEST (2 Worker GPUs Simultaneous)")
+    print("  TEST B: UNSEEDED PYTORCH PPO TEST (without torch.manual_seed)")
+    print("  (Simulating HPO condition to observe if runs produce DIFFERENT outputs)")
     print("=========================================================================\n")
 
     print("[1/2] Instantiating 2 Parallel Remote Actors on Worker GPUs...")
     tester1 = ClusterPPODeterminismTester.remote()
     tester2 = ClusterPPODeterminismTester.remote()
 
-    print("[2/2] Launching RUN 1 and RUN 2 simultaneously in parallel...")
-    fut1 = tester1.run_single_test.remote(test_name="run1", seed=42, num_iterations=10)
-    fut2 = tester2.run_single_test.remote(test_name="run2", seed=42, num_iterations=10)
+    print("[2/2] Launching RUN 1 and RUN 2 WITHOUT torch.manual_seed in parallel...")
+    fut1 = tester1.run_single_test.remote(test_name="run1", seed=42, num_iterations=10, use_torch_seed=False)
+    fut2 = tester2.run_single_test.remote(test_name="run2", seed=42, num_iterations=10, use_torch_seed=False)
 
-    print("      Waiting for both parallel GPU runs to complete...")
+    print("      Waiting for both unseeded parallel GPU runs to complete...")
     run1_results, run2_results = ray.get([fut1, fut2])
-    print("      [OK] Both Parallel Worker GPU runs completed successfully.\n")
+    print("      [OK] Both Unseeded Worker GPU runs completed successfully.\n")
 
     print("=========================================================================")
     print("  KARŞILAŞTIRMA TABLOSU: RUN 1 vs RUN 2 (Tam Float Değerleri)")
