@@ -173,11 +173,17 @@ def main():
     print("  LIVE STEP-BY-STEP HPO vs TRAIN COMPARISON TRACER (Ray GPU Cluster)")
     print("=========================================================================\n")
 
+    runtime_env = {
+        "working_dir": PROJECT_ROOT,
+        "excludes": [".venv", "artifacts", "ray_results", "head-node-logs", ".git", "node_modules"],
+        "env_vars": {"PYTHONPATH": "."}
+    }
+
     if not ray.is_initialized():
         try:
-            ray.init(address="auto")
+            ray.init(address="auto", runtime_env=runtime_env)
         except Exception:
-            ray.init()
+            ray.init(runtime_env=runtime_env)
 
     runner = HPOVsTrainRunner.remote()
     print("[1/2] Initializing Algorithms on Remote Worker GPU...")
