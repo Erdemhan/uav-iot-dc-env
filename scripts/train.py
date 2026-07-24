@@ -249,7 +249,7 @@ class ClusterGPUTrainer:
                 reward_val = 0.0
 
             # Run 30-seed robustness evaluation every 5 iterations or at final iteration
-            if i % 5 == 0 or i == GlobalConfig.TRAIN_ITERATIONS or i == 1:
+            if i % 5 == 0 or i == GlobalConfig.TRAIN_ITERATIONS:
                 eval_metrics = run_30seeds_eval(
                     algo_agent=algo,
                     algo_name=algo_name_upper,
