@@ -196,16 +196,28 @@ def main():
     print(f"HPO (Run A) Iter 5 Obj:           {res['eval_a'].get(5):.15f}")
     print(f"Scenario with i==1 (Run B) Iter 5: {res['eval_b'].get(5):.15f}")
     print(f"Scenario FIXED (Run C) Iter 5:    {res['eval_c'].get(5):.15f}")
+    print(f"HPO (Run A) Iter 10 Obj:          {res['eval_a'].get(10):.15f}")
+    print(f"Scenario with i==1 (Run B) Iter 10:{res['eval_b'].get(10):.15f}")
+    print(f"Scenario FIXED (Run C) Iter 10:   {res['eval_c'].get(10):.15f}")
 
-    diff_b = abs(res['eval_a'].get(5) - res['eval_b'].get(5))
-    diff_c = abs(res['eval_a'].get(5) - res['eval_c'].get(5))
+    diff_b5 = abs(res['eval_a'].get(5) - res['eval_b'].get(5))
+    diff_c5 = abs(res['eval_a'].get(5) - res['eval_c'].get(5))
+    diff_b10 = abs(res['eval_a'].get(10) - res['eval_b'].get(10))
+    diff_c10 = abs(res['eval_a'].get(10) - res['eval_c'].get(10))
 
     print("-" * 65)
-    print(f"Diff (Run A vs Run B with i==1): {diff_b:.15f}")
-    print(f"Diff (Run A vs Run C FIXED):    {diff_c:.15f}")
+    print(f"Diff Iter 5 (Run A vs Run B with i==1): {diff_b5:.15f}")
+    print(f"Diff Iter 5 (Run A vs Run C FIXED):    {diff_c5:.15f}")
+    print(f"Diff Iter 10 (Run A vs Run B with i==1):{diff_b10:.15f}")
+    print(f"Diff Iter 10 (Run A vs Run C FIXED):   {diff_c10:.15f}")
 
-    if diff_c == 0:
-        print("\n[CONFIRMED ROOT CAUSE] Removing 'or i == 1' makes Scenario PPO 100% IDENTICAL to HPO PPO (0.000000000000 diff)!")
+    # Save to JSON artifact on disk as well
+    out_dir = os.path.join(PROJECT_ROOT, "artifacts")
+    os.makedirs(out_dir, exist_ok=True)
+    json_path = os.path.join(out_dir, "ppo_divergence_test_results.json")
+    with open(json_path, "w") as f:
+        json.dump(res, f, indent=2)
+    print(f"\n[OK] Full JSON test results saved to disk: {json_path}")
 
 
 if __name__ == "__main__":
