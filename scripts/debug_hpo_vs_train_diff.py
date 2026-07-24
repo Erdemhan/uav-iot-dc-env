@@ -130,7 +130,11 @@ class HPOVsTrainRunner:
         )
         self.algo_b = cfg_b.build()
 
-        return "[OK] Both remote algorithms initialized successfully."
+        # Equalize initial weights so both start from the exact same initial state theta_0
+        init_weights_a = self.algo_a.get_policy("jammer_policy").get_weights()
+        self.algo_b.get_policy("jammer_policy").set_weights(init_weights_a)
+
+        return "[OK] Both remote algorithms initialized with EQUAL INITIAL WEIGHTS (theta_0) successfully."
 
     def step_and_compare(self, iteration):
         self.algo_a.train()
